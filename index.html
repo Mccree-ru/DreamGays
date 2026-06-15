@@ -47,8 +47,7 @@
         }
 
         /* КОНТЕЙНЕР КАТАЛОГА */
-        .main-container { padding: 15px; padding-bottom: 40px; }
-        h1.main-title { font-size: 20px; text-align: center; margin-top: 5px; margin-bottom: 15px; }
+        .main-container { padding: 15px; padding-bottom: 40px; padding-top: 10px; }
 
         /* Кнопка Доната */
         .donate-btn {
@@ -78,13 +77,19 @@
         /* Сетка каталога */
         .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         
-        /* Карточка манги */
+        /* КАРТОЧКИ ТАЙТЛОВ И ИХ ЦВЕТА */
         .manga-card { 
             background-color: var(--card-bg); border-radius: 12px; overflow: hidden; 
             display: flex; flex-direction: column; cursor: pointer; transition: transform 0.1s; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative;
+            color: var(--text-color);
         }
         .manga-card:active { transform: scale(0.97); }
+
+        /* Специфичные цвета для жанров */
+        .manga-card.genre-bara { background-color: #1a1a1a !important; color: #ffffff !important; }
+        .manga-card.genre-furry { background-color: #132136 !important; color: #ffffff !important; }
+
         .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #222; }
         .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
         
@@ -118,13 +123,12 @@
         .tag-author.selected { background-color: #cc6200; }
 
         /* ========================================== */
-        /* ОБНОВЛЕННАЯ ЧИТАЛКА (ВО ВЕСЬ ЭКРАН) */
+        /* ЧИТАЛКА */
         /* ========================================== */
         .reader-screen {
             background-color: #000000; overflow: hidden; touch-action: none;
         }
 
-        /* Новая монолитная верхняя панель во всю ширину */
         .reader-header {
             position: fixed; top: 0; left: 0; width: 100%; height: 50px;
             z-index: 100; display: flex; align-items: center; justify-content: space-between;
@@ -156,10 +160,9 @@
 
         .zoom-container {
             width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-            will-change: transform; transform-origin: 0 0;
+            will-change: transform; transform-origin: center center; /* Изменили ориентацию на центр */
         }
 
-        /* Картинка теперь растягивается на максимум высоты и ширины */
         .reader-img { 
             width: 100%; height: 100%; 
             object-fit: contain; 
@@ -172,17 +175,19 @@
 </head>
 <body>
 
+    <!-- МОНОЛИТНАЯ ВЕРХНЯЯ ПАНЕЛЬ -->
     <div id="readerHeader" class="reader-header">
         <button class="back-button" onclick="closeReader()">⬅ В каталог</button>
         <div id="pageCounter" class="page-counter">0 / 0</div>
     </div>
 
+    <!-- КАТАЛОГ -->
     <div id="mainScreen" class="screen active">
         <div class="main-container">
-            <h1 class="main-title">Каталог переводов</h1>
 
+            <!-- Обновленная кнопка доната, заголовок убран -->
             <button class="donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">
-                ☕ Поддержать переводы (Донат)
+                ☕ На кофе
             </button>
 
             <div class="filter-panel">
@@ -199,6 +204,7 @@
         </div>
     </div>
 
+    <!-- ЭКРАН ЧИТАЛКИ -->
     <div id="readerScreen" class="screen reader-screen">
         <div id="readerTrack" class="reader-track"></div>
     </div>
@@ -223,7 +229,6 @@
         let totalTranslateY = 0;
         let isZooming = false;
 
-        // База прочитанного сохраняется локально
         let readMangaList = JSON.parse(localStorage.getItem('manga_read_list')) || [];
 
         fetch('database.json?v=' + new Date().getTime())
@@ -261,10 +266,18 @@
 
             filtered.forEach(manga => {
                 const card = document.createElement('div');
-                card.className = 'manga-card';
+                
+                // Классы авто-стилизации по жанрам
+                let genreClass = '';
+                if (manga.tags.includes('Bara') || manga.tags.includes('bara')) genreClass = 'genre-bara';
+                else if (manga.tags.includes('Furry') || manga.tags.includes('furry')) genreClass = 'genre-furry';
+                
+                card.className = `manga-card ${genreClass}`;
                 card.onclick = (e) => { if (!e.target.classList.contains('tag') && !e.target.classList.contains('tag-author')) openReader(manga.id); };
 
-                const tagsHtml = manga.tags.map(t => `<span class="tag ${t === selectedTag ? 'selected' : ''}" onclick="filterByTag('${t}')">${t}</span>`).join('');
+                // Фильтруем теги: исключаем Bara и Furry из отрисовки текстом
+                const visibleTags = manga.tags.filter(t => t.toLowerCase() !== 'bara' && t.toLowerCase() !== 'furry');
+                const tagsHtml = visibleTags.map(t => `<span class="tag ${t === selectedTag ? 'selected' : ''}" onclick="filterByTag('${t}')">${t}</span>`).join('');
 
                 const splitAuthors = manga.author ? manga.author.split(/[,/]| и /) : [];
                 const authorsHtml = splitAuthors.map(author => {
@@ -322,7 +335,7 @@
         }
 
         /* ========================================== */
-        /* ДВИЖОК ЧИТАЛКИ И ЗУМА */
+        /* ИСПРАВЛЕННЫЙ ДВИЖОК ЗУМА И ПЕРЕМЕЩЕНИЯ */
         /* ========================================== */
 
         function openReader(mangaId) {
@@ -385,7 +398,6 @@
             }
         }
 
-        /* НАСТОЯЩИЙ PINCH-TO-ZOOM С ЗАЩИТОЙ ОТ ДЕРГАНИЯ ПРИ ОТПУСКАНИИ */
         function initTouchZoom() {
             const screen = document.getElementById('readerScreen');
             let startDist = 0; let startScale = 1;
@@ -438,11 +450,14 @@
 
                 } else if (e.touches.length === 1 && scale > 1 && !isZooming) {
                     if (ignoreSingleTouch) return;
+                    
                     totalTranslateX = e.touches[0].clientX - startX;
                     totalTranslateY = e.touches[0].clientY - startY;
 
-                    const maxDeltaX = (window.innerWidth * (scale - 1)) / 1.5;
-                    const maxDeltaY = (window.innerHeight * (scale - 1)) / 1.5;
+                    // СИММЕТРИЧНОЕ ОГРАНИЧЕНИЕ ДВИЖЕНИЯ ПО КРАЯМ КАРТИНКИ
+                    const maxDeltaX = (window.innerWidth * (scale - 1)) / 2;
+                    const maxDeltaY = (window.innerHeight * (scale - 1)) / 2;
+
                     if (totalTranslateX > maxDeltaX) totalTranslateX = maxDeltaX;
                     if (totalTranslateX < -maxDeltaX) totalTranslateX = -maxDeltaX;
                     if (totalTranslateY > maxDeltaY) totalTranslateY = maxDeltaY;
