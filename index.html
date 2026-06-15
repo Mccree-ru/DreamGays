@@ -6,64 +6,371 @@
     <title>McCree Ru Manga</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        /* НАСТРОЙКА ЦВЕТОВ ПОД ТЕМУ TELEGRAM */
         :root {
             --bg-color: var(--tg-theme-bg-color, #ffffff);
             --text-color: var(--tg-theme-text-color, #222222);
             --hint-color: var(--tg-theme-hint-color, #888888);
             --link-color: var(--tg-theme-link-color, #248bcf);
             --card-bg: var(--tg-theme-secondary-bg-color, #f1f1f1);
+            --button-color: var(--tg-theme-button-color, #248bcf);
+            --button-text: var(--tg-theme-button-text-color, #ffffff);
         }
-        body { font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 15px; }
-        h1.main-title { font-size: 20px; text-align: center; margin-bottom: 20px; }
-        .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        .manga-card { background-color: var(--card-bg); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform 0.1s; }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            margin: 0; 
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* КОНТЕЙНЕР ГЛАВНОГО ЭКРАНА (КАТАЛОГ) */
+        .main-container {
+            padding: 15px;
+        }
+        
+        h1.main-title { 
+            font-size: 20px; 
+            text-align: center; 
+            margin-top: 5px;
+            margin-bottom: 20px; 
+        }
+        
+        /* Панель фильтров */
+        .filter-panel {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        select.author-select {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--hint-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            flex-grow: 1;
+            -webkit-appearance: none;
+        }
+
+        .reset-btn {
+            background-color: var(--button-color);
+            color: var(--button-text);
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none;
+        }
+
+        .active-filter-info {
+            font-size: 13px;
+            color: var(--link-color);
+            font-weight: bold;
+        }
+
+        /* Сетка каталога */
+        .catalog-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 15px; 
+        }
+        
+        /* Карточка манги */
+        .manga-card { 
+            background-color: var(--card-bg); 
+            border-radius: 12px; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            cursor: pointer; 
+            transition: transform 0.1s; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
         .manga-card:active { transform: scale(0.97); }
-        .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #333; }
+        .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #222; }
         .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        
         .card-info { padding: 10px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .card-title { font-size: 14px; font-weight: 600; margin: 0 0 5px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .card-title { font-size: 14px; font-weight: 600; margin: 0 0 5px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
         .card-author { font-size: 12px; color: var(--hint-color); margin-bottom: 8px; }
+        
+        /* Теги */
         .card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-        .tag { font-size: 10px; background-color: rgba(36, 139, 207, 0.15); color: var(--link-color); padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+        .tag { 
+            font-size: 10px; 
+            background-color: rgba(36, 139, 207, 0.13); 
+            color: var(--link-color); 
+            padding: 3px 7px; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+        }
+        .tag.selected {
+            background-color: var(--link-color);
+            color: #fff;
+        }
+
+        /* ========================================== */
+        /* ЭКРАН ЧИТАЛКИ (ПО УМОЛЧАНИЮ СКРЫТ) */
+        /* ========================================== */
+        .reader-screen {
+            display: none;
+            background-color: #000000; /* Черный фон для комфортного чтения */
+            min-height: 100vh;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        /* Плавающая кнопка назад */
+        .back-button {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 100;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .reader-pages-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .reader-page {
+            width: 100%;
+            max-width: 800px; /* Ограничение ширины для планшетов */
+            display: block;
+            margin: 0;
+            padding: 0;
+        }
+
+        .reader-footer {
+            color: #888888;
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
 
-    <h1 class="main-title">Каталог переводов</h1>
-    <div class="catalog-grid" id="catalog">
+    <button id="backBtn" class="back-button" onclick="closeReader()">⬅ Каталог</button>
+
+    <div id="mainScreen" class="main-container">
+        <h1 class="main-title">Каталог переводов</h1>
+
+        <div class="filter-panel">
+            <div class="filter-row">
+                <select id="authorSelect" class="author-select" onchange="filterByAuthor(this.value)">
+                    <option value="">Все авторы</option>
+                </select>
+                <button id="resetBtn" class="reset-btn" onclick="resetFilters()">Сбросить</button>
+            </div>
+            <div id="activeFilterText" class="active-filter-info"></div>
         </div>
 
+        <div class="catalog-grid" id="catalog">
+            </div>
+    </div>
+
+    <div id="readerScreen" class="reader-screen">
+        <div id="readerPages" class="reader-pages-container">
+            </div>
+        <div class="reader-footer">Конец главы 🎉</div>
+    </div>
+
     <script>
+        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        // Загружаем список манги из файла database.json
+        let allManga = []; 
+        let selectedTag = null;
+        let selectedAuthor = "";
+
+        // Загружаем данные из database.json
         fetch('database.json')
             .then(response => response.json())
             .then(data => {
-                const catalog = document.getElementById('catalog');
-                data.forEach(manga => {
-                    const tagsHtml = manga.tags.map(t => `<span class="tag">${t}</span>`).join('');
-                    const card = document.createElement('div');
-                    card.className = 'manga-card';
-                    card.onclick = () => tg.openLink(manga.link);
-                    card.innerHTML = `
-                        <div class="card-cover-wrap">
-                            <img src="${manga.cover}" class="card-cover" loading="lazy">
-                        </div>
-                        <div class="card-info">
-                            <div>
-                                <h3 class="card-title">${manga.title}</h3>
-                                <div class="card-author">Автор: ${manga.author}</div>
-                            </div>
-                            <div class="card-tags">${tagsHtml}</div>
-                        </div>
-                    `;
-                    catalog.appendChild(card);
-                });
+                allManga = data;
+                buildAuthorSelect(); 
+                renderCatalog();     
             })
             .catch(err => console.error("Ошибка загрузки базы данных", err));
+
+        // Автоматический сбор списка уникальных авторов
+        function buildAuthorSelect() {
+            const select = document.getElementById('authorSelect');
+            const authorsSet = new Set();
+
+            allManga.forEach(manga => {
+                if (manga.author) {
+                    // Разделяем авторов по запятой, слэшу или союзу "и"
+                    const splitAuthors = manga.author.split(/[,/]| и /);
+                    splitAuthors.forEach(author => {
+                        const trimmed = author.trim();
+                        if (trimmed) authorsSet.add(trimmed);
+                    });
+                }
+            });
+
+            authorsSet.forEach(author => {
+                const opt = document.createElement('option');
+                opt.value = author;
+                opt.textContent = author;
+                select.appendChild(opt);
+            });
+        }
+
+        // Отрисовка карточек в каталоге
+        function renderCatalog() {
+            const catalog = document.getElementById('catalog');
+            catalog.innerHTML = ""; 
+
+            const filtered = allManga.filter(manga => {
+                const matchTag = !selectedTag || manga.tags.includes(selectedTag);
+                const matchAuthor = !selectedAuthor || (manga.author && manga.author.includes(selectedAuthor));
+                return matchTag && matchAuthor;
+            });
+
+            filtered.forEach(manga => {
+                const card = document.createElement('div');
+                card.className = 'manga-card';
+                
+                // Клик по карточке открывает читалку
+                card.onclick = (e) => {
+                    if (e.target.classList.contains('tag')) return; // Если клик на тег, читалку не открывать
+                    openReader(manga.id);
+                };
+
+                const tagsHtml = manga.tags.map(t => {
+                    const isSelected = t === selectedTag ? 'selected' : '';
+                    return `<span class="tag ${isSelected}" onclick="filterByTag('${t}')">${t}</span>`;
+                }).join('');
+
+                card.innerHTML = `
+                    <div class="card-cover-wrap">
+                        <img src="${manga.cover}" class="card-cover" loading="lazy">
+                    </div>
+                    <div class="card-info">
+                        <div>
+                            <h3 class="card-title">${manga.title}</h3>
+                            <div class="card-author">Автор: ${manga.author}</div>
+                        </div>
+                        <div class="card-tags">${tagsHtml}</div>
+                    </div>
+                `;
+                catalog.appendChild(card);
+            });
+
+            updateResetButtonVisibility();
+        }
+
+        // Сортировка по тегам
+        function filterByTag(tag) {
+            selectedTag = selectedTag === tag ? null : tag;
+            renderCatalog();
+        }
+
+        // Сортировка по авторам
+        function filterByAuthor(author) {
+            selectedAuthor = author;
+            renderCatalog();
+        }
+
+        // Полный сброс фильтров
+        function resetFilters() {
+            selectedTag = null;
+            selectedAuthor = "";
+            document.getElementById('authorSelect').value = "";
+            renderCatalog();
+        }
+
+        function updateResetButtonVisibility() {
+            const resetBtn = document.getElementById('resetBtn');
+            const infoText = document.getElementById('activeFilterText');
+            
+            if (selectedTag || selectedAuthor) {
+                resetBtn.style.display = "block";
+                let text = "Фильтр: ";
+                if (selectedAuthor) text += `[${selectedAuthor}] `;
+                if (selectedTag) text += `[#${selectedTag}]`;
+                infoText.textContent = text;
+            } else {
+                resetBtn.style.display = "none";
+                infoText.textContent = "";
+            }
+        }
+
+        // ==========================================
+        // ЛОГИКА РАБОТЫ ВСТРОЕННОЙ ЧИТАЛКИ
+        // ==========================================
+        
+        function openReader(mangaId) {
+            const manga = allManga.find(m => m.id === mangaId);
+            if (!manga || !manga.pages || manga.pages.length === 0) {
+                alert("У этой манги нет загруженных страниц!");
+                return;
+            }
+
+            // Переключаем экраны видимости
+            document.getElementById('mainScreen').style.display = 'none';
+            document.getElementById('readerScreen').style.display = 'block';
+            document.getElementById('backBtn').style.display = 'block';
+
+            // Очищаем и заполняем контейнер страниц
+            const container = document.getElementById('readerPages');
+            container.innerHTML = "";
+
+            manga.pages.forEach(pageUrl => {
+                const img = document.createElement('img');
+                img.src = pageUrl;
+                img.className = 'reader-page';
+                img.loading = 'lazy'; // Страницы подгружаются в процессе скролла для экономии трафика
+                container.appendChild(img);
+            });
+
+            // Прокручиваем в самое начало
+            window.scrollTo(0, 0);
+        }
+
+        function closeReader() {
+            // Возвращаем главный экран каталога обратно
+            document.getElementById('readerScreen').style.display = 'none';
+            document.getElementById('backBtn').style.display = 'none';
+            document.getElementById('mainScreen').style.display = 'block';
+            
+            window.scrollTo(0, 0);
+        }
     </script>
 </body>
 </html>
