@@ -262,14 +262,26 @@
 
         let readMangaList = JSON.parse(localStorage.getItem('manga_read_list')) || [];
 
-        fetch('database.json?v=' + new Date().getTime())
-            .then(response => response.json())
-            .then(data => {
-                allManga = data;
-                buildAuthorSelect(); 
-                renderCatalog();     
-            })
-            .catch(err => console.error("Ошибка загрузки базы данных", err));
+		fetch('database.json?v=' + new Date().getTime())
+			.then(response => response.json())
+			.then(data => {
+				allManga = data;
+				buildAuthorSelect(); 
+				renderCatalog();     
+
+				// ПРОВЕРКА ПАРАМЕТРА СТАРТА ДЛЯ ГРУПП
+				// Telegram автоматически передает всё, что идет после "startapp="
+				if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+					const startId = tg.initDataUnsafe.start_param;
+					
+					// Проверяем, есть ли такой ID в нашей базе данных
+					const hasManga = allManga.some(m => m.id === startId);
+					if (hasManga) {
+						openReader(startId); // Если нашли — мгновенно открываем читалку!
+					}
+				}
+			})
+			.catch(err => console.error("Ошибка загрузки базы данных", err));
 
         function buildAuthorSelect() {
             const select = document.getElementById('authorSelect');
