@@ -118,28 +118,30 @@
         .tag-author.selected { background-color: #cc6200; }
 
         /* ========================================== */
-        /* ЧИТАЛКА */
+        /* ОБНОВЛЕННАЯ ЧИТАЛКА (ВО ВЕСЬ ЭКРАН) */
         /* ========================================== */
         .reader-screen {
             background-color: #000000; overflow: hidden; touch-action: none;
         }
 
-        .reader-controls {
+        /* Новая монолитная верхняя панель во всю ширину */
+        .reader-header {
+            position: fixed; top: 0; left: 0; width: 100%; height: 50px;
+            z-index: 100; display: flex; align-items: center; justify-content: space-between;
+            background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            box-sizing: border-box; padding: 0 15px;
             opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
         }
-        .reader-controls.visible { opacity: 1; pointer-events: auto; }
+        .reader-header.visible { opacity: 1; pointer-events: auto; }
 
         .back-button {
-            position: fixed; top: 15px; left: 15px; z-index: 100;
-            background-color: rgba(0, 0, 0, 0.7); color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.25); padding: 8px 16px;
-            border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; backdrop-filter: blur(4px);
+            background: none; border: none; color: #ffffff;
+            font-size: 14px; font-weight: bold; cursor: pointer; padding: 6px 0;
         }
 
         .page-counter {
-            position: fixed; top: 15px; right: 15px; z-index: 100;
-            background-color: rgba(0, 0, 0, 0.7); color: #ffffff;
-            padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; backdrop-filter: blur(4px);
+            color: #ffffff; font-size: 14px; font-weight: bold; opacity: 0.9;
         }
 
         .reader-track {
@@ -157,7 +159,12 @@
             will-change: transform; transform-origin: 0 0;
         }
 
-        .reader-img { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
+        /* Картинка теперь растягивается на максимум высоты и ширины */
+        .reader-img { 
+            width: 100%; height: 100%; 
+            object-fit: contain; 
+            user-select: none; -webkit-user-drag: none; 
+        }
 
         .tap-zone-left { position: absolute; top: 0; left: 0; width: 25%; height: 100%; z-index: 50; }
         .tap-zone-right { position: absolute; top: 0; right: 0; width: 75%; height: 100%; z-index: 50; }
@@ -165,13 +172,11 @@
 </head>
 <body>
 
-    <!-- УПРАВЛЕНИЕ ЧИТАЛКОЙ -->
-    <div id="readerControls" class="reader-controls">
+    <div id="readerHeader" class="reader-header">
         <button class="back-button" onclick="closeReader()">⬅ В каталог</button>
         <div id="pageCounter" class="page-counter">0 / 0</div>
     </div>
 
-    <!-- КАТАЛОГ -->
     <div id="mainScreen" class="screen active">
         <div class="main-container">
             <h1 class="main-title">Каталог переводов</h1>
@@ -194,7 +199,6 @@
         </div>
     </div>
 
-    <!-- ЭКРАН ЧИТАЛКИ -->
     <div id="readerScreen" class="screen reader-screen">
         <div id="readerTrack" class="reader-track"></div>
     </div>
@@ -351,7 +355,7 @@
 
             document.getElementById('mainScreen').classList.remove('active');
             document.getElementById('readerScreen').classList.add('active');
-            document.getElementById('readerControls').classList.add('visible');
+            document.getElementById('readerHeader').classList.add('visible');
 
             updateTrackPosition();
             initTouchZoom();
@@ -373,31 +377,32 @@
                 updateTrackPosition();
             } else if (targetIndex >= currentPagesCount && !isMangaFinishedAlertShown) {
                 isMangaFinishedAlertShown = true;
-                
-                // Автоматически помечаем как прочитанное при дочитывании
                 if (!readMangaList.includes(currentMangaId)) {
                     readMangaList.push(currentMangaId);
                     localStorage.setItem('manga_read_list', JSON.stringify(readMangaList));
                 }
-                
                 tg.showAlert("Вы прочитали эту главу! 🎉", () => { closeReader(); });
             }
         }
 
+        /* НАСТОЯЩИЙ PINCH-TO-ZOOM С ЗАЩИТОЙ ОТ ДЕРГАНИЯ ПРИ ОТПУСКАНИИ */
         function initTouchZoom() {
             const screen = document.getElementById('readerScreen');
             let startDist = 0; let startScale = 1;
             let startMidX = 0, startMidY = 0;
             let startX = 0, startY = 0;
+            let ignoreSingleTouch = false;
 
             screen.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 2) {
                     isZooming = true;
+                    ignoreSingleTouch = false;
                     startDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                     startScale = scale;
                     startMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                     startMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                 } else if (e.touches.length === 1 && scale > 1) {
+                    if (ignoreSingleTouch) return;
                     startX = e.touches[0].clientX - totalTranslateX;
                     startY = e.touches[0].clientY - totalTranslateY;
                 }
@@ -432,6 +437,7 @@
                     startMidX = currentMidX; startMidY = currentMidY;
 
                 } else if (e.touches.length === 1 && scale > 1 && !isZooming) {
+                    if (ignoreSingleTouch) return;
                     totalTranslateX = e.touches[0].clientX - startX;
                     totalTranslateY = e.touches[0].clientY - startY;
 
@@ -451,7 +457,11 @@
                 const container = document.getElementById(`zoom-${currentPageIndex}`);
                 if (!container) return;
 
-                if (e.touches.length < 2) isZooming = false;
+                if (e.touches.length < 2 && isZooming) {
+                    isZooming = false;
+                    ignoreSingleTouch = true;
+                    setTimeout(() => { ignoreSingleTouch = false; }, 100);
+                }
 
                 if (scale <= 1.05) {
                     scale = 1; totalTranslateX = 0; totalTranslateY = 0;
@@ -471,7 +481,7 @@
 
         function closeReader() {
             document.getElementById('readerScreen').classList.remove('active');
-            document.getElementById('readerControls').classList.remove('visible');
+            document.getElementById('readerHeader').classList.remove('visible');
             document.getElementById('mainScreen').classList.add('active');
             
             setTimeout(() => {
