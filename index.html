@@ -2,15 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Критично для мобильных устройств -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>McCree Ru Manga</title>
-    
-    <!-- Подключаем скрипт Telegram Web App -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
     <style>
-        /* ОСНОВНЫЕ СТИЛИ (Адаптация под тему Telegram) */
         :root {
             --bg-color: var(--tg-theme-bg-color, #ffffff);
             --text-color: var(--tg-theme-text-color, #222222);
@@ -18,201 +13,57 @@
             --link-color: var(--tg-theme-link-color, #248bcf);
             --card-bg: var(--tg-theme-secondary-bg-color, #f1f1f1);
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 15px;
-            padding-bottom: 30px; /* Отступ снизу */
-            -webkit-font-smoothing: antialiased;
-        }
-
-        h1.main-title {
-            font-size: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            color: var(--text-color);
-        }
-
-        /* СЕТКА КАРТОЧЕК */
-        .catalog-grid {
-            display: grid;
-            /* Два столбца на мобильных */
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-        }
-
-        /* СТИЛЬ КАРТОЧКИ */
-        .manga-card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            transition: transform 0.1s ease-in-out;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .manga-card:active {
-            transform: scale(0.97); /* Эффект нажатия */
-        }
-
-        /* ОБЛОЖКА */
-        .card-cover-wrap {
-            width: 100%;
-            padding-top: 140%; /* Соотношение сторон 1:1.4 (вертикальное) */
-            position: relative;
-            background-color: #333; /* Фон пока грузится */
-        }
-
-        .card-cover {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover; /* Заполнить без искажения */
-        }
-
-        /* ИНФО В КАРТОЧКЕ */
-        .card-info {
-            padding: 10px;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .card-title {
-            font-size: 14px;
-            font-weight: 600;
-            margin: 0 0 5px 0;
-            line-height: 1.3;
-            /* Ограничение в 2 строки */
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .card-author {
-            font-size: 12px;
-            color: var(--hint-color);
-            margin-bottom: 8px;
-        }
-
-        /* ТЕГИ */
-        .card-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-        }
-
-        .tag {
-            font-size: 10px;
-            background-color: rgba(36, 139, 207, 0.15); /* Прозрачный цвет ссылки */
-            color: var(--link-color);
-            padding: 2px 6px;
-            border-radius: 4px;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-
+        body { font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 15px; }
+        h1.main-title { font-size: 20px; text-align: center; margin-bottom: 20px; }
+        .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .manga-card { background-color: var(--card-bg); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: transform 0.1s; }
+        .manga-card:active { transform: scale(0.97); }
+        .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #333; }
+        .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        .card-info { padding: 10px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .card-title { font-size: 14px; font-weight: 600; margin: 0 0 5px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .card-author { font-size: 12px; color: var(--hint-color); margin-bottom: 8px; }
+        .card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+        .tag { font-size: 10px; background-color: rgba(36, 139, 207, 0.15); color: var(--link-color); padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
     <h1 class="main-title">Каталог переводов</h1>
-
-    <div class="catalog-grid">
-
-        <!-- ========================================== -->
-        <!-- СПИСОК КАРТОЧЕК. РЕДАКТИРОВАТЬ ЗДЕСЬ -->
-        <!-- ========================================== -->
-
-        <!-- Карточка 1 -->
-        <div class="manga-card" onclick="openManga('https://teletype.in/@mccree_ru/vh_uGIaWOkx')">
-            <div class="card-cover-wrap">
-                <!-- ЗАМЕНИТЕ ССЫЛКУ НА КАРТИНКУ ОБЛОЖКИ -->
-                <img src="https://via.placeholder.com/300x420.png?text=Cover+1" alt="Обложка" class="card-cover" loading="lazy">
-            </div>
-            <div class="card-info">
-                <div>
-                    <h3 class="card-title">Название первой манги</h3>
-                    <div class="card-author">Автор: Имя Автора</div>
-                </div>
-                <div class="card-tags">
-                    <span class="tag">bara</span>
-                    <span class="tag">furry</span>
-                    <span class="tag">color</span>
-                </div>
-            </div>
+    <div class="catalog-grid" id="catalog">
         </div>
-
-        <!-- Карточка 2 -->
-        <div class="manga-card" onclick="openManga('https://teletype.in/@mccree_ru/другая_ссылка')">
-            <div class="card-cover-wrap">
-                <!-- ЗАМЕНИТЕ ССЫЛКУ НА КАРТИНКУ ОБЛОЖКИ -->
-                <img src="https://via.placeholder.com/300x420.png?text=Cover+2" alt="Обложка" class="card-cover" loading="lazy">
-            </div>
-            <div class="card-info">
-                <div>
-                    <h3 class="card-title">Очень длинное название манги, которое может не влезть в одну строку</h3>
-                    <div class="card-author">Автор: Another Artist</div>
-                </div>
-                <div class="card-tags">
-                    <span class="tag">yaoi</span>
-                    <span class="tag">drama</span>
-                </div>
-            </div>
-        </div>
-
-         <!-- Карточка 3 (образец) -->
-        <div class="manga-card" onclick="openManga('https://teletype.in/@mccree_ru/vh_uGIaWOkx')">
-            <div class="card-cover-wrap">
-                <img src="https://via.placeholder.com/300x420.png?text=Cover+3" alt="Обложка" class="card-cover" loading="lazy">
-            </div>
-            <div class="card-info">
-                <div>
-                    <h3 class="card-title">Проверка тегов bara/furry</h3>
-                    <div class="card-author">Автор: Gengoro</div>
-                </div>
-                <div class="card-tags">
-                    <span class="tag">bara</span>
-                    <span class="tag">furry</span>
-                    <span class="tag">hardcode</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========================================== -->
-        <!-- КОНЕЦ СПИСКА КАРТОЧЕК -->
-        <!-- ========================================== -->
-
-    </div>
 
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
-        
-        // Сообщаем Telegram, что приложение готово
         tg.ready();
-        // Разворачиваем на полную высоту
         tg.expand();
 
-        // Устанавливаем цвет заголовка (header) в цвет темы
-        tg.setHeaderColor('theme_color');
-        tg.setBackgroundColor('theme_color');
-
-        // Функция открытия ссылки
-        function openManga(url) {
-            // Telegram Web App API: открыть ссылку во внешнем браузере
-            // Это лучший вариант, так как Teletype часто блокирует открытие внутри фрейма
-            tg.openLink(url);
-        }
+        // Загружаем список манги из файла database.json
+        fetch('database.json')
+            .then(response => response.json())
+            .then(data => {
+                const catalog = document.getElementById('catalog');
+                data.forEach(manga => {
+                    const tagsHtml = manga.tags.map(t => `<span class="tag">${t}</span>`).join('');
+                    const card = document.createElement('div');
+                    card.className = 'manga-card';
+                    card.onclick = () => tg.openLink(manga.link);
+                    card.innerHTML = `
+                        <div class="card-cover-wrap">
+                            <img src="${manga.cover}" class="card-cover" loading="lazy">
+                        </div>
+                        <div class="card-info">
+                            <div>
+                                <h3 class="card-title">${manga.title}</h3>
+                                <div class="card-author">Автор: ${manga.author}</div>
+                            </div>
+                            <div class="card-tags">${tagsHtml}</div>
+                        </div>
+                    `;
+                    catalog.appendChild(card);
+                });
+            })
+            .catch(err => console.error("Ошибка загрузки базы данных", err));
     </script>
 </body>
 </html>
