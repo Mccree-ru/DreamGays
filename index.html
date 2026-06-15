@@ -54,10 +54,34 @@
             display: flex; align-items: center; justify-content: center; gap: 8px;
             background: linear-gradient(135deg, #8b3ffd, #5411ff); color: #ffffff;
             border: none; width: 100%; padding: 12px; border-radius: 12px;
-            font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 20px;
+            font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 15px;
             box-shadow: 0 4px 12px rgba(139, 63, 253, 0.3); transition: transform 0.1s;
         }
         .donate-btn:active { transform: scale(0.98); }
+
+        /* БЫСТРЫЕ ФИЛЬТРЫ ЖАНРОВ */
+        .genre-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .genre-tab {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+            text-align: center;
+        }
+        .genre-tab.active {
+            background-color: var(--button-color);
+            color: var(--button-text);
+        }
         
         /* Панель фильтров */
         .filter-panel { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
@@ -160,7 +184,7 @@
 
         .zoom-container {
             width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-            will-change: transform; transform-origin: center center; /* Изменили ориентацию на центр */
+            will-change: transform; transform-origin: center center;
         }
 
         .reader-img { 
@@ -185,10 +209,17 @@
     <div id="mainScreen" class="screen active">
         <div class="main-container">
 
-            <!-- Обновленная кнопка доната, заголовок убран -->
+            <!-- Кнопка доната -->
             <button class="donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">
                 ☕ На кофе
             </button>
+
+            <!-- БЫСТРАЯ СОРТИРОВКА ЖАНРОВ -->
+            <div class="genre-tabs">
+                <button id="tab-all" class="genre-tab active" onclick="switchGenreTab(null)">Все</button>
+                <button id="tab-bara" class="genre-tab" onclick="switchGenreTab('bara')">Bara</button>
+                <button id="tab-furry" class="genre-tab" onclick="switchGenreTab('furry')">Furry</button>
+            </div>
 
             <div class="filter-panel">
                 <div class="filter-row">
@@ -216,15 +247,15 @@
         let allManga = []; 
         let selectedTag = null;
         let selectedAuthor = "";
+        let selectedGenreTab = null; // Хранит текущую вкладку ('bara', 'furry' или null)
 
         let currentMangaId = null;
         let currentPagesCount = 0;
         let currentPageIndex = 0;
         let isMangaFinishedAlertShown = false;
 
-        // Переменные отзывчивого зума
+        // ПЕРЕМЕННЫЕ ИДЕАЛЬНОГО ЗУМА
         let scale = 1;
-        let targetScale = 1;
         let totalTranslateX = 0;
         let totalTranslateY = 0;
         let isZooming = false;
@@ -254,28 +285,47 @@
             });
         }
 
+        // Переключение быстрых вкладок жанров
+        function switchGenreTab(genre) {
+            selectedGenreTab = genre;
+            
+            // Визуальное обновление активной вкладки
+            document.querySelectorAll('.genre-tab').forEach(tab => tab.classList.remove('active'));
+            if (genre === null) document.getElementById('tab-all').classList.add('active');
+            else if (genre === 'bara') document.getElementById('tab-bara').classList.add('active');
+            else if (genre === 'furry') document.getElementById('tab-furry').classList.add('active');
+            
+            renderCatalog();
+        }
+
         function renderCatalog() {
             const catalog = document.getElementById('catalog');
             catalog.innerHTML = ""; 
 
             const filtered = allManga.filter(manga => {
+                // Фильтр по тегам
                 const matchTag = !selectedTag || manga.tags.includes(selectedTag);
+                // Фильтр по автору
                 const matchAuthor = !selectedAuthor || (manga.author && manga.author.includes(selectedAuthor));
-                return matchTag && matchAuthor;
+                // Фильтр по быстрой панели жанров (Bara/Furry)
+                let matchGenreTab = true;
+                if (selectedGenreTab) {
+                    matchGenreTab = manga.tags.some(t => t.toLowerCase() === selectedGenreTab);
+                }
+                
+                return matchTag && matchAuthor && matchGenreTab;
             });
 
             filtered.forEach(manga => {
                 const card = document.createElement('div');
                 
-                // Классы авто-стилизации по жанрам
                 let genreClass = '';
-                if (manga.tags.includes('Bara') || manga.tags.includes('bara')) genreClass = 'genre-bara';
-                else if (manga.tags.includes('Furry') || manga.tags.includes('furry')) genreClass = 'genre-furry';
+                if (manga.tags.some(t => t.toLowerCase() === 'bara')) genreClass = 'genre-bara';
+                else if (manga.tags.some(t => t.toLowerCase() === 'furry')) genreClass = 'genre-furry';
                 
                 card.className = `manga-card ${genreClass}`;
                 card.onclick = (e) => { if (!e.target.classList.contains('tag') && !e.target.classList.contains('tag-author')) openReader(manga.id); };
 
-                // Фильтруем теги: исключаем Bara и Furry из отрисовки текстом
                 const visibleTags = manga.tags.filter(t => t.toLowerCase() !== 'bara' && t.toLowerCase() !== 'furry');
                 const tagsHtml = visibleTags.map(t => `<span class="tag ${t === selectedTag ? 'selected' : ''}" onclick="filterByTag('${t}')">${t}</span>`).join('');
 
@@ -317,17 +367,20 @@
         function filterByAuthor(author) { selectedAuthor = author; renderCatalog(); }
         
         function resetFilters() { 
-            selectedTag = null; selectedAuthor = "";
+            selectedTag = null; selectedAuthor = ""; selectedGenreTab = null;
             document.getElementById('authorSelect').value = ""; 
+            document.querySelectorAll('.genre-tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById('tab-all').classList.add('active');
             renderCatalog();
         }
 
         function updateResetButtonVisibility() {
             const resetBtn = document.getElementById('resetBtn');
             const infoText = document.getElementById('activeFilterText');
-            if (selectedTag || selectedAuthor) {
+            if (selectedTag || selectedAuthor || selectedGenreTab) {
                 resetBtn.style.display = "block";
                 let text = "Фильтр: ";
+                if (selectedGenreTab) text += `[Жанр: ${selectedGenreTab.toUpperCase()}] `;
                 if (selectedAuthor) text += `[${selectedAuthor}] `;
                 if (selectedTag) text += `[#${selectedTag}] `;
                 infoText.textContent = text;
@@ -335,7 +388,7 @@
         }
 
         /* ========================================== */
-        /* ИСПРАВЛЕННЫЙ ДВИЖОК ЗУМА И ПЕРЕМЕЩЕНИЯ */
+        /* ПОЛНОСТЬЮ ПЕРЕРАБОТАННЫЙ ИСПРАВНЫЙ ЗУМ */
         /* ========================================== */
 
         function openReader(mangaId) {
@@ -400,23 +453,39 @@
 
         function initTouchZoom() {
             const screen = document.getElementById('readerScreen');
-            let startDist = 0; let startScale = 1;
-            let startMidX = 0, startMidY = 0;
-            let startX = 0, startY = 0;
-            let ignoreSingleTouch = false;
+            
+            // Переменные состояния жестов
+            let startDist = 0;
+            let startScale = 1;
+            let startTouchX = 0;
+            let startTouchY = 0;
+            let currentCenterFallbackX = 0;
+            let currentCenterFallbackY = 0;
 
             screen.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 2) {
                     isZooming = true;
-                    ignoreSingleTouch = false;
+                    // Дистанция между двумя пальцами
                     startDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                     startScale = scale;
-                    startMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                    startMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+                    // Точка центра между двумя пальцами на экране
+                    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+                    // Запоминаем опорные точки для масштабирования относительно центра щипка
+                    startTouchX = midX;
+                    startTouchY = midY;
+                    currentCenterFallbackX = totalTranslateX;
+                    currentCenterFallbackY = totalTranslateY;
+
                 } else if (e.touches.length === 1 && scale > 1) {
-                    if (ignoreSingleTouch) return;
-                    startX = e.touches[0].clientX - totalTranslateX;
-                    startY = e.touches[0].clientY - totalTranslateY;
+                    isZooming = false;
+                    // Опорная точка для перемещения одним пальцем
+                    startTouchX = e.touches[0].clientX;
+                    startTouchY = e.touches[0].clientY;
+                    currentCenterFallbackX = totalTranslateX;
+                    currentCenterFallbackY = totalTranslateY;
                 }
             }, { passive: true });
 
@@ -426,9 +495,9 @@
 
                 if (e.touches.length === 2 && isZooming) {
                     const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                    let pinchFactor = currentDist / startDist;
-                    targetScale = startScale * pinchFactor;
+                    let targetScale = startScale * (currentDist / startDist);
 
+                    // Лимиты зума
                     if (targetScale < 1) targetScale = 1;
                     if (targetScale > 4) targetScale = 4;
 
@@ -436,32 +505,40 @@
                     const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
 
                     if (targetScale > 1) {
-                        totalTranslateX = currentMidX - (startMidX - totalTranslateX) * (targetScale / scale);
-                        totalTranslateY = currentMidY - (startMidY - totalTranslateY) * (targetScale / scale);
+                        // Математически выверенное смещение матрицы: учитывает отдаление от геометрического центра zoom-container
+                        const originX = startTouchX - window.innerWidth / 2;
+                        const originY = startTouchY - window.innerHeight / 2;
+
+                        totalTranslateX = currentMidX - startTouchX + currentCenterFallbackX + (originX - currentCenterFallbackX) * (1 - targetScale / startScale);
+                        totalTranslateY = currentMidY - startTouchY + currentCenterFallbackY + (originY - currentCenterFallbackY) * (1 - targetScale / startScale);
                     } else {
-                        totalTranslateX = 0; totalTranslateY = 0;
+                        totalTranslateX = 0;
+                        totalTranslateY = 0;
                     }
 
                     scale = targetScale;
                     container.style.transition = 'none';
                     container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
-                    
-                    startMidX = currentMidX; startMidY = currentMidY;
 
                 } else if (e.touches.length === 1 && scale > 1 && !isZooming) {
-                    if (ignoreSingleTouch) return;
-                    
-                    totalTranslateX = e.touches[0].clientX - startX;
-                    totalTranslateY = e.touches[0].clientY - startY;
+                    // Обычный сдвиг картинки пальцем во все стороны (Pan)
+                    const deltaX = e.touches[0].clientX - startTouchX;
+                    const deltaY = e.touches[0].clientY - startTouchY;
 
-                    // СИММЕТРИЧНОЕ ОГРАНИЧЕНИЕ ДВИЖЕНИЯ ПО КРАЯМ КАРТИНКИ
+                    let nextTranslateX = currentCenterFallbackX + deltaX;
+                    let nextTranslateY = currentCenterFallbackY + deltaY;
+
+                    // Умные симметричные ограничители полей (чтобы картинка не улетала за экран)
                     const maxDeltaX = (window.innerWidth * (scale - 1)) / 2;
                     const maxDeltaY = (window.innerHeight * (scale - 1)) / 2;
 
-                    if (totalTranslateX > maxDeltaX) totalTranslateX = maxDeltaX;
-                    if (totalTranslateX < -maxDeltaX) totalTranslateX = -maxDeltaX;
-                    if (totalTranslateY > maxDeltaY) totalTranslateY = maxDeltaY;
-                    if (totalTranslateY < -maxDeltaY) totalTranslateY = -maxDeltaY;
+                    if (nextTranslateX > maxDeltaX) nextTranslateX = maxDeltaX;
+                    if (nextTranslateX < -maxDeltaX) nextTranslateX = -maxDeltaX;
+                    if (nextTranslateY > maxDeltaY) nextTranslateY = maxDeltaY;
+                    if (nextTranslateY < -maxDeltaY) nextTranslateY = -maxDeltaY;
+
+                    totalTranslateX = nextTranslateX;
+                    totalTranslateY = nextTranslateY;
 
                     container.style.transition = 'none';
                     container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
@@ -472,22 +549,24 @@
                 const container = document.getElementById(`zoom-${currentPageIndex}`);
                 if (!container) return;
 
-                if (e.touches.length < 2 && isZooming) {
-                    isZooming = false;
-                    ignoreSingleTouch = true;
-                    setTimeout(() => { ignoreSingleTouch = false; }, 100);
-                }
-
+                // Если пальцы убрали и масштаб вернулся к единице, плавно сбрасываем в дефолт
                 if (scale <= 1.05) {
-                    scale = 1; totalTranslateX = 0; totalTranslateY = 0;
-                    container.style.transition = 'transform 0.2s ease-out';
+                    scale = 1; totalTranslateX = 0; totalTranslateY = 0; isZooming = false;
+                    container.style.transition = 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)';
                     container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
+                } else if (e.touches.length === 1) {
+                    // Если остался один палец после щипка, переинициализируем опорные точки для плавного сдвига
+                    startTouchX = e.touches[0].clientX;
+                    startTouchY = e.touches[0].clientY;
+                    currentCenterFallbackX = totalTranslateX;
+                    currentCenterFallbackY = totalTranslateY;
+                    isZooming = false;
                 }
             }, { passive: true });
         }
 
         function resetZoom() {
-            scale = 1; targetScale = 1; totalTranslateX = 0; totalTranslateY = 0; isZooming = false;
+            scale = 1; totalTranslateX = 0; totalTranslateY = 0; isZooming = false;
             document.querySelectorAll('.zoom-container').forEach(c => { 
                 c.style.transition = 'none';
                 c.style.transform = 'translate3d(0px, 0px, 0px) scale(1)'; 
