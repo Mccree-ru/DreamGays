@@ -1,29 +1,5 @@
 [
   {
-    "id": "problematic_drawing",
-    "title": "Problematic Drawing!",
-    "cover": "https://images.teletype.in/files/some-folder/cover.jpg",
-    "author": "Matsu",
-    "tags": ["bara", "furry", "color"],
-    "pages": [
-      "https://images.teletype.in/files/some-folder/page_01.jpg",
-      "https://images.teletype.in/files/some-folder/page_02.jpg",
-      "https://images.teletype.in/files/some-folder/page_03.jpg",
-      "https://images.teletype.in/files/some-folder/page_04.jpg"
-    ]
-  },
-  {
-    "id": "another_manga",
-    "title": "Другая крутая история",
-    "cover": "https://images.teletype.in/files/another-folder/cover.jpg",
-    "author": "Hajime / Matsu",
-    "tags": ["bara", "drama"],
-    "pages": [
-      "https://images.teletype.in/files/another-folder/1.jpg",
-      "https://images.teletype.in/files/another-folder/2.jpg"
-    ]
-  },
-    {
   "id": "b_smba8nmvl",
   "title": "[Masamune Kokichi (Matsu Takeshi)] Gikei no ani ga erosugite | Брат зятя слишком сексуален!!",
   "link": "https://teletype.in/@mccree_ru/B-smBA8NmVl",
@@ -86,6 +62,73 @@
     "https://img1.teletype.in/files/c2/80/c2805972-55c2-468e-b076-4954d4391875.png",
     "https://img1.teletype.in/files/05/38/05387792-ebf5-462a-bd75-0ae08d47385b.png",
     "https://img2.teletype.in/files/d8/e9/d8e93d31-c3d8-4894-b8e3-cae1816fbbb1.png"
+  ]
+},
+  {
+  "id": "dr8b6ah2fca",
+  "title": "Undercurrent Season 5",
+  "link": "https://teletype.in/@mccree_ru/DR8B6AH2fCA",
+  "cover": "https://img4.teletype.in/files/3e/f0/3ef0d4de-1297-41f9-a29f-c91258b3f4c1.png",
+  "author": "AhrStudio, youchi",
+  "tags": [
+    "bara"
+  ],
+  "pages": [
+    "https://img4.teletype.in/files/3e/f0/3ef0d4de-1297-41f9-a29f-c91258b3f4c1.png",
+    "https://img3.teletype.in/files/e6/2c/e62cde8e-5d54-4889-a84e-a3b4bcb97a20.png",
+    "https://img3.teletype.in/files/e6/2c/e62cde8e-5d54-4889-a84e-a3b4bcb97a20.png",
+    "https://img1.teletype.in/files/0b/90/0b90cd15-cfc8-4ae7-a3b6-9689ac7bde8e.png",
+    "https://img4.teletype.in/files/f5/6f/f56f3653-d309-4a5b-a828-b839f6fcb8df.png",
+    "https://img2.teletype.in/files/df/2a/df2a7e5a-02c4-4ec2-836e-28f43dc91bf7.png",
+    "https://img1.teletype.in/files/4a/b6/4ab66bcf-4683-4784-876d-0c1f8e180a76.png",
+    "https://img1.teletype.in/files/ce/2b/ce2b0cbb-9b23-4184-a245-b247f784eb3b.png",
+    "https://img1.teletype.in/files/8c/2c/8c2c48b1-8af7-4af4-bd10-8c15f3a62237.png",
+    "https://img2.teletype.in/files/d0/7a/d07ad84c-449e-476f-83d9-f686c3e5897e.png",
+    "https://img4.teletype.in/files/7b/eb/7bebe289-d46e-46b2-a1d0-eed8bb4ebe80.png",
+    "https://img3.teletype.in/files/64/72/6472de55-83f7-4195-9e37-70b47e5c9e34.png",
+    "https://img2.teletype.in/files/51/04/510490cd-4c79-4cba-a983-b72e67eb6194.png",
+    "https://img2.teletype.in/files/db/a9/dba9e59e-c482-43ba-b75b-cbc564accac7.png",
+    "https://img2.teletype.in/files/5b/ff/5bff96b8-d32d-403a-97ed-2932f31bd1af.png",
+    "https://img3.teletype.in/files/e6/23/e6239294-3af9-42de-8c03-22180b717b54.png",
+    "https://img2.teletype.in/files/95/6b/956bd92e-d08a-471d-94e8-9983b2e2139d.png",
+    "https://img3.teletype.in/files/a7/a4/a7a4dd5f-2bb6-4f46-81dd-61f7b7ddf346.png",
+    "https://img3.teletype.in/files/ab/ad/abadc95d-d57f-482d-bc73-df3c080c3d29.png",
+    "https://img1.teletype.in/files/45/fd/45fd206d-e7dc-4fd9-b020-806569b93e07.png",
+    "https://img4.teletype.in/files/7b/5b/7b5b91a9-dca7-4744-8457-a2afd8b50dd7.png",
+    "https://img1.teletype.in/files/46/ec/46ecec5c-41be-4046-b5a4-19c9d1c1bcb8.png",
+    "https://img2.teletype.in/files/db/d0/dbd0ce5d-b2b8-4446-84af-1910366f5760.png",
+    "https://img2.teletype.in/files/db/d7/dbd795e6-888e-4575-8aef-9f0acf7f5b3e.png",
+    "https://img3.teletype.in/files/ed/ca/edca4031-b77a-4167-b359-44ead9021bae.png",
+    "https://img4.teletype.in/files/70/07/700723aa-92b1-41c6-84f6-43329da45f75.png",
+    "https://img3.teletype.in/files/ee/67/ee6709bd-5665-473d-b6d7-4472e5b45e45.png",
+    "https://img1.teletype.in/files/48/2e/482e45cf-397b-4a32-9c3b-44a01461d5b5.png",
+    "https://img3.teletype.in/files/21/ff/21ffa60f-095f-4325-9562-6c3618fd474b.png",
+    "https://img3.teletype.in/files/ad/34/ad3456d2-f407-4873-86f7-de6a5f021c53.png",
+    "https://img2.teletype.in/files/1a/ac/1aac60df-96d6-48c6-af22-92170a96e9be.png",
+    "https://img2.teletype.in/files/9d/9a/9d9ab580-021a-41ab-b961-b381940c6e84.png",
+    "https://img3.teletype.in/files/ec/4e/ec4e63ae-6f7b-4e7c-b701-4228262bac89.png",
+    "https://img2.teletype.in/files/5a/d7/5ad70e7b-2618-4dd4-a531-d8e194a11de0.png",
+    "https://img4.teletype.in/files/71/eb/71eb0932-bcba-4a03-8016-7e2a9d73ec3b.png",
+    "https://img4.teletype.in/files/b0/96/b096da0b-5dd2-42bd-92d4-2801d84d8101.png",
+    "https://img2.teletype.in/files/d3/8c/d38c5822-200f-4d80-9b87-9575f3168215.png",
+    "https://img3.teletype.in/files/26/f2/26f2381c-5f87-42e9-ba5c-afb210221f2f.png",
+    "https://img3.teletype.in/files/67/e4/67e408a6-65fb-4cc2-8c42-263585e6d500.png",
+    "https://img2.teletype.in/files/94/eb/94ebb31d-3c6a-4b62-9427-d79f5d6ace26.png",
+    "https://img3.teletype.in/files/24/d2/24d20de9-f377-4190-bece-30a629360159.png",
+    "https://img2.teletype.in/files/57/7f/577f7a9d-08fd-495a-936b-6b8b962cef37.png",
+    "https://img1.teletype.in/files/41/7c/417cce60-4ce8-40dc-aed5-0696e7a56550.png",
+    "https://img2.teletype.in/files/5f/b4/5fb40f90-df28-467c-9d58-c1d4605cd9a9.png",
+    "https://img3.teletype.in/files/29/9b/299b542d-5eb5-427e-a7f9-3d6fdcb9b232.png",
+    "https://img1.teletype.in/files/89/29/89294abc-6a55-43ca-a81e-6b27a8ea064e.png",
+    "https://img3.teletype.in/files/ec/a6/eca6bdd6-fafe-482b-a5da-a1b2c51702cc.png",
+    "https://img2.teletype.in/files/51/1a/511a4edf-cf66-4842-b02a-27a3e7671aec.png",
+    "https://img2.teletype.in/files/9c/74/9c749dd5-77ef-43a1-91ab-d0852b93a93f.png",
+    "https://img3.teletype.in/files/6c/bf/6cbf1102-1246-4276-9822-f1916927590c.png",
+    "https://img2.teletype.in/files/d4/f3/d4f3de1e-fc02-4a5b-aaa2-372ca4007bda.png",
+    "https://img2.teletype.in/files/d9/4d/d94dc602-3adc-465c-bd20-3ffefe6f2959.png",
+    "https://img3.teletype.in/files/ab/12/ab125f2f-f4ce-4fcf-8e23-10540e9bff78.png",
+    "https://img1.teletype.in/files/4b/30/4b30d477-0dcf-41e9-9d84-0334589cf0c2.png",
+    "https://img3.teletype.in/files/ef/d9/efd975cc-0565-42fc-ab3f-f4eebfb3a3ec.png"
   ]
 }
     
