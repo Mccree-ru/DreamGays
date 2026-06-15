@@ -49,7 +49,7 @@
         /* КОНТЕЙНЕР КАТАЛОГА */
         .main-container { padding: 15px; padding-bottom: 40px; padding-top: 10px; }
 
-        /* Кнопка Доната */
+        /* Кнопка Доната в каталоге */
         .donate-btn {
             display: flex; align-items: center; justify-content: center; gap: 8px;
             background: linear-gradient(135deg, #8b3ffd, #5411ff); color: #ffffff;
@@ -82,11 +82,11 @@
             background-color: var(--button-color);
             color: var(--button-text);
         }
-        
+         
         /* Панель фильтров */
         .filter-panel { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
         .filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        
+         
         select.author-select {
             background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--hint-color);
             padding: 8px 12px; border-radius: 8px; font-size: 14px; outline: none; flex-grow: 1; -webkit-appearance: none;
@@ -100,7 +100,7 @@
 
         /* Сетка каталога */
         .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        
+         
         /* КАРТОЧКИ ТАЙТЛОВ И ИХ ЦВЕТА */
         .manga-card { 
             background-color: var(--card-bg); border-radius: 12px; overflow: hidden; 
@@ -116,7 +116,7 @@
 
         .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #222; }
         .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-        
+         
         /* Индикатор прочитанного на карточке */
         .card-status-badge {
             position: absolute; top: 8px; left: 8px; z-index: 5;
@@ -127,18 +127,18 @@
 
         .card-info { padding: 10px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .card-title { font-size: 14px; font-weight: 600; margin: 0 0 8px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
-        
+         
         /* Сетка метаданных */
         .meta-container { display: flex; flex-direction: column; gap: 6px; }
         .card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
-        
+         
         /* Жанровые теги (голубые) */
         .tag { 
             font-size: 10px; background-color: rgba(36, 139, 207, 0.1); color: var(--link-color); 
             padding: 3px 7px; border-radius: 6px; font-weight: bold; text-transform: uppercase; 
         }
         .tag.selected { background-color: var(--link-color); color: #fff; }
-        
+         
         /* Теги авторов (белый текст на рыжей плашке) */
         .tag-author {
             font-size: 10px; background-color: #ff7b00; color: #ffffff; 
@@ -153,24 +153,47 @@
             background-color: #000000; overflow: hidden; touch-action: none;
         }
 
+        /* ОБНОВЛЕННЫЙ HEADER ЧИТАЛКИ */
         .reader-header {
-            position: fixed; top: 0; left: 0; width: 100%; height: 50px;
+            position: fixed; top: 0; left: 0; width: 100%; height: 60px;
             z-index: 100; display: flex; align-items: center; justify-content: space-between;
-            background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            box-sizing: border-box; padding: 0 15px;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+            background-color: rgba(0, 0, 0, 0.65); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            box-sizing: border-box; padding: 0 12px;
+            opacity: 0; pointer-events: none; 
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(-10px);
         }
-        .reader-header.visible { opacity: 1; pointer-events: auto; }
+        .reader-header.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
 
-        .back-button {
-            background: none; border: none; color: #ffffff;
-            font-size: 14px; font-weight: bold; cursor: pointer; padding: 6px 0;
+        /* Кнопка "В каталог" в виде плашки */
+        .back-button-plate {
+            background-color: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff; padding: 8px 14px; border-radius: 10px;
+            font-size: 13px; font-weight: bold; cursor: pointer;
+            transition: background-color 0.15s; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .back-button-plate:active { background-color: rgba(255, 255, 255, 0.25); }
+
+        /* Правая часть панели навигации */
+        .reader-nav-right {
+            display: flex; align-items: center; gap: 10px;
         }
 
         .page-counter {
-            color: #ffffff; font-size: 14px; font-weight: bold; opacity: 0.9;
+            color: #ffffff; font-size: 14px; font-weight: bold; opacity: 0.95;
+            background-color: rgba(0, 0, 0, 0.4); padding: 6px 10px; border-radius: 8px;
         }
+
+        /* Выделяющаяся кнопка доната в шапке читалки */
+        .reader-donate-btn {
+            background: linear-gradient(135deg, #ff9500, #ff5e00);
+            color: #ffffff; border: none; padding: 7px 12px; border-radius: 8px;
+            font-size: 12px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255, 149, 0, 0.3);
+            transition: transform 0.1s; display: flex; align-items: center; gap: 4px;
+        }
+        .reader-donate-btn:active { transform: scale(0.95); }
 
         .reader-track {
             display: flex; height: 100%; width: 100%;
@@ -193,28 +216,30 @@
             user-select: none; -webkit-user-drag: none; 
         }
 
-        .tap-zone-left { position: absolute; top: 0; left: 0; width: 25%; height: 100%; z-index: 50; }
-        .tap-zone-right { position: absolute; top: 0; right: 0; width: 75%; height: 100%; z-index: 50; }
+        /* ТАП-ЗОНЫ С КОРРЕКТНЫМ ПЕРЕКРЫТИЕМ */
+        .tap-zone-left { position: absolute; top: 0; left: 0; width: 25%; height: 100%; z-index: 40; }
+        .tap-zone-right { position: absolute; top: 0; right: 0; width: 75%; height: 100%; z-index: 40; }
     </style>
 </head>
 <body>
 
-    <!-- МОНОЛИТНАЯ ВЕРХНЯЯ ПАНЕЛЬ -->
     <div id="readerHeader" class="reader-header">
-        <button class="back-button" onclick="closeReader()">⬅ В каталог</button>
-        <div id="pageCounter" class="page-counter">0 / 0</div>
+        <button class="back-button-plate" onclick="closeReader(event)">⬅ В каталог</button>
+        <div class="reader-nav-right">
+            <button class="reader-donate-btn" onclick="event.stopPropagation(); tg.openLink('https://yoomoney.ru/to/4100117500602780')">
+                ☕ На кофе
+            </button>
+            <div id="pageCounter" class="page-counter">0 / 0</div>
+        </div>
     </div>
 
-    <!-- КАТАЛОГ -->
     <div id="mainScreen" class="screen active">
         <div class="main-container">
 
-            <!-- Кнопка доната -->
             <button class="donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">
                 ☕ На кофе
             </button>
 
-            <!-- БЫСТРАЯ СОРТИРОВКА ЖАНРОВ -->
             <div class="genre-tabs">
                 <button id="tab-all" class="genre-tab active" onclick="switchGenreTab(null)">Все</button>
                 <button id="tab-bara" class="genre-tab" onclick="switchGenreTab('bara')">Bara</button>
@@ -235,7 +260,6 @@
         </div>
     </div>
 
-    <!-- ЭКРАН ЧИТАЛКИ -->
     <div id="readerScreen" class="screen reader-screen">
         <div id="readerTrack" class="reader-track"></div>
     </div>
@@ -247,41 +271,39 @@
         let allManga = []; 
         let selectedTag = null;
         let selectedAuthor = "";
-        let selectedGenreTab = null; // Хранит текущую вкладку ('bara', 'furry' или null)
+        let selectedGenreTab = null;
 
         let currentMangaId = null;
         let currentPagesCount = 0;
         let currentPageIndex = 0;
         let isMangaFinishedAlertShown = false;
 
-        // ПЕРЕМЕННЫЕ ИДЕАЛЬНОГО ЗУМА
         let scale = 1;
         let totalTranslateX = 0;
         let totalTranslateY = 0;
         let isZooming = false;
 
+        // Переменная для таймера скрытия навигации
+        let uiTimeout = null;
+
         let readMangaList = JSON.parse(localStorage.getItem('manga_read_list')) || [];
 
-		fetch('database.json?v=' + new Date().getTime())
-			.then(response => response.json())
-			.then(data => {
-				allManga = data;
-				buildAuthorSelect(); 
-				renderCatalog();     
+        fetch('database.json?v=' + new Date().getTime())
+            .then(response => response.json())
+            .then(data => {
+                allManga = data;
+                buildAuthorSelect(); 
+                renderCatalog();     
 
-				// ПРОВЕРКА ПАРАМЕТРА СТАРТА ДЛЯ ГРУПП
-				// Telegram автоматически передает всё, что идет после "startapp="
-				if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
-					const startId = tg.initDataUnsafe.start_param;
-					
-					// Проверяем, есть ли такой ID в нашей базе данных
-					const hasManga = allManga.some(m => m.id === startId);
-					if (hasManga) {
-						openReader(startId); // Если нашли — мгновенно открываем читалку!
-					}
-				}
-			})
-			.catch(err => console.error("Ошибка загрузки базы данных", err));
+                if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+                    const startId = tg.initDataUnsafe.start_param;
+                    const hasManga = allManga.some(m => m.id === startId);
+                    if (hasManga) {
+                        openReader(startId);
+                    }
+                }
+            })
+            .catch(err => console.error("Ошибка загрузки базы данных", err));
 
         function buildAuthorSelect() {
             const select = document.getElementById('authorSelect');
@@ -297,16 +319,12 @@
             });
         }
 
-        // Переключение быстрых вкладок жанров
         function switchGenreTab(genre) {
             selectedGenreTab = genre;
-            
-            // Визуальное обновление активной вкладки
             document.querySelectorAll('.genre-tab').forEach(tab => tab.classList.remove('active'));
             if (genre === null) document.getElementById('tab-all').classList.add('active');
             else if (genre === 'bara') document.getElementById('tab-bara').classList.add('active');
             else if (genre === 'furry') document.getElementById('tab-furry').classList.add('active');
-            
             renderCatalog();
         }
 
@@ -315,22 +333,17 @@
             catalog.innerHTML = ""; 
 
             const filtered = allManga.filter(manga => {
-                // Фильтр по тегам
                 const matchTag = !selectedTag || manga.tags.includes(selectedTag);
-                // Фильтр по автору
                 const matchAuthor = !selectedAuthor || (manga.author && manga.author.includes(selectedAuthor));
-                // Фильтр по быстрой панели жанров (Bara/Furry)
                 let matchGenreTab = true;
                 if (selectedGenreTab) {
                     matchGenreTab = manga.tags.some(t => t.toLowerCase() === selectedGenreTab);
                 }
-                
                 return matchTag && matchAuthor && matchGenreTab;
             });
 
             filtered.forEach(manga => {
                 const card = document.createElement('div');
-                
                 let genreClass = '';
                 if (manga.tags.some(t => t.toLowerCase() === 'bara')) genreClass = 'genre-bara';
                 else if (manga.tags.some(t => t.toLowerCase() === 'furry')) genreClass = 'genre-furry';
@@ -375,6 +388,26 @@
             renderCatalog();
         }
 
+        // УПРАВЛЕНИЕ ХЕДЕРОМ ЧИТАЛКИ И АВТОСКРЫТИЕМ
+        function resetUiTimer() {
+            showUi();
+            clearTimeout(uiTimeout);
+            uiTimeout = setTimeout(() => {
+                hideUi();
+            }, 2000); // 2000 миллисекунд = 2 секунды простоя
+        }
+
+        function showUi() {
+            document.getElementById('readerHeader').classList.add('visible');
+        }
+
+        function hideUi() {
+            // Скрываем только если не идет процесс масштабирования щипком
+            if (scale === 1 && !isZooming) {
+                document.getElementById('readerHeader').classList.remove('visible');
+            }
+        }
+
         function filterByTag(tag) { selectedTag = selectedTag === tag ? null : tag; renderCatalog(); }
         function filterByAuthor(author) { selectedAuthor = author; renderCatalog(); }
         
@@ -399,10 +432,6 @@
             } else { resetBtn.style.display = "none"; infoText.textContent = ""; }
         }
 
-        /* ========================================== */
-        /* ПОЛНОСТЬЮ ПЕРЕРАБОТАННЫЙ ИСПРАВНЫЙ ЗУМ */
-        /* ========================================== */
-
         function openReader(mangaId) {
             const manga = allManga.find(m => m.id === mangaId);
             if (!manga || !manga.pages || manga.pages.length === 0) return;
@@ -422,8 +451,8 @@
                 const slide = document.createElement('div');
                 slide.className = 'reader-slide';
                 slide.innerHTML = `
-                    <div class="tap-zone-left" onclick="changePage(-1)"></div>
-                    <div class="tap-zone-right" onclick="changePage(1)"></div>
+                    <div class="tap-zone-left" onclick="changePage(-1, event)"></div>
+                    <div class="tap-zone-right" onclick="changePage(1, event)"></div>
                     <div class="zoom-container" id="zoom-${index}">
                         <img class="reader-img" src="${pageUrl}">
                     </div>
@@ -433,10 +462,10 @@
 
             document.getElementById('mainScreen').classList.remove('active');
             document.getElementById('readerScreen').classList.add('active');
-            document.getElementById('readerHeader').classList.add('visible');
-
+            
             updateTrackPosition();
             initTouchZoom();
+            resetUiTimer(); // Запуск автоскрытия панели при входе
         }
 
         function updateTrackPosition() {
@@ -445,10 +474,19 @@
             document.getElementById('pageCounter').textContent = `${currentPageIndex + 1} / ${currentPagesCount}`;
         }
 
-        function changePage(direction) {
+        function changePage(direction, event) {
             if (scale > 1) return; 
-            const targetIndex = currentPageIndex + direction;
+            
+            // Если интерфейс скрыт — любой клик сначала показывает его и листает страницу
+            // Если открыт и кликнули в районе шапки (Y < 65px), игнорируем перелистывание
+            const isUiVisible = document.getElementById('readerHeader').classList.contains('visible');
+            if (isUiVisible && event.clientY < 65) {
+                return; 
+            }
 
+            resetUiTimer(); // Продлеваем отображение интерфейса при листании
+
+            const targetIndex = currentPageIndex + direction;
             if (targetIndex >= 0 && targetIndex < currentPagesCount) {
                 currentPageIndex = targetIndex;
                 resetZoom();
@@ -466,7 +504,6 @@
         function initTouchZoom() {
             const screen = document.getElementById('readerScreen');
             
-            // Переменные состояния жестов
             let startDist = 0;
             let startScale = 1;
             let startTouchX = 0;
@@ -475,17 +512,15 @@
             let currentCenterFallbackY = 0;
 
             screen.addEventListener('touchstart', (e) => {
+                resetUiTimer(); // Показываем интерфейс при касании к экрану
                 if (e.touches.length === 2) {
                     isZooming = true;
-                    // Дистанция между двумя пальцами
                     startDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                     startScale = scale;
 
-                    // Точка центра между двумя пальцами на экране
                     const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                     const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
 
-                    // Запоминаем опорные точки для масштабирования относительно центра щипка
                     startTouchX = midX;
                     startTouchY = midY;
                     currentCenterFallbackX = totalTranslateX;
@@ -493,7 +528,6 @@
 
                 } else if (e.touches.length === 1 && scale > 1) {
                     isZooming = false;
-                    // Опорная точка для перемещения одним пальцем
                     startTouchX = e.touches[0].clientX;
                     startTouchY = e.touches[0].clientY;
                     currentCenterFallbackX = totalTranslateX;
@@ -506,10 +540,10 @@
                 if (!container) return;
 
                 if (e.touches.length === 2 && isZooming) {
+                    showUi(); // Не даем интерфейсу скрыться во время зума
                     const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                     let targetScale = startScale * (currentDist / startDist);
 
-                    // Лимиты зума
                     if (targetScale < 1) targetScale = 1;
                     if (targetScale > 4) targetScale = 4;
 
@@ -517,7 +551,6 @@
                     const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
 
                     if (targetScale > 1) {
-                        // Математически выверенное смещение матрицы: учитывает отдаление от геометрического центра zoom-container
                         const originX = startTouchX - window.innerWidth / 2;
                         const originY = startTouchY - window.innerHeight / 2;
 
@@ -533,14 +566,12 @@
                     container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
 
                 } else if (e.touches.length === 1 && scale > 1 && !isZooming) {
-                    // Обычный сдвиг картинки пальцем во все стороны (Pan)
                     const deltaX = e.touches[0].clientX - startTouchX;
                     const deltaY = e.touches[0].clientY - startTouchY;
 
                     let nextTranslateX = currentCenterFallbackX + deltaX;
                     let nextTranslateY = currentCenterFallbackY + deltaY;
 
-                    // Умные симметричные ограничители полей (чтобы картинка не улетала за экран)
                     const maxDeltaX = (window.innerWidth * (scale - 1)) / 2;
                     const maxDeltaY = (window.innerHeight * (scale - 1)) / 2;
 
@@ -561,13 +592,12 @@
                 const container = document.getElementById(`zoom-${currentPageIndex}`);
                 if (!container) return;
 
-                // Если пальцы убрали и масштаб вернулся к единице, плавно сбрасываем в дефолт
                 if (scale <= 1.05) {
                     scale = 1; totalTranslateX = 0; totalTranslateY = 0; isZooming = false;
                     container.style.transition = 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)';
                     container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
+                    resetUiTimer(); // Заново запускаем скрытие UI, когда вернулись в исходный масштаб
                 } else if (e.touches.length === 1) {
-                    // Если остался один палец после щипка, переинициализируем опорные точки для плавного сдвига
                     startTouchX = e.touches[0].clientX;
                     startTouchY = e.touches[0].clientY;
                     currentCenterFallbackX = totalTranslateX;
@@ -585,7 +615,10 @@
             });
         }
 
-        function closeReader() {
+        function closeReader(event) {
+            if(event) event.stopPropagation(); // Изолируем клик от тап-зоны под кнопкой
+            clearTimeout(uiTimeout);
+            
             document.getElementById('readerScreen').classList.remove('active');
             document.getElementById('readerHeader').classList.remove('visible');
             document.getElementById('mainScreen').classList.add('active');
