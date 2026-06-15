@@ -215,8 +215,10 @@
 
         .reader-img { width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
 
+        /* ИСПРАВЛЕННЫЕ ИНТЕРАКТИВНЫЕ ЗОНЫ НАЖАТИЯ */
         .tap-zone-left { position: absolute; top: 0; left: 0; width: 25%; height: 100%; z-index: 40; }
-        .tap-zone-right { position: absolute; top: 0; right: 0; width: 75%; height: 100%; z-index: 40; }
+        .tap-zone-center { position: absolute; top: 0; left: 25%; width: 50%; height: 100%; z-index: 40; }
+        .tap-zone-right { position: absolute; top: 0; right: 0; width: 25%; height: 100%; z-index: 40; }
 
 
         /* ======================================================= */
@@ -410,9 +412,23 @@
         function resetUiTimer() {
             showUi();
             clearTimeout(uiTimeout);
-            uiTimeout = setTimeout(() => {
+            // Если картинка приближена, автоскрытие по таймеру не запускается
+            if (scale === 1) {
+                uiTimeout = setTimeout(() => {
+                    hideUi();
+                }, 2000);
+            }
+        }
+
+        function toggleUiByCenterTap() {
+            if (scale > 1) return; // Игнорируем обычные тапы при зуме, чтобы не мешать перемещению
+            const header = document.getElementById('readerHeader');
+            if (header.classList.contains('visible')) {
+                clearTimeout(uiTimeout);
                 hideUi();
-            }, 2000);
+            } else {
+                resetUiTimer();
+            }
         }
 
         function showUi() {
@@ -420,6 +436,7 @@
         }
 
         function hideUi() {
+            // Запрещаем скрытие панели, если картинка зумирована
             if (scale === 1 && !isZooming) {
                 document.getElementById('readerHeader').classList.remove('visible');
             }
@@ -469,6 +486,7 @@
                 slide.className = 'reader-slide';
                 slide.innerHTML = `
                     <div class="tap-zone-left" onclick="changePage(-1, event)"></div>
+                    <div class="tap-zone-center" onclick="toggleUiByCenterTap()"></div>
                     <div class="tap-zone-right" onclick="changePage(1, event)"></div>
                     <div class="zoom-container" id="zoom-${index}">
                         <img class="reader-img" src="${pageUrl}">
@@ -483,7 +501,7 @@
             if (document.activeElement) document.activeElement.blur();
 
             updateTrackPosition();
-            initTouchZoomAndSwipe(); // Активируем обновленный обработчик тачей и свайпов
+            initTouchZoomAndSwipe();
             resetUiTimer();
         }
 
@@ -555,17 +573,17 @@
             let currentCenterFallbackX = 0;
             let currentCenterFallbackY = 0;
 
-            // Переменные для отслеживания жеста свайпа одиночным пальцем
             let swipeStartX = 0;
             let swipeStartY = 0;
             let isSwipeCandidate = false;
 
             screen.addEventListener('touchstart', (e) => {
-                resetUiTimer();
+                // Если картинка НЕ зумирована, обновляем стандартный таймер интерфейса
+                if (scale === 1) resetUiTimer();
                 
                 if (e.touches.length === 2) {
                     isZooming = true;
-                    isSwipeCandidate = false; // Это зум, отменяем свайп
+                    isSwipeCandidate = false; 
                     startDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                     startScale = scale;
 
@@ -577,6 +595,9 @@
                     currentCenterFallbackX = totalTranslateX;
                     currentCenterFallbackY = totalTranslateY;
 
+                    // Принудительно показываем меню при начале зума и держим его
+                    showUi();
+
                 } else if (e.touches.length === 1) {
                     isZooming = false;
                     startTouchX = e.touches[0].clientX;
@@ -584,7 +605,6 @@
                     currentCenterFallbackX = totalTranslateX;
                     currentCenterFallbackY = totalTranslateY;
 
-                    // Если масштаб стандартный (1), мы готовы ловить свайп влево/вправо
                     if (scale === 1) {
                         swipeStartX = e.touches[0].clientX;
                         swipeStartY = e.touches[0].clientY;
@@ -600,7 +620,6 @@
                 if (!container) return;
 
                 if (e.touches.length === 2 && isZooming) {
-                    showUi();
                     const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                     let targetScale = startScale * (currentDist / startDist);
 
@@ -626,7 +645,6 @@
                     container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
 
                 } else if (e.touches.length === 1) {
-                    // Если страница зумирована — перемещаем холст картинки
                     if (scale > 1 && !isZooming) {
                         const deltaX = e.touches[0].clientX - startTouchX;
                         const deltaY = e.touches[0].clientY - startTouchY;
@@ -655,7 +673,6 @@
                 const container = document.getElementById(`zoom-${currentPageIndex}`);
                 if (!container) return;
 
-                // ОБРАБОТКА СВАЙПА (только при стандартном масштабе scale === 1)
                 if (isSwipeCandidate && scale === 1 && e.changedTouches.length > 0) {
                     const swipeEndX = e.changedTouches[0].clientX;
                     const swipeEndY = e.changedTouches[0].clientY;
@@ -663,26 +680,22 @@
                     const diffX = swipeEndX - swipeStartX;
                     const diffY = swipeEndY - swipeStartY;
 
-                    // Проверяем, что движение было горизонтальным и достаточно длинным (более 50 пикселей)
                     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
                         if (diffX > 0) {
-                            // Свайп вправо -> Предыдущая страница
                             changePage(-1);
                         } else {
-                            // Свайп влево -> Следующая страница
                             changePage(1);
                         }
                         isSwipeCandidate = false;
-                        return; // Завершаем обработку жеста
+                        return;
                     }
                 }
 
-                // Сброс микро-зума
                 if (scale <= 1.05) {
                     scale = 1; totalTranslateX = 0; totalTranslateY = 0; isZooming = false;
                     container.style.transition = 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)';
                     container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
-                    resetUiTimer();
+                    resetUiTimer(); // Картинка вернулась в масштаб 1:1, запускаем таймер скрытия меню
                 } else if (e.touches.length === 1) {
                     startTouchX = e.touches[0].clientX;
                     startTouchY = e.touches[0].clientY;
