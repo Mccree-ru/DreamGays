@@ -1,0 +1,9 @@
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // Разворачиваем на весь экран
+
+    function openProject(url) {
+        // Открываем Teletype во внешнем браузере, чтобы обойти блокировки фреймов
+        tg.openLink(url); 
+    }
+</script>
