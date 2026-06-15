@@ -1,0 +1,16 @@
+[
+    {
+        "title": "Название первой манги",
+        "link": "https://teletype.in/@mccree_ru/vh_uGIaWOkx",
+        "cover": "https://img2.teletype.in/files/5e/e8/5ee8f61e-edf5-4dd7-9ac9-c34a076782de.png",
+        "author": "Matsu",
+        "tags": ["bara", "furry"]
+    },
+    {
+        "title": "Вторая манга",
+        "link": "https://teletype.in/@mccree_ru/другая_ссылка",
+        "cover": "https://img4.teletype.in/files/3e/f0/3ef0d4de-1297-41f9-a29f-c91258b3f4c1.png",
+        "author": "Test",
+        "tags": ["yaoi"]
+    }
+]
