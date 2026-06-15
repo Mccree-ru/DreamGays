@@ -24,6 +24,7 @@
             margin: 0; 
             padding: 0;
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
 
         /* КОНТЕЙНЕР ГЛАВНОГО ЭКРАНА (КАТАЛОГ) */
@@ -35,8 +36,29 @@
             font-size: 20px; 
             text-align: center; 
             margin-top: 5px;
-            margin-bottom: 20px; 
+            margin-bottom: 15px; 
         }
+
+        /* Кнопка Доната */
+        .donate-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #8b3ffd, #5411ff);
+            color: #ffffff;
+            border: none;
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(139, 63, 253, 0.3);
+            transition: transform 0.1s;
+        }
+        .donate-btn:active { transform: scale(0.98); }
         
         /* Панель фильтров */
         .filter-panel {
@@ -126,17 +148,19 @@
         }
 
         /* ========================================== */
-        /* ЭКРАН ЧИТАЛКИ (ПО УМОЛЧАНИЮ СКРЫТ) */
+        /* ЭКРАН ПОСТРАНИЧНОЙ ЧИТАЛКИ */
         /* ========================================== */
         .reader-screen {
             display: none;
-            background-color: #000000; /* Черный фон для комфортного чтения */
-            min-height: 100vh;
-            width: 100%;
-            position: absolute;
+            background-color: #111111; /* Темный фон читалки */
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
             top: 0;
             left: 0;
             z-index: 10;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         /* Плавающая кнопка назад */
@@ -145,47 +169,85 @@
             top: 15px;
             left: 15px;
             z-index: 100;
-            background-color: rgba(0, 0, 0, 0.7);
+            background-color: rgba(0, 0, 0, 0.65);
             color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.25);
             padding: 8px 16px;
             border-radius: 20px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
             backdrop-filter: blur(4px);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
 
-        .reader-pages-container {
+        /* Индикатор страниц (например, 5 / 24) */
+        .page-counter {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 100;
+            background-color: rgba(0, 0, 0, 0.65);
+            color: #ffffff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Зона отображения текущей картинки */
+        .reader-view {
             width: 100%;
+            height: 100%;
             display: flex;
-            flex-direction: column;
             align-items: center;
+            justify-content: center;
+            position: relative;
         }
 
-        .reader-page {
-            width: 100%;
-            max-width: 800px; /* Ограничение ширины для планшетов */
-            display: block;
-            margin: 0;
-            padding: 0;
+        .reader-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* Картинка полностью вписывается в экран телефона */
         }
 
-        .reader-footer {
-            color: #888888;
-            text-align: center;
-            padding: 40px 20px;
-            font-size: 14px;
+        /* Невидимые кликабельные зоны поверх картинки */
+        .zone-left {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 35%; /* Левые 35% экрана — назад */
+            height: 100%;
+            z-index: 20;
+            cursor: west-resize;
+        }
+
+        .zone-right {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 65%; /* Правые 65% экрана — вперед */
+            height: 100%;
+            z-index: 20;
+            cursor: east-resize;
         }
     </style>
 </head>
 <body>
 
-    <button id="backBtn" class="back-button" onclick="closeReader()">⬅ Каталог</button>
+    <!-- КНОПКА НАЗАД ДЛЯ ЧИТАЛКИ -->
+    <button id="backBtn" style="display:none;" class="back-button" onclick="closeReader()">⬅ В каталог</button>
+    <!-- ИНДИКАТОР СТРАНИЦ -->
+    <div id="pageCounter" style="display:none;" class="page-counter">0 / 0</div>
 
+    <!-- ГЛАВНЫЙ ЭКРАН -->
     <div id="mainScreen" class="main-container">
         <h1 class="main-title">Каталог переводов</h1>
+
+        <!-- Кнопка Доната -->
+        <button class="donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">
+            ☕ Поддержать переводы (Донат)
+        </button>
 
         <div class="filter-panel">
             <div class="filter-row">
@@ -198,17 +260,23 @@
         </div>
 
         <div class="catalog-grid" id="catalog">
-            </div>
+            <!-- Сюда скрипт выведет карточки -->
+        </div>
     </div>
 
+    <!-- ЭКРАН ЧИТАЛКИ -->
     <div id="readerScreen" class="reader-screen">
-        <div id="readerPages" class="reader-pages-container">
-            </div>
-        <div class="reader-footer">Конец главы 🎉</div>
+        <div class="reader-view">
+            <!-- Кликабельные зоны -->
+            <div class="zone-left" onclick="prevPage()"></div>
+            <div class="zone-right" onclick="nextPage()"></div>
+            
+            <!-- Сама страница манги -->
+            <img id="mangaImage" class="reader-img" src="" alt="Страница манги">
+        </div>
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
@@ -217,7 +285,11 @@
         let selectedTag = null;
         let selectedAuthor = "";
 
-        // Загружаем данные из database.json
+        // Переменные для контроля текущего чтения
+        let currentMangaPages = [];
+        let currentPageIndex = 0;
+
+        // Загружаем данные из database.json с Cache Busting (обходом кэша)
         fetch('database.json?v=' + new Date().getTime())
             .then(response => response.json())
             .then(data => {
@@ -227,14 +299,11 @@
             })
             .catch(err => console.error("Ошибка загрузки базы данных", err));
 
-        // Автоматический сбор списка уникальных авторов
         function buildAuthorSelect() {
             const select = document.getElementById('authorSelect');
             const authorsSet = new Set();
-
             allManga.forEach(manga => {
                 if (manga.author) {
-                    // Разделяем авторов по запятой, слэшу или союзу "и"
                     const splitAuthors = manga.author.split(/[,/]| и /);
                     splitAuthors.forEach(author => {
                         const trimmed = author.trim();
@@ -242,7 +311,6 @@
                     });
                 }
             });
-
             authorsSet.forEach(author => {
                 const opt = document.createElement('option');
                 opt.value = author;
@@ -251,7 +319,6 @@
             });
         }
 
-        // Отрисовка карточек в каталоге
         function renderCatalog() {
             const catalog = document.getElementById('catalog');
             catalog.innerHTML = ""; 
@@ -265,10 +332,8 @@
             filtered.forEach(manga => {
                 const card = document.createElement('div');
                 card.className = 'manga-card';
-                
-                // Клик по карточке открывает читалку
                 card.onclick = (e) => {
-                    if (e.target.classList.contains('tag')) return; // Если клик на тег, читалку не открывать
+                    if (e.target.classList.contains('tag')) return;
                     openReader(manga.id);
                 };
 
@@ -291,23 +356,19 @@
                 `;
                 catalog.appendChild(card);
             });
-
             updateResetButtonVisibility();
         }
 
-        // Сортировка по тегам
         function filterByTag(tag) {
             selectedTag = selectedTag === tag ? null : tag;
             renderCatalog();
         }
 
-        // Сортировка по авторам
         function filterByAuthor(author) {
             selectedAuthor = author;
             renderCatalog();
         }
 
-        // Полный сброс фильтров
         function resetFilters() {
             selectedTag = null;
             selectedAuthor = "";
@@ -318,7 +379,6 @@
         function updateResetButtonVisibility() {
             const resetBtn = document.getElementById('resetBtn');
             const infoText = document.getElementById('activeFilterText');
-            
             if (selectedTag || selectedAuthor) {
                 resetBtn.style.display = "block";
                 let text = "Фильтр: ";
@@ -331,44 +391,73 @@
             }
         }
 
-        // ==========================================
-        // ЛОГИКА РАБОТЫ ВСТРОЕННОЙ ЧИТАЛКИ
-        // ==========================================
+        /* ========================================== */
+        /* УЛУЧШЕННАЯ ПОСТРАНИЧНАЯ ЧИТАЛКА */
+        /* ========================================== */
         
         function openReader(mangaId) {
             const manga = allManga.find(m => m.id === mangaId);
             if (!manga || !manga.pages || manga.pages.length === 0) {
-                alert("У этой манги нет загруженных страниц!");
+                alert("У этой манги нет сохраненных страниц!");
                 return;
             }
 
-            // Переключаем экраны видимости
+            // Загружаем страницы проекта в память читалки
+            currentMangaPages = manga.pages;
+            currentPageIndex = 0;
+
+            // Переключаем экраны
             document.getElementById('mainScreen').style.display = 'none';
             document.getElementById('readerScreen').style.display = 'block';
             document.getElementById('backBtn').style.display = 'block';
+            document.getElementById('pageCounter').style.display = 'block';
 
-            // Очищаем и заполняем контейнер страниц
-            const container = document.getElementById('readerPages');
-            container.innerHTML = "";
+            // Показываем самую первую страницу
+            updateReaderPage();
+        }
 
-            manga.pages.forEach(pageUrl => {
-                const img = document.createElement('img');
-                img.src = pageUrl;
-                img.className = 'reader-page';
-                img.loading = 'lazy'; // Страницы подгружаются в процессе скролла для экономии трафика
-                container.appendChild(img);
-            });
+        // Обновление картинки и счетчика страниц
+        function updateReaderPage() {
+            const imgElement = document.getElementById('mangaImage');
+            const counterElement = document.getElementById('pageCounter');
 
-            // Прокручиваем в самое начало
-            window.scrollTo(0, 0);
+            // Устанавливаем ссылку на текущую картинку
+            imgElement.src = currentMangaPages[currentPageIndex];
+            
+            // Обновляем текст счетчика (человеческий формат с 1, а не с 0)
+            counterElement.textContent = `${currentPageIndex + 1} / ${currentMangaPages.length}`;
+        }
+
+        // Клик по правой зоне — следующая страница
+        function nextPage() {
+            if (currentPageIndex < currentMangaPages.length - 1) {
+                currentPageIndex++;
+                updateReaderPage();
+            } else {
+                // Если страницы кончились, выдаем красивый алерт Telegram и выходим в каталог
+                tg.showAlert("Вы прочитали эту главу! 🎉", () => {
+                    closeReader();
+                });
+            }
+        }
+
+        // Клик по левой зоне — предыдущая страница
+        function prevPage() {
+            if (currentPageIndex > 0) {
+                currentPageIndex--;
+                updateReaderPage();
+            }
         }
 
         function closeReader() {
-            // Возвращаем главный экран каталога обратно
+            // Закрываем читалку, возвращаем каталог
             document.getElementById('readerScreen').style.display = 'none';
             document.getElementById('backBtn').style.display = 'none';
+            document.getElementById('pageCounter').style.display = 'none';
             document.getElementById('mainScreen').style.display = 'block';
             
+            // Сбрасываем кэш страниц
+            currentMangaPages = [];
             window.scrollTo(0, 0);
         }
     </script>
