@@ -218,7 +218,7 @@
         let selectedAuthor = "";
 
         // Загружаем данные из database.json
-        fetch('database.json')
+        fetch('database.json?v=' + new Date().getTime())
             .then(response => response.json())
             .then(data => {
                 allManga = data;
