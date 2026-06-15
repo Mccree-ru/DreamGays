@@ -69,16 +69,6 @@
             padding: 8px 12px; border-radius: 8px; font-size: 14px; outline: none; flex-grow: 1; -webkit-appearance: none;
         }
 
-        /* Быстрые вкладки закладок (Оставили только Все и Прочитано) */
-        .tabs-row { display: flex; gap: 8px; margin-top: 2px; }
-        .tab-btn {
-            background-color: var(--card-bg); color: var(--text-color); border: 1px solid transparent;
-            padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
-        }
-        .tab-btn.active {
-            background-color: rgba(36, 139, 207, 0.15); color: var(--link-color); border-color: var(--link-color);
-        }
-
         .reset-btn {
             background-color: var(--button-color); color: var(--button-text); border: none;
             padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none;
@@ -113,19 +103,19 @@
         .meta-container { display: flex; flex-direction: column; gap: 6px; }
         .card-tags { display: flex; flex-wrap: wrap; gap: 4px; }
         
-        /* Теги */
+        /* Жанровые теги (голубые) */
         .tag { 
             font-size: 10px; background-color: rgba(36, 139, 207, 0.1); color: var(--link-color); 
             padding: 3px 7px; border-radius: 6px; font-weight: bold; text-transform: uppercase; 
         }
         .tag.selected { background-color: var(--link-color); color: #fff; }
         
-        /* Авторы как теги */
+        /* Теги авторов (белый текст на рыжей плашке) */
         .tag-author {
-            font-size: 10px; background-color: rgba(139, 63, 253, 0.1); color: #8b3ffd; 
-            padding: 3px 7px; border-radius: 6px; font-weight: bold; display: inline-flex; align-items: center; gap: 2px;
+            font-size: 10px; background-color: #ff7b00; color: #ffffff; 
+            padding: 3px 7px; border-radius: 6px; font-weight: bold; display: inline-flex; align-items: center;
         }
-        .tag-author.selected { background-color: #8b3ffd; color: #fff; }
+        .tag-author.selected { background-color: #cc6200; }
 
         /* ========================================== */
         /* ЧИТАЛКА */
@@ -152,20 +142,6 @@
             padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; backdrop-filter: blur(4px);
         }
 
-        /* Панель кнопки внизу читалки */
-        .reader-actions {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            z-index: 100; display: flex; gap: 12px; background-color: rgba(0, 0, 0, 0.75);
-            padding: 8px 18px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(8px);
-        }
-
-        .action-btn {
-            background: none; border: none; color: #aaa; font-size: 14px; font-weight: bold;
-            cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 4px 6px; transition: color 0.2s;
-        }
-        .action-btn.active.done { color: #24b353; }
-
         .reader-track {
             display: flex; height: 100%; width: 100%;
             transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); will-change: transform;
@@ -178,7 +154,7 @@
 
         .zoom-container {
             width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-            will-change: transform; transform-origin: 0 0; /* Динамический центр трансформации */
+            will-change: transform; transform-origin: 0 0;
         }
 
         .reader-img { max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
@@ -193,10 +169,6 @@
     <div id="readerControls" class="reader-controls">
         <button class="back-button" onclick="closeReader()">⬅ В каталог</button>
         <div id="pageCounter" class="page-counter">0 / 0</div>
-        
-        <div class="reader-actions">
-            <button id="btnDone" class="action-btn" onclick="toggleStatus('done')">📑 Прочитано</button>
-        </div>
     </div>
 
     <!-- КАТАЛОГ -->
@@ -214,11 +186,6 @@
                         <option value="">Все авторы</option>
                     </select>
                     <button id="resetBtn" class="reset-btn" onclick="resetFilters()">Сбросить</button>
-                </div>
-                
-                <div class="tabs-row">
-                    <button id="tabAll" class="tab-btn active" onclick="setListFilter('all')">Все</button>
-                    <button id="tabDone" class="tab-btn" onclick="setListFilter('done')">✅ Прочитано</button>
                 </div>
                 <div id="activeFilterText" class="active-filter-info"></div>
             </div>
@@ -239,21 +206,21 @@
         let allManga = []; 
         let selectedTag = null;
         let selectedAuthor = "";
-        let selectedListFilter = "all"; 
 
         let currentMangaId = null;
         let currentPagesCount = 0;
         let currentPageIndex = 0;
         let isMangaFinishedAlertShown = false;
 
-        // Новые переменные для отзывчивого зума без лагов
+        // Переменные отзывчивого зума
         let scale = 1;
         let targetScale = 1;
         let totalTranslateX = 0;
         let totalTranslateY = 0;
         let isZooming = false;
 
-        let userLists = JSON.parse(localStorage.getItem('manga_user_lists')) || { done: [] };
+        // База прочитанного сохраняется локально
+        let readMangaList = JSON.parse(localStorage.getItem('manga_read_list')) || [];
 
         fetch('database.json?v=' + new Date().getTime())
             .then(response => response.json())
@@ -285,10 +252,7 @@
             const filtered = allManga.filter(manga => {
                 const matchTag = !selectedTag || manga.tags.includes(selectedTag);
                 const matchAuthor = !selectedAuthor || (manga.author && manga.author.includes(selectedAuthor));
-                let matchUserList = true;
-                if (selectedListFilter === 'done') matchUserList = userLists.done.includes(manga.id);
-
-                return matchTag && matchAuthor && matchUserList;
+                return matchTag && matchAuthor;
             });
 
             filtered.forEach(manga => {
@@ -302,11 +266,11 @@
                 const authorsHtml = splitAuthors.map(author => {
                     const name = author.trim(); if (!name) return '';
                     const isSelected = name === selectedAuthor ? 'selected' : '';
-                    return `<span class="tag-author ${isSelected}" onclick="filterByAuthorTag('${name}')">✍️ ${name}</span>`;
+                    return `<span class="tag-author ${isSelected}" onclick="filterByAuthorTag('${name}')">${name}</span>`;
                 }).join(' ');
 
                 let statusBadge = '';
-                if (userLists.done.includes(manga.id)) {
+                if (readMangaList.includes(manga.id)) {
                     statusBadge = `<div class="card-status-badge">✅ Прочитано</div>`;
                 }
 
@@ -335,35 +299,26 @@
         function filterByTag(tag) { selectedTag = selectedTag === tag ? null : tag; renderCatalog(); }
         function filterByAuthor(author) { selectedAuthor = author; renderCatalog(); }
         
-        function setListFilter(type) {
-            selectedListFilter = type;
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            if (type === 'all') document.getElementById('tabAll').classList.add('active');
-            if (type === 'done') document.getElementById('tabDone').classList.add('active');
-            renderCatalog();
-        }
-
         function resetFilters() { 
-            selectedTag = null; selectedAuthor = ""; selectedListFilter = "all";
+            selectedTag = null; selectedAuthor = "";
             document.getElementById('authorSelect').value = ""; 
-            setListFilter('all');
+            renderCatalog();
         }
 
         function updateResetButtonVisibility() {
             const resetBtn = document.getElementById('resetBtn');
             const infoText = document.getElementById('activeFilterText');
-            if (selectedTag || selectedAuthor || selectedListFilter !== 'all') {
+            if (selectedTag || selectedAuthor) {
                 resetBtn.style.display = "block";
                 let text = "Фильтр: ";
                 if (selectedAuthor) text += `[${selectedAuthor}] `;
                 if (selectedTag) text += `[#${selectedTag}] `;
-                if (selectedListFilter === 'done') text += `[✅ Прочитано]`;
                 infoText.textContent = text;
             } else { resetBtn.style.display = "none"; infoText.textContent = ""; }
         }
 
         /* ========================================== */
-        /* ИСПРАВЛЕННЫЙ ОПТИМИЗИРОВАННЫЙ ЗУМ */
+        /* ДВИЖОК ЧИТАЛКИ И ЗУМА */
         /* ========================================== */
 
         function openReader(mangaId) {
@@ -375,7 +330,6 @@
             currentPageIndex = 0;
             isMangaFinishedAlertShown = false;
             resetZoom();
-            updateActionButtonsUI();
 
             manga.pages.forEach(url => { const imgCache = new Image(); imgCache.src = url; });
 
@@ -419,62 +373,31 @@
                 updateTrackPosition();
             } else if (targetIndex >= currentPagesCount && !isMangaFinishedAlertShown) {
                 isMangaFinishedAlertShown = true;
-                if (!userLists.done.includes(currentMangaId)) {
-                    userLists.done.push(currentMangaId);
-                    saveUserLists();
+                
+                // Автоматически помечаем как прочитанное при дочитывании
+                if (!readMangaList.includes(currentMangaId)) {
+                    readMangaList.push(currentMangaId);
+                    localStorage.setItem('manga_read_list', JSON.stringify(readMangaList));
                 }
+                
                 tg.showAlert("Вы прочитали эту главу! 🎉", () => { closeReader(); });
             }
         }
 
-        function toggleStatus(type) {
-            if (!currentMangaId) return;
-
-            if (userLists.done.includes(currentMangaId)) {
-                userLists.done = userLists.done.filter(id => id !== currentMangaId);
-            } else {
-                userLists.done.push(currentMangaId);
-            }
-
-            saveUserLists();
-            updateActionButtonsUI();
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-        }
-
-        function updateActionButtonsUI() {
-            const btnDone = document.getElementById('btnDone');
-            if (userLists.done.includes(currentMangaId)) {
-                btnDone.classList.add('active', 'done'); btnDone.innerHTML = '✅ Прочитано!';
-            } else {
-                btnDone.classList.remove('active', 'done'); btnDone.innerHTML = '📑 Прочитано';
-            }
-        }
-
-        function saveUserLists() {
-            localStorage.setItem('manga_user_lists', JSON.stringify(userLists));
-        }
-
-        /* НАСТОЯЩИЙ ИНТУИТИВНЫЙ PINCH-TO-ZOOM В ТОЧКУ КАСАНИЯ */
         function initTouchZoom() {
             const screen = document.getElementById('readerScreen');
-            
-            let startDist = 0;
-            let startScale = 1;
+            let startDist = 0; let startScale = 1;
             let startMidX = 0, startMidY = 0;
             let startX = 0, startY = 0;
 
             screen.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 2) {
                     isZooming = true;
-                    // Вычисляем расстояние между пальцами
                     startDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                     startScale = scale;
-
-                    // Вычисляем центральную точку между двумя пальцами
                     startMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                     startMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                 } else if (e.touches.length === 1 && scale > 1) {
-                    // Координаты для обычного перетаскивания (сдвига) одним пальцем
                     startX = e.touches[0].clientX - totalTranslateX;
                     startY = e.touches[0].clientY - totalTranslateY;
                 }
@@ -486,15 +409,12 @@
 
                 if (e.touches.length === 2 && isZooming) {
                     const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                    
-                    // Мягкий, но мгновенный расчет нового масштаба без линейных рывков
                     let pinchFactor = currentDist / startDist;
                     targetScale = startScale * pinchFactor;
 
                     if (targetScale < 1) targetScale = 1;
                     if (targetScale > 4) targetScale = 4;
 
-                    // Направление зума прямо в точку между пальцами
                     const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                     const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
 
@@ -502,26 +422,19 @@
                         totalTranslateX = currentMidX - (startMidX - totalTranslateX) * (targetScale / scale);
                         totalTranslateY = currentMidY - (startMidY - totalTranslateY) * (targetScale / scale);
                     } else {
-                        totalTranslateX = 0;
-                        totalTranslateY = 0;
+                        totalTranslateX = 0; totalTranslateY = 0;
                     }
 
                     scale = targetScale;
-                    
-                    // Убираем CSS transition во время движения, чтобы отклик пальцев был 1 к 1
                     container.style.transition = 'none';
                     container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
                     
-                    // Запоминаем новые центральные точки
-                    startMidX = currentMidX;
-                    startMidY = currentMidY;
+                    startMidX = currentMidX; startMidY = currentMidY;
 
                 } else if (e.touches.length === 1 && scale > 1 && !isZooming) {
-                    // Перетаскивание увеличенной картинки
                     totalTranslateX = e.touches[0].clientX - startX;
                     totalTranslateY = e.touches[0].clientY - startY;
 
-                    // Ограничители, чтобы страница не улетала далеко за экран
                     const maxDeltaX = (window.innerWidth * (scale - 1)) / 1.5;
                     const maxDeltaY = (window.innerHeight * (scale - 1)) / 1.5;
                     if (totalTranslateX > maxDeltaX) totalTranslateX = maxDeltaX;
@@ -538,14 +451,11 @@
                 const container = document.getElementById(`zoom-${currentPageIndex}`);
                 if (!container) return;
 
-                if (e.touches.length < 2) {
-                    isZooming = false;
-                }
+                if (e.touches.length < 2) isZooming = false;
 
-                // Если картинку отпустили и масштаб вернулся к единице, плавно центрируем её обратно
                 if (scale <= 1.05) {
                     scale = 1; totalTranslateX = 0; totalTranslateY = 0;
-                    container.style.transition = 'transform 0.2s ease-out'; // Плавный возврат при полном отдалении
+                    container.style.transition = 'transform 0.2s ease-out';
                     container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
                 }
             }, { passive: true });
