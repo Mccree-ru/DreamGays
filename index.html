@@ -572,23 +572,43 @@
             renderCatalog(); 
         }
 
-        // КОПИРОВАНИЕ ССЫЛКИ НА ТАЙТЛ С НАУТИВНЫМ ТОАСТОМ ДЛЯ ТЕЛЕГРАМА
+        // КОПИРОВАНИЕ ССЫЛКИ НА ТАЙТЛ
         function handleCopyLink() {
             if (!contextActiveMangaId) return;
 
-            const botUsername = tg.initDataUnsafe?.receiver?.username || "твой_юзернейм_бота_тут"; 
+            const botUsername = "DreamContent_Bot"; 
             const shareLink = `https://t.me/${botUsername}/app?startapp=${contextActiveMangaId}`;
 
             navigator.clipboard.writeText(shareLink).then(() => {
                 closeContextMenu();
                 
-                // Трюк для красивой нативной плашки уведомления внутри ТГ без верстки
-                if (tg.showScanQrPopup) {
-                    tg.showScanQrPopup({ text: "Ссылка скопирована в буфер! 🔗" });
-                    setTimeout(() => tg.closeScanQrPopup(), 1200);
-                } else {
-                    tg.showAlert("Ссылка скопирована! 🔗");
-                }
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+                // Создаем красивый всплывающий Toast прямо поверх каталога
+                const toast = document.createElement('div');
+                toast.style.position = 'fixed';
+                toast.style.bottom = '30px';
+                toast.style.left = '50%';
+                toast.style.transform = 'translateX(-50%)';
+                toast.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+                toast.style.color = '#ffffff';
+                toast.style.padding = '12px 20px';
+                toast.style.borderRadius = '10px';
+                toast.style.fontSize = '14px';
+                toast.style.zIndex = '1000';
+                toast.style.transition = 'opacity 0.3s ease';
+                toast.style.pointerEvents = 'none';
+                toast.style.whiteSpace = 'nowrap';
+                toast.textContent = "Ссылка скопирована! 🔗";
+
+                document.body.appendChild(toast);
+
+                // Плавно удаляем через 1.5 секунды
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }, 1500);
+
             }).catch(err => {
                 console.error('Ошибка копирования:', err);
                 closeContextMenu();
