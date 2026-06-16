@@ -215,9 +215,9 @@
 
         .reader-img { width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
 
-        /* ИСПРАВЛЕННЫЕ ИНТЕРАКТИВНЫЕ ЗОНЫ НАЖАТИЯ */
+        /* ИНТЕРАКТИВНЫЕ ЗОНЫ НАЖАТИЯ */
         .tap-zone-left { position: absolute; top: 0; left: 0; width: 25%; height: 100%; z-index: 40; }
-        .tap-zone-center { position: absolute; top: 0; left: 25%; width: 50%; height: 100%; z-index: 40; }
+        .tap-zone-center { position: absolute; top: 0; left: 25%; width: 50%; height: 100%; z-index: 41; }
         .tap-zone-right { position: absolute; top: 0; right: 0; width: 25%; height: 100%; z-index: 40; }
 
 
@@ -412,16 +412,15 @@
         function resetUiTimer() {
             showUi();
             clearTimeout(uiTimeout);
-            // Если картинка приближена, автоскрытие по таймеру не запускается
-            if (scale === 1) {
-                uiTimeout = setTimeout(() => {
-                    hideUi();
-                }, 2000);
-            }
+            // Теперь таймер работает ВСЕГДА (и при масштабе 1, и при зуме)
+            uiTimeout = setTimeout(() => {
+                hideUi();
+            }, 2000);
         }
 
-        function toggleUiByCenterTap() {
-            if (scale > 1) return; // Игнорируем обычные тапы при зуме, чтобы не мешать перемещению
+        function toggleUiByCenterTap(event) {
+            if (event) event.stopPropagation(); // Останавливаем погружение, чтобы touchstart/touchend не ломали логику тапа
+            
             const header = document.getElementById('readerHeader');
             if (header.classList.contains('visible')) {
                 clearTimeout(uiTimeout);
@@ -436,8 +435,7 @@
         }
 
         function hideUi() {
-            // Запрещаем скрытие панели, если картинка зумирована
-            if (scale === 1 && !isZooming) {
+            if (!isZooming) {
                 document.getElementById('readerHeader').classList.remove('visible');
             }
         }
@@ -486,7 +484,7 @@
                 slide.className = 'reader-slide';
                 slide.innerHTML = `
                     <div class="tap-zone-left" onclick="changePage(-1, event)"></div>
-                    <div class="tap-zone-center" onclick="toggleUiByCenterTap()"></div>
+                    <div class="tap-zone-center" onclick="toggleUiByCenterTap(event)"></div>
                     <div class="tap-zone-right" onclick="changePage(1, event)"></div>
                     <div class="zoom-container" id="zoom-${index}">
                         <img class="reader-img" src="${pageUrl}">
@@ -578,8 +576,8 @@
             let isSwipeCandidate = false;
 
             screen.addEventListener('touchstart', (e) => {
-                // Если картинка НЕ зумирована, обновляем стандартный таймер интерфейса
-                if (scale === 1) resetUiTimer();
+                // Таймер сбрасывается при любом касании экрана
+                resetUiTimer();
                 
                 if (e.touches.length === 2) {
                     isZooming = true;
@@ -594,9 +592,6 @@
                     startTouchY = midY;
                     currentCenterFallbackX = totalTranslateX;
                     currentCenterFallbackY = totalTranslateY;
-
-                    // Принудительно показываем меню при начале зума и держим его
-                    showUi();
 
                 } else if (e.touches.length === 1) {
                     isZooming = false;
@@ -695,7 +690,6 @@
                     scale = 1; totalTranslateX = 0; totalTranslateY = 0; isZooming = false;
                     container.style.transition = 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)';
                     container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
-                    resetUiTimer(); // Картинка вернулась в масштаб 1:1, запускаем таймер скрытия меню
                 } else if (e.touches.length === 1) {
                     startTouchX = e.touches[0].clientX;
                     startTouchY = e.touches[0].clientY;
@@ -703,6 +697,9 @@
                     currentCenterFallbackY = totalTranslateY;
                     isZooming = false;
                 }
+                
+                // Всегда перезапускаем таймер при завершении жеста, чтобы панель скрылась
+                resetUiTimer();
                 isSwipeCandidate = false;
             }, { passive: true });
         }
