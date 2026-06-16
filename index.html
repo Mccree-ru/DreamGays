@@ -577,7 +577,7 @@
             if (!contextActiveMangaId) return;
 
             const botUsername = "DreamContent_Bot"; 
-            const shareLink = `https://t.me/${botUsername}/app?startapp=${contextActiveMangaId}`;
+            const shareLink = `https://t.me/${botUsername}/manga?startapp=${contextActiveMangaId}`;
 
             navigator.clipboard.writeText(shareLink).then(() => {
                 closeContextMenu();
