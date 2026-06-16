@@ -306,6 +306,7 @@
         let isZooming = false;
 
         let uiTimeout = null;
+        let lastTapTime = 0; // Для отслеживания Double Tap
 
         let readMangaList = JSON.parse(localStorage.getItem('manga_read_list')) || [];
 
@@ -412,21 +413,82 @@
         function resetUiTimer() {
             showUi();
             clearTimeout(uiTimeout);
-            // Теперь таймер работает ВСЕГДА (и при масштабе 1, и при зуме)
             uiTimeout = setTimeout(() => {
                 hideUi();
             }, 2000);
         }
 
         function toggleUiByCenterTap(event) {
-            if (event) event.stopPropagation(); // Останавливаем погружение, чтобы touchstart/touchend не ломали логику тапа
-            
+            if (event) event.stopPropagation();
+
+            // Логика DOUBLE TAP (Двойной клик по центральной области)
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTapTime;
+            if (tapLength < 300 && tapLength > 0) {
+                // Это двойной тап!
+                handleDoubleTap(event);
+                lastTapTime = 0; // Сбрасываем
+                return;
+            }
+            lastTapTime = currentTime;
+
+            // Если это одиночный тап, переключаем видимость меню
             const header = document.getElementById('readerHeader');
             if (header.classList.contains('visible')) {
                 clearTimeout(uiTimeout);
                 hideUi();
             } else {
                 resetUiTimer();
+            }
+        }
+
+        // РЕАЛИЗАЦИЯ DOUBLE TAP TO ZOOM (ПРИБЛИЖЕНИЕ В СЛЕД ЗА КЛИКОМ)
+        function handleDoubleTap(event) {
+            const container = document.getElementById(`zoom-${currentPageIndex}`);
+            if (!container) return;
+
+            if (scale > 1) {
+                // Если уже приближено — плавно возвращаем в исходное положение 1:1
+                scale = 1; totalTranslateX = 0; totalTranslateY = 0;
+                container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
+                container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
+                resetUiTimer();
+            } else {
+                // Если картинка стандартная — приближаем в 2.5 раза к точке клика
+                scale = 2.5;
+
+                // Получаем координаты клика мыши или тача относительно экрана
+                let clickX = event.clientX;
+                let clickY = event.clientY;
+
+                if (event.touches && event.touches.length > 0) {
+                    clickX = event.touches[0].clientX;
+                    clickY = event.touches[0].clientY;
+                } else if (event.changedTouches && event.changedTouches.length > 0) {
+                    clickX = event.changedTouches[0].clientX;
+                    clickY = event.changedTouches[0].clientY;
+                }
+
+                // Вычисляем смещение, чтобы точка клика оказалась по центру
+                const originX = clickX - window.innerWidth / 2;
+                const originY = clickY - window.innerHeight / 2;
+
+                totalTranslateX = -originX * (scale - 1);
+                totalTranslateY = -originY * (scale - 1);
+
+                // Ограничиваем смещение, чтобы края картинки не улетали за рамки экрана
+                const maxDeltaX = (window.innerWidth * (scale - 1)) / 2;
+                const maxDeltaY = (window.innerHeight * (scale - 1)) / 2;
+
+                if (totalTranslateX > maxDeltaX) totalTranslateX = maxDeltaX;
+                if (totalTranslateX < -maxDeltaX) totalTranslateX = -maxDeltaX;
+                if (totalTranslateY > maxDeltaY) totalTranslateY = maxDeltaY;
+                if (totalTranslateY < -maxDeltaY) totalTranslateY = -maxDeltaY;
+
+                container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
+                container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
+                
+                resetUiTimer(); // Запускаем таймер, чтобы панель скрылась после зума
             }
         }
 
@@ -576,7 +638,6 @@
             let isSwipeCandidate = false;
 
             screen.addEventListener('touchstart', (e) => {
-                // Таймер сбрасывается при любом касании экрана
                 resetUiTimer();
                 
                 if (e.touches.length === 2) {
@@ -698,7 +759,6 @@
                     isZooming = false;
                 }
                 
-                // Всегда перезапускаем таймер при завершении жеста, чтобы панель скрылась
                 resetUiTimer();
                 isSwipeCandidate = false;
             }, { passive: true });
