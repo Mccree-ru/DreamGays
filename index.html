@@ -118,6 +118,8 @@
             display: flex; flex-direction: column; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative;
             color: var(--text-color);
+            -webkit-user-select: none; /* Защита от выделения текста при долгом нажатии */
+            user-select: none;
         }
         .manga-card:active { transform: scale(0.97); }
 
@@ -132,7 +134,7 @@
         .manga-card.genre-furry { background-color: #132136 !important; color: #ffffff !important; }
 
         .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #222; }
-        .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
          
         /* Индикатор прочитанного */
         .card-status-badge {
@@ -142,12 +144,12 @@
             backdrop-filter: blur(4px);
         }
 
-        .card-info { padding: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .card-info { padding: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
         .card-title { font-size: 13px; font-weight: 600; margin: 0 0 6px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
          
         /* Метаданные */
         .meta-container { display: flex; flex-direction: column; gap: 4px; }
-        .card-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+        .card-tags { display: flex; flex-wrap: wrap; gap: 3px; pointer-events: auto; }
          
         .tag { 
             font-size: 9px; background-color: rgba(36, 139, 207, 0.1); color: var(--link-color); 
@@ -160,6 +162,49 @@
             padding: 2px 5px; border-radius: 5px; font-weight: bold; display: inline-flex; align-items: center;
         }
         .tag-author.selected { background-color: #cc6200; }
+
+        /* ========================================== */
+        /* КОНТЕКСТНОЕ МЕНЮ (BOTTOM SHEET) */
+        /* ========================================== */
+        .context-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); z-index: 200;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .context-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .context-menu {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background-color: var(--bg-color);
+            border-top-left-radius: 16px; border-top-right-radius: 16px;
+            z-index: 201; box-sizing: border-box; padding: 16px;
+            transform: translateY(100%);
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.15);
+            max-width: 600px; margin: 0 auto; right: 0; /* Ограничение ширины на планшетах/ПК */
+        }
+        .context-menu.active { transform: translateY(0); }
+
+        .context-menu-title {
+            font-size: 14px; font-weight: bold; color: var(--hint-color);
+            margin-bottom: 14px; text-align: center;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        .context-menu-btn {
+            width: 100%; padding: 14px; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: 600; cursor: pointer;
+            text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;
+            background-color: var(--card-bg); color: var(--text-color);
+            transition: background-color 0.1s; margin-bottom: 8px;
+        }
+        .context-menu-btn:active { background-color: rgba(0, 0, 0, 0.08); }
+        .context-menu-btn.action-toggle { background-color: var(--button-color); color: var(--button-text); }
+
+        .context-menu-btn.btn-close {
+            background-color: transparent; color: var(--link-color); margin-bottom: 0; font-weight: normal;
+        }
 
         /* ========================================== */
         /* ЧИТАЛКА */
@@ -286,6 +331,17 @@
         <div id="readerTrack" class="reader-track"></div>
     </div>
 
+    <!-- ВЕРСТКА ДЛЯ КОНТЕКСТНОГО МЕНЮ -->
+    <div id="contextOverlay" class="context-overlay" onclick="closeContextMenu()">
+        <div id="contextMenu" class="context-menu" onclick="event.stopPropagation()">
+            <div id="contextTitle" class="context-menu-title">Название тайтла</div>
+            <button id="contextToggleBtn" class="context-menu-btn action-toggle" onclick="handleStatusToggle()">
+                <!-- Текст подставится скриптом -->
+            </button>
+            <button class="context-menu-btn btn-close" onclick="closeContextMenu()">Отмена</button>
+        </div>
+    </div>
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready(); tg.expand();
@@ -307,7 +363,10 @@
 
         let uiTimeout = null;
         let lastTapTime = 0; 
-        let tapTimeout = null; // Дебаунс для разделения одиночного и двойного тапа
+        let tapTimeout = null; 
+
+        // Переменная для хранения ID тайтла, на который долго нажали
+        let contextActiveMangaId = null; 
 
         let readMangaList = JSON.parse(localStorage.getItem('manga_read_list')) || [];
 
@@ -372,16 +431,18 @@
                 else if (manga.tags.some(t => t.toLowerCase() === 'furry')) genreClass = 'genre-furry';
                 
                 card.className = `manga-card ${genreClass}`;
-                card.onclick = (e) => { if (!e.target.classList.contains('tag') && !e.target.classList.contains('tag-author')) openReader(manga.id); };
+                
+                // Навешиваем систему определения Long Press (долгого нажатия)
+                setupLongPress(card, manga.id);
 
                 const visibleTags = manga.tags.filter(t => t.toLowerCase() !== 'bara' && t.toLowerCase() !== 'furry');
-                const tagsHtml = visibleTags.map(t => `<span class="tag ${t === selectedTag ? 'selected' : ''}" onclick="filterByTag('${t}')">${t}</span>`).join('');
+                const tagsHtml = visibleTags.map(t => `<span class="tag ${t === selectedTag ? 'selected' : ''}" onclick="event.stopPropagation(); filterByTag('${t}')">${t}</span>`).join('');
 
                 const splitAuthors = manga.author ? manga.author.split(/[,/]| и /) : [];
                 const authorsHtml = splitAuthors.map(author => {
                     const name = author.trim(); if (!name) return '';
                     const isSelected = name === selectedAuthor ? 'selected' : '';
-                    return `<span class="tag-author ${isSelected}" onclick="filterByAuthorTag('${name}')">${name}</span>`;
+                    return `<span class="tag-author ${isSelected}" onclick="event.stopPropagation(); filterByAuthorTag('${name}')">${name}</span>`;
                 }).join(' ');
 
                 let statusBadge = '';
@@ -405,6 +466,91 @@
             updateResetButtonVisibility();
         }
 
+        // РЕАЛИЗАЦИЯ ДЕТЕКТОРА ДОЛГОГО НАЖАТИЯ (LONG PRESS)
+        function setupLongPress(element, mangaId) {
+            let pressTimer = null;
+            let isLongPress = false;
+
+            const startPress = (e) => {
+                isLongPress = false;
+                // Запускаем таймер на 600мс удержания
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    if (tg.HapticFeedback) {
+                        tg.HapticFeedback.impactOccurred('medium'); // Виброотклик Telegram
+                    }
+                    openContextMenu(mangaId);
+                }, 600);
+            };
+
+            const endPress = (e) => {
+                clearTimeout(pressTimer);
+                // Если это был короткий клик, а не удержание — открываем читалку
+                if (!isLongPress && e.type !== 'mouseleave') {
+                    // Проверяем, что кликнули не по тегам
+                    if (!e.target.classList.contains('tag') && !e.target.classList.contains('tag-author')) {
+                        openReader(mangaId);
+                    }
+                }
+            };
+
+            // События для сенсорных экранов
+            element.addEventListener('touchstart', startPress, { passive: true });
+            element.addEventListener('touchend', endPress);
+            
+            // События для мыши (ПК-версия)
+            element.addEventListener('mousedown', startPress);
+            element.addEventListener('mouseup', endPress);
+            element.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+        }
+
+        // УПРАВЛЕНИЕ КОНТЕКСТНЫМ МЕНЮ
+        function openContextMenu(mangaId) {
+            const manga = allManga.find(m => m.id === mangaId);
+            if (!manga) return;
+
+            contextActiveMangaId = mangaId;
+            
+            document.getElementById('contextTitle').textContent = manga.title;
+            const toggleBtn = document.getElementById('contextToggleBtn');
+
+            // Проверяем статус и меняем текст/иконку кнопки действия
+            if (readMangaList.includes(mangaId)) {
+                toggleBtn.innerHTML = "❌ Убрать из прочитанного";
+            } else {
+                toggleBtn.innerHTML = "✅ Отметить прочитанным";
+            }
+
+            document.getElementById('contextOverlay').classList.add('active');
+            document.getElementById('contextMenu').classList.add('active');
+        }
+
+        function closeContextMenu() {
+            document.getElementById('contextOverlay').classList.remove('active');
+            document.getElementById('contextMenu').classList.remove('active');
+            contextActiveMangaId = null;
+        }
+
+        // ОБРАБОТЧИК СМЕНЫ СТАТУСА ИЗ МЕНЮ
+        function handleStatusToggle() {
+            if (!contextActiveMangaId) return;
+
+            const index = readMangaList.indexOf(contextActiveMangaId);
+            if (index > -1) {
+                // Если уже был прочитан — удаляем из массива
+                readMangaList.splice(index, 1);
+            } else {
+                // Если не был прочитан — добавляем
+                readMangaList.push(contextActiveMangaId);
+            }
+
+            // Сохраняем изменения в локальную память
+            localStorage.setItem('manga_read_list', JSON.stringify(readMangaList));
+            
+            closeContextMenu();
+            renderCatalog(); // Перерисовываем каталог, чтобы обновились галочки
+        }
+
         function filterByAuthorTag(authorName) {
             selectedAuthor = selectedAuthor === authorName ? "" : authorName;
             document.getElementById('authorSelect').value = selectedAuthor;
@@ -412,7 +558,6 @@
         }
 
         function resetUiTimer() {
-            // Если картинка приближена, то панель вообще не должна показываться по таймерам касаний
             if (scale > 1) {
                 hideUi();
                 return;
@@ -424,7 +569,6 @@
             }, 2000);
         }
 
-        // УНИВЕРСАЛЬНЫЙ ОБРАБОТЧИК КЛИКОВ ПО ЗОНАМ ЧИТАЛКИ
         function handleZoneTap(zoneType, event) {
             if (event) event.stopPropagation();
 
@@ -432,7 +576,6 @@
             const tapLength = currentTime - lastTapTime;
 
             if (tapLength < 250 && tapLength > 0) {
-                // ДВОЙНОЙ ТАП (Срабатывает в любой зоне)
                 clearTimeout(tapTimeout); 
                 handleDoubleTap(event);
                 lastTapTime = 0;
@@ -440,9 +583,8 @@
             }
             lastTapTime = currentTime;
 
-            // ОДИНОЧНЫЙ ТАП (Выполняется с задержкой, чтобы убедиться, что это не Double Tap)
             tapTimeout = setTimeout(() => {
-                if (scale > 1) return; // Если есть зум, одиночные тапы по бокам игнорируем, чтобы не было случайных перелистываний
+                if (scale > 1) return; 
 
                 if (zoneType === 'left') {
                     changePage(-1, event);
@@ -460,19 +602,16 @@
             }, 250);
         }
 
-        // РЕАЛИЗАЦИЯ DOUBLE TAP TO ZOOM (ПРИБЛИЖЕНИЕ В СЛЕД ЗА КЛИКОМ)
         function handleDoubleTap(event) {
             const container = document.getElementById(`zoom-${currentPageIndex}`);
             if (!container) return;
 
             if (scale > 1) {
-                // Возврат к масштабу 1:1
                 scale = 1; totalTranslateX = 0; totalTranslateY = 0;
                 container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
                 container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
-                resetUiTimer(); // Показываем меню на 2 секунды при выходе из зума
+                resetUiTimer(); 
             } else {
-                // Приближение в 2.5 раза
                 scale = 2.5;
 
                 let clickX = event.clientX;
@@ -503,12 +642,11 @@
                 container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
                 container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
                 
-                hideUi(); // Сразу принудительно прячем панель при зуме
+                hideUi(); 
             }
         }
 
         function showUi() {
-            // Если картинка приближена, то панель открывать нельзя ни в каком случае
             if (scale > 1) return;
             document.getElementById('readerHeader').classList.add('visible');
         }
@@ -589,7 +727,7 @@
         }
 
         function changePage(direction, event) {
-            if (scale > 1) return; // Полная блокировка смены страниц при зуме
+            if (scale > 1) return; 
             
             const isUiVisible = document.getElementById('readerHeader').classList.contains('visible');
             if (isUiVisible && event && event.clientY < 65) {
@@ -619,7 +757,6 @@
             }
         }
 
-        /* Глобальное управление стрелками */
         window.addEventListener('keydown', (e) => {
             const readerScreen = document.getElementById('readerScreen');
             if (!readerScreen || !readerScreen.classList.contains('active')) return;
@@ -636,10 +773,6 @@
             }
         }, true);
 
-
-        /* ======================================================= */
-        /* ОБЪЕДИНЕННАЯ СИСТЕМА: ЗУМ, ПЕРЕМЕЩЕНИЕ И СВАЙПЫ С ТЕЛЕФОНА */
-        /* ======================================================= */
         function initTouchZoomAndSwipe() {
             const screen = document.getElementById('readerScreen');
             
@@ -717,7 +850,7 @@
                     container.style.transition = 'none';
                     container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
 
-                    if (scale > 1) hideUi(); // Скрываем панель при pinch-to-zoom
+                    if (scale > 1) hideUi(); 
 
                 } else if (e.touches.length === 1) {
                     if (scale > 1 && !isZooming) {
