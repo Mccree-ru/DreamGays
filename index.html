@@ -202,6 +202,7 @@
         }
         .context-menu-btn:active { background-color: rgba(0, 0, 0, 0.08); }
         .context-menu-btn.action-toggle { background-color: var(--button-color); color: var(--button-text); }
+        .context-menu-btn.action-copy { background-color: var(--card-bg); color: var(--link-color); }
 
         .context-menu-btn.btn-close {
             background-color: transparent; color: var(--link-color); margin-bottom: 0; font-weight: normal;
@@ -335,8 +336,8 @@
     <div id="contextOverlay" class="context-overlay" onclick="closeContextMenu()">
         <div id="contextMenu" class="context-menu" onclick="event.stopPropagation()">
             <div id="contextTitle" class="context-menu-title">Название тайтла</div>
-            <button id="contextToggleBtn" class="context-menu-btn action-toggle" onclick="handleStatusToggle()">
-                </button>
+            <button id="contextToggleBtn" class="context-menu-btn action-toggle" onclick="handleStatusToggle()"></button>
+            <button class="context-menu-btn action-copy" onclick="handleCopyLink()">🔗 Скопировать ссылку</button>
             <button class="context-menu-btn btn-close" onclick="closeContextMenu()">Отмена</button>
         </div>
     </div>
@@ -571,6 +572,29 @@
             renderCatalog(); 
         }
 
+        // КОПИРОВАНИЕ ССЫЛКИ НА ТАЙТЛ С НАУТИВНЫМ ТОАСТОМ ДЛЯ ТЕЛЕГРАМА
+        function handleCopyLink() {
+            if (!contextActiveMangaId) return;
+
+            const botUsername = tg.initDataUnsafe?.receiver?.username || "твой_юзернейм_бота_тут"; 
+            const shareLink = `https://t.me/${botUsername}/app?startapp=${contextActiveMangaId}`;
+
+            navigator.clipboard.writeText(shareLink).then(() => {
+                closeContextMenu();
+                
+                // Трюк для красивой нативной плашки уведомления внутри ТГ без верстки
+                if (tg.showScanQrPopup) {
+                    tg.showScanQrPopup({ text: "Ссылка скопирована в буфер! 🔗" });
+                    setTimeout(() => tg.closeScanQrPopup(), 1200);
+                } else {
+                    tg.showAlert("Ссылка скопирована! 🔗");
+                }
+            }).catch(err => {
+                console.error('Ошибка копирования:', err);
+                closeContextMenu();
+            });
+        }
+
         function filterByAuthorTag(authorName) {
             selectedAuthor = selectedAuthor === authorName ? "" : authorName;
             document.getElementById('authorSelect').value = selectedAuthor;
@@ -711,7 +735,23 @@
             isMangaFinishedAlertShown = false;
             resetZoom();
 
-            manga.pages.forEach(url => { const imgCache = new Image(); imgCache.src = url; });
+            // ПОСЛЕДОВАТЕЛЬНЫЙ ФОНОВЫЙ КЭШ ПРЕДЗАГРУЗКИ СТРАНИЦ
+            // Начинает качать со 2-й страницы (пока 1-я рендерится) цепочкой друг за другом
+            function preloadNextPage(index) {
+                if (index >= manga.pages.length || currentMangaId !== mangaId) return; 
+                const imgCache = new Image();
+                imgCache.src = manga.pages[index];
+                imgCache.onload = () => {
+                    preloadNextPage(index + 1); // Переходим к следующей только когда текущая точно скачалась
+                };
+                imgCache.onerror = () => {
+                    preloadNextPage(index + 1); // В случае ошибки сети не ломаем цепочку
+                };
+            }
+            // Первая страница грузится стандартно внутри DOM, фоновый кэш запускаем со следующей страницы
+            if (manga.pages.length > 1) {
+                preloadNextPage(1);
+            }
 
             const track = document.getElementById('readerTrack');
             track.innerHTML = ""; 
