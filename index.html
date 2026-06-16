@@ -6,6 +6,7 @@
     <title>McCree Ru Manga</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        /* НАСТРОЙКА ЦВЕТОВ ПОД ТЕМУ TELEGRAM */
         :root {
             --bg-color: var(--tg-theme-bg-color, #ffffff);
             --text-color: var(--tg-theme-text-color, #222222);
@@ -26,6 +27,7 @@
             overflow: hidden;
         }
 
+        /* АНИМАЦИЯ ДЛЯ ЭКРАНОВ */
         .screen {
             position: absolute;
             top: 0; left: 0;
@@ -44,6 +46,7 @@
             transform: scale(1);
         }
 
+        /* КОНТЕЙНЕР КАТАЛОГА С ОГРАНИЧЕНИЕМ ШИРИНЫ НА ПК */
         .main-container { 
             padding: 15px; 
             padding-bottom: 40px; 
@@ -53,21 +56,17 @@
             box-sizing: border-box;
         }
 
-        /* ЕДИНАЯ ПАНЕЛЬ ДОНАТА */
-        .promo-buttons-row {
-            display: flex;
-            margin-bottom: 15px;
-        }
+        /* Кнопка Доната в каталоге */
         .donate-btn {
-            flex: 1;
             display: flex; align-items: center; justify-content: center; gap: 8px;
-            background: linear-gradient(135deg, #248bcf, #1a6fa5); color: #ffffff;
-            border: none; padding: 14px; border-radius: 12px;
-            font-size: 15px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 12px rgba(36, 139, 207, 0.25); transition: transform 0.1s;
+            background: linear-gradient(135deg, #8b3ffd, #5411ff); color: #ffffff;
+            border: none; width: 100%; padding: 12px; border-radius: 12px;
+            font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(139, 63, 253, 0.3); transition: transform 0.1s;
         }
         .donate-btn:active { transform: scale(0.98); }
 
+        /* БЫСТРЫЕ ФИЛЬТРЫ ЖАНРОВ */
         .genre-tabs {
             display: flex;
             gap: 8px;
@@ -91,6 +90,7 @@
             color: var(--button-text);
         }
          
+        /* Панель фильтров */
         .filter-panel { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
         .filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
          
@@ -105,12 +105,14 @@
         }
         .active-filter-info { font-size: 13px; color: var(--link-color); font-weight: bold; }
 
+        /* АДАПТИВНАЯ СЕТКА КАТАЛОГА */
         .catalog-grid { 
             display: grid; 
             grid-template-columns: repeat(2, 1fr); 
             gap: 12px; 
         }
          
+        /* КАРТОЧКИ ТАЙТЛОВ */
         .manga-card { 
             background-color: var(--card-bg); border-radius: 12px; overflow: hidden; 
             display: flex; flex-direction: column; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; 
@@ -118,8 +120,16 @@
             color: var(--text-color);
             -webkit-user-select: none; 
             user-select: none;
+            -webkit-touch-callout: none; /* Отключает дефолтное меню браузера на iOS */
         }
         .manga-card:active { transform: scale(0.97); }
+
+        @media (hover: hover) {
+            .manga-card:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+            }
+        }
 
         .manga-card.genre-bara { background-color: #1a1a1a !important; color: #ffffff !important; }
         .manga-card.genre-furry { background-color: #132136 !important; color: #ffffff !important; }
@@ -127,6 +137,7 @@
         .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #222; }
         .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
          
+        /* Индикатор прочитанного */
         .card-status-badge {
             position: absolute; top: 6px; left: 6px; z-index: 5;
             background-color: rgba(0, 0, 0, 0.75); color: #24b353; padding: 4px 6px;
@@ -135,9 +146,9 @@
         }
 
         .card-info { padding: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
-        .card-title-wrap { height: 2.5em; margin-bottom: 6px; display: flex; align-items: flex-start; overflow: hidden; }
-        .card-title { font-size: 13px; font-weight: 600; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
+        .card-title { font-size: 13px; font-weight: 600; margin: 0 0 6px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
          
+        /* Метаданные */
         .meta-container { display: flex; flex-direction: column; gap: 4px; }
         .card-tags { display: flex; flex-wrap: wrap; gap: 3px; pointer-events: auto; }
          
@@ -151,8 +162,11 @@
             font-size: 9px; background-color: #ff7b00; color: #ffffff; 
             padding: 2px 5px; border-radius: 5px; font-weight: bold; display: inline-flex; align-items: center;
         }
+        .tag-author.selected { background-color: #cc6200; }
 
-        /* КОНТЕКСТНОЕ МЕНЮ */
+        /* ========================================== */
+        /* КОНТЕКСТНОЕ МЕНЮ (BOTTOM SHEET) */
+        /* ========================================== */
         .context-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.5); z-index: 200;
@@ -188,12 +202,16 @@
         }
         .context-menu-btn:active { background-color: rgba(0, 0, 0, 0.08); }
         .context-menu-btn.action-toggle { background-color: var(--button-color); color: var(--button-text); }
-        .context-menu-btn.action-share { background-color: #31b54a; color: #ffffff; }
-        .context-menu-btn.btn-close { background-color: transparent; color: var(--link-color); margin-bottom: 0; }
 
+        .context-menu-btn.btn-close {
+            background-color: transparent; color: var(--link-color); margin-bottom: 0; font-weight: normal;
+        }
+
+        /* ========================================== */
         /* ЧИТАЛКА */
+        /* ========================================== */
         .reader-screen {
-            background-color: #000000; overflow: hidden;
+            background-color: #000000; overflow: hidden; touch-action: none;
         }
 
         .reader-header {
@@ -203,7 +221,7 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             box-sizing: border-box; padding: 0 12px;
             opacity: 0; pointer-events: none; 
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translateY(-10px);
         }
         .reader-header.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
@@ -212,21 +230,22 @@
             background-color: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.1);
             color: #ffffff; padding: 8px 14px; border-radius: 10px;
             font-size: 13px; font-weight: bold; cursor: pointer;
+            transition: background-color 0.15s; display: inline-flex; align-items: center; gap: 4px;
         }
+        .back-button-plate:active { background-color: rgba(255, 255, 255, 0.25); }
 
-        .page-counter { color: #ffffff; font-size: 14px; font-weight: bold; background-color: rgba(0, 0, 0, 0.4); padding: 6px 10px; border-radius: 8px; }
+        .reader-nav-right { display: flex; align-items: center; gap: 10px; }
+        .page-counter { color: #ffffff; font-size: 14px; font-weight: bold; opacity: 0.95; background-color: rgba(0, 0, 0, 0.4); padding: 6px 10px; border-radius: 8px; }
 
-        .reader-progress-container {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 4px;
-            background-color: rgba(255, 255, 255, 0.1); z-index: 99;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        .reader-donate-btn {
+            background: linear-gradient(135deg, #ff9500, #ff5e00); color: #ffffff; border: none; padding: 7px 12px; border-radius: 8px;
+            font-size: 12px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 8px rgba(255, 149, 0, 0.3); transition: transform 0.1s; display: flex; align-items: center; gap: 4px;
         }
-        .reader-progress-container.visible { opacity: 1; }
-        .reader-progress-bar { height: 100%; width: 0%; background-color: var(--button-color); transition: width 0.2s ease; }
+        .reader-donate-btn:active { transform: scale(0.95); }
 
         .reader-track {
             display: flex; height: 100%; width: 100%;
-            transition: transform 0.25s ease-out; will-change: transform;
+            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); will-change: transform;
         }
 
         .reader-slide {
@@ -237,41 +256,57 @@
         .zoom-container {
             width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
             will-change: transform; transform-origin: center center;
-            transition: transform 0.1s ease-out;
+            margin: 0 auto;
         }
 
-        .reader-img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+        .reader-img { width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
 
-        /* Зоны тапов поверх картинок */
-        .tap-zone-left { position: absolute; top: 0; left: 0; width: 20%; height: 100%; z-index: 40; }
-        .tap-zone-center { position: absolute; top: 0; left: 20%; width: 60%; height: 100%; z-index: 41; }
-        .tap-zone-right { position: absolute; top: 0; right: 0; width: 20%; height: 100%; z-index: 40; }
+        /* ИНТЕРАКТИВНЫЕ ЗОНЫ НАЖАТИЯ */
+        .tap-zone-left { position: absolute; top: 0; left: 0; width: 25%; height: 100%; z-index: 40; }
+        .tap-zone-center { position: absolute; top: 0; left: 25%; width: 50%; height: 100%; z-index: 41; }
+        .tap-zone-right { position: absolute; top: 0; right: 0; width: 25%; height: 100%; z-index: 40; }
 
-        @media screen and (min-width: 480px) { .catalog-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media screen and (min-width: 720px) { .catalog-grid { grid-template-columns: repeat(4, 1fr); } .zoom-container { max-width: 650px; } }
-        @media screen and (min-width: 960px) { .catalog-grid { grid-template-columns: repeat(5, 1fr); } }
+
+        /* ======================================================= */
+        /* МЕДИА-ЗАПРОСЫ */
+        /* ======================================================= */
+        @media screen and (min-width: 480px) {
+            .catalog-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        }
+        @media screen and (min-width: 720px) {
+            .catalog-grid { grid-template-columns: repeat(4, 1fr); gap: 15px; }
+            .card-title { font-size: 14px; }
+            .zoom-container { max-width: 650px; }
+        }
+        @media screen and (min-width: 960px) {
+            .catalog-grid { grid-template-columns: repeat(5, 1fr); }
+        }
+        @media screen and (min-width: 1140px) {
+            .catalog-grid { grid-template-columns: repeat(6, 1fr); }
+        }
+        @media screen and (min-width: 1350px) {
+            .catalog-grid { grid-template-columns: repeat(7, 1fr); }
+        }
     </style>
 </head>
 <body>
 
     <div id="readerHeader" class="reader-header">
         <button class="back-button-plate" onclick="closeReader(event)">⬅ В каталог</button>
-        <div id="pageCounter" class="page-counter">0 / 0</div>
-    </div>
-
-    <div id="readerProgress" class="reader-progress-container">
-        <div id="readerProgressBar" class="reader-progress-bar"></div>
+        <div class="reader-nav-right">
+            <button class="reader-donate-btn" onclick="event.stopPropagation(); tg.openLink('https://yoomoney.ru/to/4100117500602780')">
+                ☕ На кофе
+            </button>
+            <div id="pageCounter" class="page-counter">0 / 0</div>
+        </div>
     </div>
 
     <div id="mainScreen" class="screen active">
         <div class="main-container">
 
-            <!-- КНОПКА ДОНАТА НА ВСЮ ШИРИНУ -->
-            <div class="promo-buttons-row">
-                <button class="donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">
-                    ☕ Поддержать команду (На кофе)
-                </button>
-            </div>
+            <button class="donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">
+                ☕ На кофе
+            </button>
 
             <div class="genre-tabs">
                 <button id="tab-all" class="genre-tab active" onclick="switchGenreTab(null)">Все</button>
@@ -300,8 +335,8 @@
     <div id="contextOverlay" class="context-overlay" onclick="closeContextMenu()">
         <div id="contextMenu" class="context-menu" onclick="event.stopPropagation()">
             <div id="contextTitle" class="context-menu-title">Название тайтла</div>
-            <button id="contextToggleBtn" class="context-menu-btn action-toggle" onclick="handleStatusToggle()"></button>
-            <button class="context-menu-btn action-share" onclick="handleShareManga()">🔗 Поделиться тайтлом</button>
+            <button id="contextToggleBtn" class="context-menu-btn action-toggle" onclick="handleStatusToggle()">
+                </button>
             <button class="context-menu-btn btn-close" onclick="closeContextMenu()">Отмена</button>
         </div>
     </div>
@@ -309,9 +344,6 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready(); tg.expand();
-
-        // Укажи здесь точный юзернейм своего бота (без @)
-        const BOT_USERNAME = "McCreeRuMangaBot"; 
 
         let allManga = []; 
         let selectedTag = null;
@@ -323,22 +355,18 @@
         let currentPageIndex = 0;
         let isMangaFinishedAlertShown = false;
 
-        // ПЕРЕМЕННЫЕ ДЛЯ СВАЙПОВ И ЗУМА
         let scale = 1;
-        let startX = 0, startY = 0;
-        let moveX = 0, moveY = 0;
-        let initialPinchDist = 0;
-        let isPanning = false;
-        let isZoomMode = false;
-        let swipeStartX = 0;
+        let totalTranslateX = 0;
+        let totalTranslateY = 0;
+        let isZooming = false;
 
         let uiTimeout = null;
         let lastTapTime = 0; 
-        let contextActiveMangaId = null; 
-        let readMangaList = JSON.parse(localStorage.getItem('manga_read_list')) || [];
+        let tapTimeout = null; 
 
-        // Глобальный пул для фонового кэширования
-        let preloadedImagesPool = [];
+        let contextActiveMangaId = null; 
+
+        let readMangaList = JSON.parse(localStorage.getItem('manga_read_list')) || [];
 
         fetch('database.json?v=' + new Date().getTime())
             .then(response => response.json())
@@ -349,17 +377,21 @@
 
                 if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
                     const startId = tg.initDataUnsafe.start_param;
-                    if (allManga.some(m => m.id === startId)) openReader(startId);
+                    const hasManga = allManga.some(m => m.id === startId);
+                    if (hasManga) {
+                        openReader(startId);
+                    }
                 }
             })
-            .catch(err => console.error("Ошибка загрузки БД", err));
+            .catch(err => console.error("Ошибка загрузки базы данных", err));
 
         function buildAuthorSelect() {
             const select = document.getElementById('authorSelect');
             const authorsSet = new Set();
             allManga.forEach(manga => {
                 if (manga.author) {
-                    manga.author.split(/[,/]| и /).forEach(a => { const t = a.trim(); if(t) authorsSet.add(t); });
+                    const splitAuthors = manga.author.split(/[,/]| и /);
+                    splitAuthors.forEach(author => { const trimmed = author.trim(); if (trimmed) authorsSet.add(trimmed); });
                 }
             });
             authorsSet.forEach(author => {
@@ -383,7 +415,10 @@
             const filtered = allManga.filter(manga => {
                 const matchTag = !selectedTag || manga.tags.includes(selectedTag);
                 const matchAuthor = !selectedAuthor || (manga.author && manga.author.includes(selectedAuthor));
-                const matchGenreTab = !selectedGenreTab || manga.tags.some(t => t.toLowerCase() === selectedGenreTab);
+                let matchGenreTab = true;
+                if (selectedGenreTab) {
+                    matchGenreTab = manga.tags.some(t => t.toLowerCase() === selectedGenreTab);
+                }
                 return matchTag && matchAuthor && matchGenreTab;
             });
 
@@ -394,19 +429,29 @@
                 else if (manga.tags.some(t => t.toLowerCase() === 'furry')) genreClass = 'genre-furry';
                 
                 card.className = `manga-card ${genreClass}`;
+                
                 setupLongPress(card, manga.id);
 
                 const visibleTags = manga.tags.filter(t => t.toLowerCase() !== 'bara' && t.toLowerCase() !== 'furry');
                 const tagsHtml = visibleTags.map(t => `<span class="tag ${t === selectedTag ? 'selected' : ''}" onclick="event.stopPropagation(); filterByTag('${t}')">${t}</span>`).join('');
-                const authorsHtml = manga.author ? manga.author.split(/[,/]| и /).map(a => `<span class="tag-author" onclick="event.stopPropagation(); filterByAuthorTag('${a.trim()}')">${a.trim()}</span>`).join(' ') : '';
 
-                let statusBadge = readMangaList.includes(manga.id) ? `<div class="card-status-badge">✅ Прочитано</div>` : '';
+                const splitAuthors = manga.author ? manga.author.split(/[,/]| и /) : [];
+                const authorsHtml = splitAuthors.map(author => {
+                    const name = author.trim(); if (!name) return '';
+                    const isSelected = name === selectedAuthor ? 'selected' : '';
+                    return `<span class="tag-author ${isSelected}" onclick="event.stopPropagation(); filterByAuthorTag('${name}')">${name}</span>`;
+                }).join(' ');
+
+                let statusBadge = '';
+                if (readMangaList.includes(manga.id)) {
+                    statusBadge = `<div class="card-status-badge">✅ Прочитано</div>`;
+                }
 
                 card.innerHTML = `
                     ${statusBadge}
                     <div class="card-cover-wrap"><img src="${manga.cover}" class="card-cover" loading="lazy"></div>
                     <div class="card-info">
-                        <div class="card-title-wrap"><h3 class="card-title">${manga.title}</h3></div>
+                        <div><h3 class="card-title">${manga.title}</h3></div>
                         <div class="meta-container">
                             <div class="card-tags">${authorsHtml}</div>
                             <div class="card-tags">${tagsHtml}</div>
@@ -418,42 +463,88 @@
             updateResetButtonVisibility();
         }
 
+        // МОДЕРНИЗИРОВАННЫЙ ОБРАБОТЧИК LONG PRESS (С ЗАЩИТОЙ ОТ СКРОЛЛА)
         function setupLongPress(element, mangaId) {
-            let pressTimer = null; let isLongPress = false; let isMoving = false;
-            let sX = 0, sY = 0;
+            let pressTimer = null;
+            let isLongPress = false;
+            let isMoving = false;
+            
+            // Координаты начала касания
+            let startX = 0;
+            let startY = 0;
 
-            element.addEventListener('touchstart', (e) => {
-                isLongPress = false; isMoving = false;
-                sX = e.touches[0].clientX; sY = e.touches[0].clientY;
+            const startPress = (e) => {
+                isLongPress = false;
+                isMoving = false;
+
+                // Получаем стартовую точку (мышь или тач)
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                startX = clientX;
+                startY = clientY;
+
                 pressTimer = setTimeout(() => {
                     if (!isMoving) {
                         isLongPress = true;
-                        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); 
+                        if (tg.HapticFeedback) {
+                            tg.HapticFeedback.impactOccurred('medium'); 
+                        }
                         openContextMenu(mangaId);
                     }
                 }, 600);
-            }, { passive: true });
+            };
 
-            element.addEventListener('touchmove', (e) => {
-                if (Math.abs(e.touches[0].clientX - sX) > 10 || Math.abs(e.touches[0].clientY - sY) > 10) {
-                    isMoving = true; clearTimeout(pressTimer);
+            const movePress = (e) => {
+                if (isMoving) return;
+
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                // Если палец сместился более чем на 10 пикселей по любой оси — это скролл ленты
+                if (Math.abs(clientX - startX) > 10 || Math.abs(clientY - startY) > 10) {
+                    isMoving = true;
+                    clearTimeout(pressTimer); // Отменяем вызов контекстного меню
                 }
-            }, { passive: true });
+            };
 
-            element.addEventListener('touchend', (e) => {
+            const endPress = (e) => {
                 clearTimeout(pressTimer);
-                if (!isLongPress && !isMoving && !e.target.classList.contains('tag') && !e.target.classList.contains('tag-author')) {
-                    openReader(mangaId);
+                
+                // Открываем читалку только если не было долгого зажатия и не было скролла страницы
+                if (!isLongPress && !isMoving && e.type !== 'mouseleave') {
+                    if (!e.target.classList.contains('tag') && !e.target.classList.contains('tag-author')) {
+                        openReader(mangaId);
+                    }
                 }
-            });
+            };
+
+            // Тач-события смартфона
+            element.addEventListener('touchstart', startPress, { passive: true });
+            element.addEventListener('touchmove', movePress, { passive: true });
+            element.addEventListener('touchend', endPress);
+            
+            // События мыши (ПК)
+            element.addEventListener('mousedown', startPress);
+            element.addEventListener('mousemove', movePress);
+            element.addEventListener('mouseup', endPress);
+            element.addEventListener('mouseleave', () => clearTimeout(pressTimer));
         }
 
         function openContextMenu(mangaId) {
             const manga = allManga.find(m => m.id === mangaId);
             if (!manga) return;
+
             contextActiveMangaId = mangaId;
+            
             document.getElementById('contextTitle').textContent = manga.title;
-            document.getElementById('contextToggleBtn').innerHTML = readMangaList.includes(mangaId) ? "❌ Убрать из прочитанного" : "✅ Отметить прочитанным";
+            const toggleBtn = document.getElementById('contextToggleBtn');
+
+            if (readMangaList.includes(mangaId)) {
+                toggleBtn.innerHTML = "❌ Убрать из прочитанного";
+            } else {
+                toggleBtn.innerHTML = "✅ Отметить прочитанным";
+            }
+
             document.getElementById('contextOverlay').classList.add('active');
             document.getElementById('contextMenu').classList.add('active');
         }
@@ -461,39 +552,155 @@
         function closeContextMenu() {
             document.getElementById('contextOverlay').classList.remove('active');
             document.getElementById('contextMenu').classList.remove('active');
+            contextActiveMangaId = null;
         }
 
         function handleStatusToggle() {
             if (!contextActiveMangaId) return;
-            const idx = readMangaList.indexOf(contextActiveMangaId);
-            if (idx > -1) readMangaList.splice(idx, 1); else readMangaList.push(contextActiveMangaId);
+
+            const index = readMangaList.indexOf(contextActiveMangaId);
+            if (index > -1) {
+                readMangaList.splice(index, 1);
+            } else {
+                readMangaList.push(contextActiveMangaId);
+            }
+
             localStorage.setItem('manga_read_list', JSON.stringify(readMangaList));
-            closeContextMenu(); renderCatalog(); 
-        }
-
-        // ИСПРАВЛЕННЫЙ МЕТОД: Поделиться тайтлом через прямую t.me ссылку
-        function handleShareManga() {
-            if (!contextActiveMangaId) return;
-            const link = `https://t.me/${BOT_USERNAME}/app?startapp=${contextActiveMangaId}`;
-            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}`);
+            
             closeContextMenu();
+            renderCatalog(); 
         }
 
-        function filterByAuthorTag(name) { selectedAuthor = selectedAuthor === name ? "" : name; document.getElementById('authorSelect').value = selectedAuthor; renderCatalog(); }
+        function filterByAuthorTag(authorName) {
+            selectedAuthor = selectedAuthor === authorName ? "" : authorName;
+            document.getElementById('authorSelect').value = selectedAuthor;
+            renderCatalog();
+        }
+
+        function resetUiTimer() {
+            if (scale > 1) {
+                hideUi();
+                return;
+            }
+            showUi();
+            clearTimeout(uiTimeout);
+            uiTimeout = setTimeout(() => {
+                hideUi();
+            }, 2000);
+        }
+
+        function handleZoneTap(zoneType, event) {
+            if (event) event.stopPropagation();
+
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTapTime;
+
+            if (tapLength < 250 && tapLength > 0) {
+                clearTimeout(tapTimeout); 
+                handleDoubleTap(event);
+                lastTapTime = 0;
+                return;
+            }
+            lastTapTime = currentTime;
+
+            tapTimeout = setTimeout(() => {
+                if (scale > 1) return; 
+
+                if (zoneType === 'left') {
+                    changePage(-1, event);
+                } else if (zoneType === 'right') {
+                    changePage(1, event);
+                } else if (zoneType === 'center') {
+                    const header = document.getElementById('readerHeader');
+                    if (header.classList.contains('visible')) {
+                        clearTimeout(uiTimeout);
+                        hideUi();
+                    } else {
+                        resetUiTimer();
+                    }
+                }
+            }, 250);
+        }
+
+        function handleDoubleTap(event) {
+            const container = document.getElementById(`zoom-${currentPageIndex}`);
+            if (!container) return;
+
+            if (scale > 1) {
+                scale = 1; totalTranslateX = 0; totalTranslateY = 0;
+                container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
+                container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
+                resetUiTimer(); 
+            } else {
+                scale = 2.5;
+
+                let clickX = event.clientX;
+                let clickY = event.clientY;
+
+                if (event.touches && event.touches.length > 0) {
+                    clickX = event.touches[0].clientX;
+                    clickY = event.touches[0].clientY;
+                } else if (event.changedTouches && event.changedTouches.length > 0) {
+                    clickX = event.changedTouches[0].clientX;
+                    clickY = event.changedTouches[0].clientY;
+                }
+
+                const originX = clickX - window.innerWidth / 2;
+                const originY = clickY - window.innerHeight / 2;
+
+                totalTranslateX = -originX * (scale - 1);
+                totalTranslateY = -originY * (scale - 1);
+
+                const maxDeltaX = (window.innerWidth * (scale - 1)) / 2;
+                const maxDeltaY = (window.innerHeight * (scale - 1)) / 2;
+
+                if (totalTranslateX > maxDeltaX) totalTranslateX = maxDeltaX;
+                if (totalTranslateX < -maxDeltaX) totalTranslateX = -maxDeltaX;
+                if (totalTranslateY > maxDeltaY) totalTranslateY = maxDeltaY;
+                if (totalTranslateY < -maxDeltaY) totalTranslateY = -maxDeltaY;
+
+                container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
+                container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
+                
+                hideUi(); 
+            }
+        }
+
+        function showUi() {
+            if (scale > 1) return;
+            document.getElementById('readerHeader').classList.add('visible');
+        }
+
+        function hideUi() {
+            if (!isZooming) {
+                document.getElementById('readerHeader').classList.remove('visible');
+            }
+        }
+
         function filterByTag(tag) { selectedTag = selectedTag === tag ? null : tag; renderCatalog(); }
         function filterByAuthor(author) { selectedAuthor = author; renderCatalog(); }
-        function resetFilters() { selectedTag = null; selectedAuthor = ""; selectedGenreTab = null; document.getElementById('authorSelect').value = ""; switchGenreTab(null); }
         
+        function resetFilters() { 
+            selectedTag = null; selectedAuthor = ""; selectedGenreTab = null;
+            document.getElementById('authorSelect').value = ""; 
+            document.querySelectorAll('.genre-tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById('tab-all').classList.add('active');
+            renderCatalog();
+        }
+
         function updateResetButtonVisibility() {
             const resetBtn = document.getElementById('resetBtn');
             const infoText = document.getElementById('activeFilterText');
             if (selectedTag || selectedAuthor || selectedGenreTab) {
                 resetBtn.style.display = "block";
-                infoText.textContent = `Фильтр: ${selectedGenreTab ? '['+selectedGenreTab.toUpperCase()+']' : ''} ${selectedAuthor ? '['+selectedAuthor+']' : ''} ${selectedTag ? '[#'+selectedTag+']' : ''}`;
+                let text = "Фильтр: ";
+                if (selectedGenreTab) text += `[Жанр: ${selectedGenreTab.toUpperCase()}] `;
+                if (selectedAuthor) text += `[${selectedAuthor}] `;
+                if (selectedTag) text += `[#${selectedTag}] `;
+                infoText.textContent = text;
             } else { resetBtn.style.display = "none"; infoText.textContent = ""; }
         }
 
-        /* НАЧАЛО ЧИТАЛКИ И ЛОГИКИ СВАЙПОВ/ЗУМА */
         function openReader(mangaId) {
             const manga = allManga.find(m => m.id === mangaId);
             if (!manga || !manga.pages || manga.pages.length === 0) return;
@@ -502,14 +709,9 @@
             currentPagesCount = manga.pages.length;
             currentPageIndex = 0;
             isMangaFinishedAlertShown = false;
+            resetZoom();
 
-            // ФОНОВАЯ КЭШ-ЗАГРУЗКА ВСЕХ СТРАНИЦ СРАЗУ
-            preloadedImagesPool = [];
-            manga.pages.forEach(url => {
-                const img = new Image();
-                img.src = url;
-                preloadedImagesPool.push(img);
-            });
+            manga.pages.forEach(url => { const imgCache = new Image(); imgCache.src = url; });
 
             const track = document.getElementById('readerTrack');
             track.innerHTML = ""; 
@@ -531,159 +733,234 @@
             document.getElementById('mainScreen').classList.remove('active');
             document.getElementById('readerScreen').classList.add('active');
             
-            resetZoom();
-            updatePageCounter();
+            if (document.activeElement) document.activeElement.blur();
+
+            updateTrackPosition();
+            initTouchZoomAndSwipe();
             resetUiTimer();
-            initTouchEvents();
-        }
-
-        function closeReader(e) {
-            if (e) e.stopPropagation();
-            clearTimeout(uiTimeout);
-            document.getElementById('readerScreen').classList.remove('active');
-            document.getElementById('readerHeader').classList.remove('visible');
-            document.getElementById('readerProgress').classList.remove('visible');
-            document.getElementById('mainScreen').classList.add('active');
-            currentMangaId = null;
-        }
-
-        function handleZoneTap(zoneType, event) {
-            if (event) event.stopPropagation();
-            if (scale > 1) return; 
-
-            const currentTime = new Date().getTime();
-            if (currentTime - lastTapTime < 250) {
-                // Двойной тап — сброс/увеличение x2
-                lastTapTime = 0;
-                toggleDoubleTapZoom(event);
-                return;
-            }
-            lastTapTime = currentTime;
-
-            setTimeout(() => {
-                if (lastTapTime === 0 || scale > 1) return;
-                if (zoneType === 'left') changePage(-1);
-                else if (zoneType === 'right') changePage(1);
-                else if (zoneType === 'center') {
-                    const header = document.getElementById('readerHeader');
-                    header.classList.contains('visible') ? hideUi() : showUi();
-                }
-            }, 250);
-        }
-
-        function toggleDoubleTapZoom(event) {
-            const container = document.getElementById(`zoom-${currentPageIndex}`);
-            if (!container) return;
-            if (scale > 1) {
-                resetZoom();
-            } else {
-                scale = 2.0;
-                container.style.transform = `scale(${scale})`;
-                isZoomMode = true;
-                hideUi();
-            }
-        }
-
-        function changePage(direction) {
-            const newIndex = currentPageIndex + direction;
-            if (newIndex >= 0 && newIndex < currentPagesCount) {
-                currentPageIndex = newIndex;
-                updateTrackPosition();
-                resetZoom();
-            } else if (newIndex >= currentPagesCount && !isMangaFinishedAlertShown) {
-                isMangaFinishedAlertShown = true;
-                tg.showAlert("Вы прочитали этот тайтл до конца! 🎉", () => {
-                    if (!readMangaList.includes(currentMangaId)) {
-                        readMangaList.push(currentMangaId);
-                        localStorage.setItem('manga_read_list', JSON.stringify(readMangaList));
-                        renderCatalog();
-                    }
-                    closeReader();
-                });
-            }
         }
 
         function updateTrackPosition() {
             const track = document.getElementById('readerTrack');
             track.style.transform = `translate3d(-${currentPageIndex * 100}vw, 0px, 0px)`;
-            updatePageCounter();
+            document.getElementById('pageCounter').textContent = `${currentPageIndex + 1} / ${currentPagesCount}`;
         }
 
-        function updatePageCounter() {
-            const currentNumber = currentPageIndex + 1;
-            document.getElementById('pageCounter').textContent = `${currentNumber} / ${currentPagesCount}`;
-            document.getElementById('readerProgressBar').style.width = `${(currentNumber / currentPagesCount) * 100}%`;
-        }
-
-        function resetZoom() {
-            scale = 1; moveX = 0; moveY = 0; isZoomMode = false; isPanning = false;
-            const container = document.getElementById(`zoom-${currentPageIndex}`);
-            if (container) container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
-        }
-
-        // НАУЧИЛИ ЧИТАЛКУ СВАЙПАМ И MULTI-TOUCH ЗУМУ НА ОСНОВЕ ТАЧЕЙ
-        function initTouchEvents() {
-            const reader = document.getElementById('readerScreen');
+        function changePage(direction, event) {
+            if (scale > 1) return; 
             
-            reader.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    // Одиночный тач — для свайпов или панорамирования увеличенной картинки
-                    startX = e.touches[0].clientX - moveX;
-                    startY = e.touches[0].clientY - moveY;
-                    swipeStartX = e.touches[0].clientX;
-                    if (scale > 1) isPanning = true;
-                } else if (e.touches.length === 2) {
-                    // Двойной тач — Pinch to Zoom
-                    isPanning = false;
-                    initialPinchDist = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
+            const isUiVisible = document.getElementById('readerHeader').classList.contains('visible');
+            if (isUiVisible && event && event.clientY < 65) {
+                return; 
+            }
+
+            resetUiTimer();
+
+            const targetIndex = currentPageIndex + direction;
+            if (targetIndex >= 0 && targetIndex < currentPagesCount) {
+                currentPageIndex = targetIndex;
+                resetZoom();
+                updateTrackPosition();
+            } else if (targetIndex >= currentPagesCount && !isMangaFinishedAlertShown) {
+                isMangaFinishedAlertShown = true;
+                if (!readMangaList.includes(currentMangaId)) {
+                    readMangaList.push(currentMangaId);
+                    localStorage.setItem('manga_read_list', JSON.stringify(readMangaList));
+                }
+                
+                if (window.Telegram && tg.showAlert && tg.initDataUnsafe && Object.keys(tg.initDataUnsafe).length > 0) {
+                    tg.showAlert("Вы прочитали эту главу! 🎉", () => { closeReader(); });
+                } else {
+                    alert("Вы прочитали эту главу! 🎉");
+                    closeReader();
+                }
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const readerScreen = document.getElementById('readerScreen');
+            if (!readerScreen || !readerScreen.classList.contains('active')) return;
+
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ф') {
+                e.preventDefault(); 
+                changePage(-1);
+            } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'в') {
+                e.preventDefault(); 
+                changePage(1);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeReader();
+            }
+        }, true);
+
+        function initTouchZoomAndSwipe() {
+            const screen = document.getElementById('readerScreen');
+            
+            let startDist = 0;
+            let startScale = 1;
+            let startTouchX = 0;
+            let startTouchY = 0;
+            let currentCenterFallbackX = 0;
+            let currentCenterFallbackY = 0;
+
+            let swipeStartX = 0;
+            let swipeStartY = 0;
+            let isSwipeCandidate = false;
+
+            screen.addEventListener('touchstart', (e) => {
+                if (scale === 1) resetUiTimer();
+                
+                if (e.touches.length === 2) {
+                    isZooming = true;
+                    isSwipeCandidate = false; 
+                    startDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    startScale = scale;
+
+                    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+                    startTouchX = midX;
+                    startTouchY = midY;
+                    currentCenterFallbackX = totalTranslateX;
+                    currentCenterFallbackY = totalTranslateY;
+
+                } else if (e.touches.length === 1) {
+                    isZooming = false;
+                    startTouchX = e.touches[0].clientX;
+                    startTouchY = e.touches[0].clientY;
+                    currentCenterFallbackX = totalTranslateX;
+                    currentCenterFallbackY = totalTranslateY;
+
+                    if (scale === 1) {
+                        swipeStartX = e.touches[0].clientX;
+                        swipeStartY = e.touches[0].clientY;
+                        isSwipeCandidate = true;
+                    } else {
+                        isSwipeCandidate = false;
+                    }
                 }
             }, { passive: true });
 
-            reader.addEventListener('touchmove', (e) => {
+            screen.addEventListener('touchmove', (e) => {
                 const container = document.getElementById(`zoom-${currentPageIndex}`);
                 if (!container) return;
 
-                if (e.touches.length === 1) {
-                    if (isPanning) {
-                        // Двигаем увеличенную область
-                        moveX = e.touches[0].clientX - startX;
-                        moveY = e.touches[0].clientY - startY;
-                        container.style.transform = `translate3d(${moveX}px, ${moveY}px, 0px) scale(${scale})`;
+                if (e.touches.length === 2 && isZooming) {
+                    const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    let targetScale = startScale * (currentDist / startDist);
+
+                    if (targetScale < 1) targetScale = 1;
+                    if (targetScale > 4) targetScale = 4;
+
+                    const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+                    if (targetScale > 1) {
+                        const originX = startTouchX - window.innerWidth / 2;
+                        const originY = startTouchY - window.innerHeight / 2;
+
+                        totalTranslateX = currentMidX - startTouchX + currentCenterFallbackX + (originX - currentCenterFallbackX) * (1 - targetScale / startScale);
+                        totalTranslateY = currentMidY - startTouchY + currentCenterFallbackY + (originY - currentCenterFallbackY) * (1 - targetScale / startScale);
+                    } else {
+                        totalTranslateX = 0;
+                        totalTranslateY = 0;
                     }
-                } else if (e.touches.length === 2) {
-                    // Масштабируем двумя пальцами
-                    const currentDist = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    const factor = currentDist / initialPinchDist;
-                    scale = Math.min(Math.max(1, scale * factor), 4); // Ограничение масштаба от х1 до х4
-                    initialPinchDist = currentDist;
-                    container.style.transform = `translate3d(${moveX}px, ${moveY}px, 0px) scale(${scale})`;
-                    
-                    if (scale > 1) { isZoomMode = true; hideUi(); } else { isZoomMode = false; }
+
+                    scale = targetScale;
+                    container.style.transition = 'none';
+                    container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
+
+                    if (scale > 1) hideUi(); 
+
+                } else if (e.touches.length === 1) {
+                    if (scale > 1 && !isZooming) {
+                        const deltaX = e.touches[0].clientX - startTouchX;
+                        const deltaY = e.touches[0].clientY - startTouchY;
+
+                        let nextTranslateX = currentCenterFallbackX + deltaX;
+                        let nextTranslateY = currentCenterFallbackY + deltaY;
+
+                        const maxDeltaX = (window.innerWidth * (scale - 1)) / 2;
+                        const maxDeltaY = (window.innerHeight * (scale - 1)) / 2;
+
+                        if (nextTranslateX > maxDeltaX) nextTranslateX = maxDeltaX;
+                        if (nextTranslateX < -maxDeltaX) nextTranslateX = -maxDeltaX;
+                        if (nextTranslateY > maxDeltaY) nextTranslateY = maxDeltaY;
+                        if (nextTranslateY < -maxDeltaY) nextTranslateY = -maxDeltaY;
+
+                        totalTranslateX = nextTranslateX;
+                        totalTranslateY = nextTranslateY;
+
+                        container.style.transition = 'none';
+                        container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
+                    }
                 }
             }, { passive: true });
 
-            reader.addEventListener('touchend', (e) => {
-                isPanning = false;
-                if (scale === 1 && e.touches.length === 0) {
-                    // Расчёт свайпа страниц влево/вправо
-                    const diffX = e.changedTouches[0].clientX - swipeStartX;
-                    if (Math.abs(diffX) > 60) { // Чувствительность свайпа
-                        if (diffX > 0) changePage(-1); // Свайп вправо -> Прошлая страница
-                        else changePage(1);            // Свайп влево -> Следующая страница
+            screen.addEventListener('touchend', (e) => {
+                const container = document.getElementById(`zoom-${currentPageIndex}`);
+                if (!container) return;
+
+                if (isSwipeCandidate && scale === 1 && e.changedTouches.length > 0) {
+                    const swipeEndX = e.changedTouches[0].clientX;
+                    const swipeEndY = e.changedTouches[0].clientY;
+                    
+                    const diffX = swipeEndX - swipeStartX;
+                    const diffY = swipeEndY - swipeStartY;
+
+                    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                        if (diffX > 0) {
+                            changePage(-1);
+                        } else {
+                            changePage(1);
+                        }
+                        isSwipeCandidate = false;
+                        return;
                     }
                 }
+
+                if (scale <= 1.05) {
+                    scale = 1; totalTranslateX = 0; totalTranslateY = 0; isZooming = false;
+                    container.style.transition = 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)';
+                    container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
+                    resetUiTimer();
+                } else if (e.touches.length === 1) {
+                    startTouchX = e.touches[0].clientX;
+                    startTouchY = e.touches[0].clientY;
+                    currentCenterFallbackX = totalTranslateX;
+                    currentCenterFallbackY = totalTranslateY;
+                    isZooming = false;
+                    hideUi();
+                }
+                
+                isSwipeCandidate = false;
             }, { passive: true });
         }
 
-        function resetUiTimer() { if (scale > 1) return; showUi(); clearTimeout(uiTimeout); uiTimeout = setTimeout(hideUi, 2500); }
-        function showUi() { if (scale > 1) return; document.getElementById('readerHeader').classList.add('visible'); document.getElementById('readerProgress').classList.add('visible'); }
-        function hideUi() { document.getElementById('readerHeader').classList.remove('visible'); document.getElementById('readerProgress').classList.remove('visible'); }
+        function resetZoom() {
+            scale = 1; totalTranslateX = 0; totalTranslateY = 0; isZooming = false;
+            document.querySelectorAll('.zoom-container').forEach(c => { 
+                c.style.transition = 'none';
+                c.style.transform = 'translate3d(0px, 0px, 0px) scale(1)'; 
+            });
+        }
+
+        function closeReader(event) {
+            if(event) event.stopPropagation();
+            clearTimeout(uiTimeout);
+            clearTimeout(tapTimeout);
+            
+            document.getElementById('readerScreen').classList.remove('active');
+            document.getElementById('readerHeader').classList.remove('visible');
+            document.getElementById('mainScreen').classList.add('active');
+            
+            setTimeout(() => {
+                document.getElementById('readerTrack').innerHTML = "";
+                resetZoom();
+                renderCatalog();
+            }, 350);
+            window.scrollTo(0, 0);
+        }
     </script>
 </body>
 </html>
