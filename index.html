@@ -118,8 +118,9 @@
             display: flex; flex-direction: column; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative;
             color: var(--text-color);
-            -webkit-user-select: none; /* Защита от выделения текста при долгом нажатии */
+            -webkit-user-select: none; 
             user-select: none;
+            -webkit-touch-callout: none; /* Отключает дефолтное меню браузера на iOS */
         }
         .manga-card:active { transform: scale(0.97); }
 
@@ -182,7 +183,7 @@
             transform: translateY(100%);
             transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 -4px 16px rgba(0,0,0,0.15);
-            max-width: 600px; margin: 0 auto; right: 0; /* Ограничение ширины на планшетах/ПК */
+            max-width: 600px; margin: 0 auto; right: 0; 
         }
         .context-menu.active { transform: translateY(0); }
 
@@ -267,7 +268,7 @@
 
 
         /* ======================================================= */
-        /* МЕДИА-ЗАПРОСЫ: КОМПАКТНОСТЬ И ОГРАНИЧЕНИЯ ДЛЯ ПК */
+        /* МЕДИА-ЗАПРОСЫ */
         /* ======================================================= */
         @media screen and (min-width: 480px) {
             .catalog-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -331,13 +332,11 @@
         <div id="readerTrack" class="reader-track"></div>
     </div>
 
-    <!-- ВЕРСТКА ДЛЯ КОНТЕКСТНОГО МЕНЮ -->
     <div id="contextOverlay" class="context-overlay" onclick="closeContextMenu()">
         <div id="contextMenu" class="context-menu" onclick="event.stopPropagation()">
             <div id="contextTitle" class="context-menu-title">Название тайтла</div>
             <button id="contextToggleBtn" class="context-menu-btn action-toggle" onclick="handleStatusToggle()">
-                <!-- Текст подставится скриптом -->
-            </button>
+                </button>
             <button class="context-menu-btn btn-close" onclick="closeContextMenu()">Отмена</button>
         </div>
     </div>
@@ -365,7 +364,6 @@
         let lastTapTime = 0; 
         let tapTimeout = null; 
 
-        // Переменная для хранения ID тайтла, на который долго нажали
         let contextActiveMangaId = null; 
 
         let readMangaList = JSON.parse(localStorage.getItem('manga_read_list')) || [];
@@ -432,7 +430,6 @@
                 
                 card.className = `manga-card ${genreClass}`;
                 
-                // Навешиваем систему определения Long Press (долгого нажатия)
                 setupLongPress(card, manga.id);
 
                 const visibleTags = manga.tags.filter(t => t.toLowerCase() !== 'bara' && t.toLowerCase() !== 'furry');
@@ -466,45 +463,73 @@
             updateResetButtonVisibility();
         }
 
-        // РЕАЛИЗАЦИЯ ДЕТЕКТОРА ДОЛГОГО НАЖАТИЯ (LONG PRESS)
+        // МОДЕРНИЗИРОВАННЫЙ ОБРАБОТЧИК LONG PRESS (С ЗАЩИТОЙ ОТ СКРОЛЛА)
         function setupLongPress(element, mangaId) {
             let pressTimer = null;
             let isLongPress = false;
+            let isMoving = false;
+            
+            // Координаты начала касания
+            let startX = 0;
+            let startY = 0;
 
             const startPress = (e) => {
                 isLongPress = false;
-                // Запускаем таймер на 600мс удержания
+                isMoving = false;
+
+                // Получаем стартовую точку (мышь или тач)
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                startX = clientX;
+                startY = clientY;
+
                 pressTimer = setTimeout(() => {
-                    isLongPress = true;
-                    if (tg.HapticFeedback) {
-                        tg.HapticFeedback.impactOccurred('medium'); // Виброотклик Telegram
+                    if (!isMoving) {
+                        isLongPress = true;
+                        if (tg.HapticFeedback) {
+                            tg.HapticFeedback.impactOccurred('medium'); 
+                        }
+                        openContextMenu(mangaId);
                     }
-                    openContextMenu(mangaId);
                 }, 600);
+            };
+
+            const movePress = (e) => {
+                if (isMoving) return;
+
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                // Если палец сместился более чем на 10 пикселей по любой оси — это скролл ленты
+                if (Math.abs(clientX - startX) > 10 || Math.abs(clientY - startY) > 10) {
+                    isMoving = true;
+                    clearTimeout(pressTimer); // Отменяем вызов контекстного меню
+                }
             };
 
             const endPress = (e) => {
                 clearTimeout(pressTimer);
-                // Если это был короткий клик, а не удержание — открываем читалку
-                if (!isLongPress && e.type !== 'mouseleave') {
-                    // Проверяем, что кликнули не по тегам
+                
+                // Открываем читалку только если не было долгого зажатия и не было скролла страницы
+                if (!isLongPress && !isMoving && e.type !== 'mouseleave') {
                     if (!e.target.classList.contains('tag') && !e.target.classList.contains('tag-author')) {
                         openReader(mangaId);
                     }
                 }
             };
 
-            // События для сенсорных экранов
+            // Тач-события смартфона
             element.addEventListener('touchstart', startPress, { passive: true });
+            element.addEventListener('touchmove', movePress, { passive: true });
             element.addEventListener('touchend', endPress);
             
-            // События для мыши (ПК-версия)
+            // События мыши (ПК)
             element.addEventListener('mousedown', startPress);
+            element.addEventListener('mousemove', movePress);
             element.addEventListener('mouseup', endPress);
             element.addEventListener('mouseleave', () => clearTimeout(pressTimer));
         }
 
-        // УПРАВЛЕНИЕ КОНТЕКСТНЫМ МЕНЮ
         function openContextMenu(mangaId) {
             const manga = allManga.find(m => m.id === mangaId);
             if (!manga) return;
@@ -514,7 +539,6 @@
             document.getElementById('contextTitle').textContent = manga.title;
             const toggleBtn = document.getElementById('contextToggleBtn');
 
-            // Проверяем статус и меняем текст/иконку кнопки действия
             if (readMangaList.includes(mangaId)) {
                 toggleBtn.innerHTML = "❌ Убрать из прочитанного";
             } else {
@@ -531,24 +555,20 @@
             contextActiveMangaId = null;
         }
 
-        // ОБРАБОТЧИК СМЕНЫ СТАТУСА ИЗ МЕНЮ
         function handleStatusToggle() {
             if (!contextActiveMangaId) return;
 
             const index = readMangaList.indexOf(contextActiveMangaId);
             if (index > -1) {
-                // Если уже был прочитан — удаляем из массива
                 readMangaList.splice(index, 1);
             } else {
-                // Если не был прочитан — добавляем
                 readMangaList.push(contextActiveMangaId);
             }
 
-            // Сохраняем изменения в локальную память
             localStorage.setItem('manga_read_list', JSON.stringify(readMangaList));
             
             closeContextMenu();
-            renderCatalog(); // Перерисовываем каталог, чтобы обновились галочки
+            renderCatalog(); 
         }
 
         function filterByAuthorTag(authorName) {
