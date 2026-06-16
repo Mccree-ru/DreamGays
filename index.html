@@ -306,7 +306,8 @@
         let isZooming = false;
 
         let uiTimeout = null;
-        let lastTapTime = 0; // Для отслеживания Double Tap
+        let lastTapTime = 0; 
+        let tapTimeout = null; // Дебаунс для разделения одиночного и двойного тапа
 
         let readMangaList = JSON.parse(localStorage.getItem('manga_read_list')) || [];
 
@@ -411,6 +412,11 @@
         }
 
         function resetUiTimer() {
+            // Если картинка приближена, то панель вообще не должна показываться по таймерам касаний
+            if (scale > 1) {
+                hideUi();
+                return;
+            }
             showUi();
             clearTimeout(uiTimeout);
             uiTimeout = setTimeout(() => {
@@ -418,28 +424,40 @@
             }, 2000);
         }
 
-        function toggleUiByCenterTap(event) {
+        // УНИВЕРСАЛЬНЫЙ ОБРАБОТЧИК КЛИКОВ ПО ЗОНАМ ЧИТАЛКИ
+        function handleZoneTap(zoneType, event) {
             if (event) event.stopPropagation();
 
-            // Логика DOUBLE TAP (Двойной клик по центральной области)
             const currentTime = new Date().getTime();
             const tapLength = currentTime - lastTapTime;
-            if (tapLength < 300 && tapLength > 0) {
-                // Это двойной тап!
+
+            if (tapLength < 250 && tapLength > 0) {
+                // ДВОЙНОЙ ТАП (Срабатывает в любой зоне)
+                clearTimeout(tapTimeout); 
                 handleDoubleTap(event);
-                lastTapTime = 0; // Сбрасываем
+                lastTapTime = 0;
                 return;
             }
             lastTapTime = currentTime;
 
-            // Если это одиночный тап, переключаем видимость меню
-            const header = document.getElementById('readerHeader');
-            if (header.classList.contains('visible')) {
-                clearTimeout(uiTimeout);
-                hideUi();
-            } else {
-                resetUiTimer();
-            }
+            // ОДИНОЧНЫЙ ТАП (Выполняется с задержкой, чтобы убедиться, что это не Double Tap)
+            tapTimeout = setTimeout(() => {
+                if (scale > 1) return; // Если есть зум, одиночные тапы по бокам игнорируем, чтобы не было случайных перелистываний
+
+                if (zoneType === 'left') {
+                    changePage(-1, event);
+                } else if (zoneType === 'right') {
+                    changePage(1, event);
+                } else if (zoneType === 'center') {
+                    const header = document.getElementById('readerHeader');
+                    if (header.classList.contains('visible')) {
+                        clearTimeout(uiTimeout);
+                        hideUi();
+                    } else {
+                        resetUiTimer();
+                    }
+                }
+            }, 250);
         }
 
         // РЕАЛИЗАЦИЯ DOUBLE TAP TO ZOOM (ПРИБЛИЖЕНИЕ В СЛЕД ЗА КЛИКОМ)
@@ -448,16 +466,15 @@
             if (!container) return;
 
             if (scale > 1) {
-                // Если уже приближено — плавно возвращаем в исходное положение 1:1
+                // Возврат к масштабу 1:1
                 scale = 1; totalTranslateX = 0; totalTranslateY = 0;
                 container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
                 container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
-                resetUiTimer();
+                resetUiTimer(); // Показываем меню на 2 секунды при выходе из зума
             } else {
-                // Если картинка стандартная — приближаем в 2.5 раза к точке клика
+                // Приближение в 2.5 раза
                 scale = 2.5;
 
-                // Получаем координаты клика мыши или тача относительно экрана
                 let clickX = event.clientX;
                 let clickY = event.clientY;
 
@@ -469,14 +486,12 @@
                     clickY = event.changedTouches[0].clientY;
                 }
 
-                // Вычисляем смещение, чтобы точка клика оказалась по центру
                 const originX = clickX - window.innerWidth / 2;
                 const originY = clickY - window.innerHeight / 2;
 
                 totalTranslateX = -originX * (scale - 1);
                 totalTranslateY = -originY * (scale - 1);
 
-                // Ограничиваем смещение, чтобы края картинки не улетали за рамки экрана
                 const maxDeltaX = (window.innerWidth * (scale - 1)) / 2;
                 const maxDeltaY = (window.innerHeight * (scale - 1)) / 2;
 
@@ -488,11 +503,13 @@
                 container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
                 container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
                 
-                resetUiTimer(); // Запускаем таймер, чтобы панель скрылась после зума
+                hideUi(); // Сразу принудительно прячем панель при зуме
             }
         }
 
         function showUi() {
+            // Если картинка приближена, то панель открывать нельзя ни в каком случае
+            if (scale > 1) return;
             document.getElementById('readerHeader').classList.add('visible');
         }
 
@@ -545,9 +562,9 @@
                 const slide = document.createElement('div');
                 slide.className = 'reader-slide';
                 slide.innerHTML = `
-                    <div class="tap-zone-left" onclick="changePage(-1, event)"></div>
-                    <div class="tap-zone-center" onclick="toggleUiByCenterTap(event)"></div>
-                    <div class="tap-zone-right" onclick="changePage(1, event)"></div>
+                    <div class="tap-zone-left" onclick="handleZoneTap('left', event)"></div>
+                    <div class="tap-zone-center" onclick="handleZoneTap('center', event)"></div>
+                    <div class="tap-zone-right" onclick="handleZoneTap('right', event)"></div>
                     <div class="zoom-container" id="zoom-${index}">
                         <img class="reader-img" src="${pageUrl}">
                     </div>
@@ -572,7 +589,7 @@
         }
 
         function changePage(direction, event) {
-            if (event && scale > 1) return; 
+            if (scale > 1) return; // Полная блокировка смены страниц при зуме
             
             const isUiVisible = document.getElementById('readerHeader').classList.contains('visible');
             if (isUiVisible && event && event.clientY < 65) {
@@ -638,7 +655,7 @@
             let isSwipeCandidate = false;
 
             screen.addEventListener('touchstart', (e) => {
-                resetUiTimer();
+                if (scale === 1) resetUiTimer();
                 
                 if (e.touches.length === 2) {
                     isZooming = true;
@@ -700,6 +717,8 @@
                     container.style.transition = 'none';
                     container.style.transform = `translate3d(${totalTranslateX}px, ${totalTranslateY}px, 0px) scale(${scale})`;
 
+                    if (scale > 1) hideUi(); // Скрываем панель при pinch-to-zoom
+
                 } else if (e.touches.length === 1) {
                     if (scale > 1 && !isZooming) {
                         const deltaX = e.touches[0].clientX - startTouchX;
@@ -751,15 +770,16 @@
                     scale = 1; totalTranslateX = 0; totalTranslateY = 0; isZooming = false;
                     container.style.transition = 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)';
                     container.style.transform = 'translate3d(0px, 0px, 0px) scale(1)';
+                    resetUiTimer();
                 } else if (e.touches.length === 1) {
                     startTouchX = e.touches[0].clientX;
                     startTouchY = e.touches[0].clientY;
                     currentCenterFallbackX = totalTranslateX;
                     currentCenterFallbackY = totalTranslateY;
                     isZooming = false;
+                    hideUi();
                 }
                 
-                resetUiTimer();
                 isSwipeCandidate = false;
             }, { passive: true });
         }
@@ -775,6 +795,7 @@
         function closeReader(event) {
             if(event) event.stopPropagation();
             clearTimeout(uiTimeout);
+            clearTimeout(tapTimeout);
             
             document.getElementById('readerScreen').classList.remove('active');
             document.getElementById('readerHeader').classList.remove('visible');
