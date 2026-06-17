@@ -3,89 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>McCree Ru Manga</title>
     <style>
-        /* Базовые стили для структуры приложения */
-        body { font-family: sans-serif; background: #141414; color: #fff; margin: 0; padding: 0; }
-        .screen { display: none; padding: 15px; }
-        .screen.active { display: block; }
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #141414);
+            --text-color: var(--tg-theme-text-color, #ffffff);
+            --hint-color: var(--tg-theme-hint-color, #888888);
+            --link-color: var(--tg-theme-link-color, #00eb87);
+            --card-bg: var(--tg-theme-secondary-bg-color, #202020);
+            --button-color: var(--tg-theme-button-color, #00eb87);
+            --button-text: var(--tg-theme-button-text-color, #000000);
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            margin: 0; padding: 0;
+            overflow: hidden;
+        }
+
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            overflow-y: auto; opacity: 0; pointer-events: none;
+            transform: scale(0.98); transition: opacity 0.3s, transform 0.3s;
+            box-sizing: border-box;
+        }
+        .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+
+        .main-container { padding: 15px; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
+
+        /* Кнопки доната */
+        .donate-btn {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            background: linear-gradient(135deg, #ff9500, #ff5e00); color: #ffffff;
+            border: none; width: 100%; padding: 12px; border-radius: 12px;
+            font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(255, 149, 0, 0.2);
+        }
+        .reader-donate-btn {
+            background: linear-gradient(135deg, #ff9500, #ff5e00); color: #ffffff; border: none; 
+            padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;
+        }
+
+        /* Жанры и Сортировка */
+        .genre-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
+        .genre-tab {
+            flex: 1; padding: 10px; border: none; border-radius: 10px;
+            background-color: var(--card-bg); color: var(--text-color);
+            font-size: 13px; font-weight: bold; cursor: pointer; text-align: center;
+        }
+        .genre-tab.active { background-color: var(--button-color); color: var(--button-text); }
+         
+        .filter-panel { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .filter-row { display: flex; align-items: center; gap: 10px; }
+         
+        select.author-select {
+            background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--hint-color);
+            padding: 8px 12px; border-radius: 8px; font-size: 14px; outline: none; flex-grow: 1;
+        }
+        .sort-btn {
+            background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--hint-color);
+            padding: 8px 12px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer;
+        }
+        .sort-btn.active { border-color: var(--button-color); color: var(--button-color); }
+        .reset-btn { background-color: #ff3b30; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none; }
+
+        /* Сетка каталога */
+        .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .manga-card { background-color: var(--card-bg); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; position: relative; }
+        .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #222; }
+        .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        .card-info { padding: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .card-title { font-size: 13px; font-weight: 600; margin: 0 0 6px 0; line-height: 1.25; }
         
-        /* Каталог */
-        .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px; }
-        .manga-card { background: #202020; border-radius: 8px; padding: 10px; cursor: pointer; }
-        .manga-card img { width: 100%; border-radius: 6px; object-fit: cover; aspect-ratio: 3/4; }
-        
-        /* Превью тайтла */
-        .preview-header { display: flex; gap: 15px; }
+        .card-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+        .tag { font-size: 9px; background-color: rgba(0, 235, 135, 0.1); color: var(--link-color); padding: 2px 5px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
+        .tag-author { font-size: 9px; background-color: #ff7b00; color: #ffffff; padding: 2px 5px; border-radius: 5px; font-weight: bold; }
+
+        /* Превью */
+        .preview-header { display: flex; gap: 15px; margin-top: 15px; }
         .preview-cover { width: 120px; border-radius: 6px; }
-        .btn { background: #00eb87; color: #000; border: none; padding: 10px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; }
+        .btn { background: var(--button-color); color: var(--button-text); border: none; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; }
         .btn-like { background: #333; color: #fff; }
         .btn-like.liked { background: #ff3b30; }
-        
-        /* Комментарии */
-        .comments-section { margin-top: 25px; border-top: 1px solid #333; padding-top: 15px; }
-        .comment-item { background: #1c1c1c; padding: 10px; border-radius: 6px; margin-bottom: 10px; }
-        .comment-user { font-weight: bold; color: #00eb87; font-size: 14px; }
-        .comment-text { margin: 5px 0 0 0; font-size: 14px; }
-        .comment-input-block { display: flex; gap: 10px; margin-top: 15px; }
-        .comment-input { flex: 1; background: #252525; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 6px; }
 
-        /* Читалка (на весь экран) */
-        #readerScreen { padding: 0; background: #000; position: fixed; top:0; left:0; width:100vw; height:100vh; z-index: 999; }
-        .reader-container { width: 100%; height: 100%; overflow-y: auto; display: flex; flex-direction: column; }
-        .reader-page { width: 100%; display: block; height: auto; }
-        .reader-close { position: fixed; top: 15px; right: 15px; background: rgba(0,0,0,0.7); color: #fff; border: none; padding: 10px; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-weight: bold; }
+        /* Горизонтальная Читалка */
+        .reader-screen { background-color: #000; overflow: hidden; touch-action: none; }
+        .reader-header {
+            position: fixed; top: 0; left: 0; width: 100%; height: 60px; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
+            padding: 0 12px; box-sizing: border-box; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+        .reader-header.visible { opacity: 1; pointer-events: auto; }
+        .page-counter { color: #fff; font-size: 14px; font-weight: bold; }
+        
+        .reader-track { display: flex; height: 100%; width: 100%; transition: transform 0.25s ease-out; will-change: transform; }
+        .reader-slide { flex: 0 0 100vw; width: 100vw; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform-origin: center center; }
+        .reader-img { width: 100%; height: 100%; object-fit: contain; }
+
+        .tap-zone-left { position: absolute; top: 0; left: 0; width: 25%; height: 100%; z-index: 40; }
+        .tap-zone-center { position: absolute; top: 0; left: 25%; width: 50%; height: 100%; z-index: 41; }
+        .tap-zone-right { position: absolute; top: 0; right: 0; width: 25%; height: 100%; z-index: 40; }
+
+        /* Постраничные комментарии */
+        .page-comments-panel {
+            position: absolute; bottom: 0; left: 0; width: 100%; max-height: 50vh;
+            background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px);
+            z-index: 150; border-top: 1px solid #333; box-sizing: border-box;
+            transform: translateY(100%); transition: transform 0.3s ease;
+            display: flex; flex-direction: column;
+        }
+        .page-comments-panel.open { transform: translateY(0); }
+        .comments-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid #222; }
+        .comments-scroll { overflow-y: auto; flex-grow: 1; padding: 15px; }
+        
+        .comment-item { background: #1c1c1c; padding: 10px; border-radius: 8px; margin-bottom: 8px; position: relative; }
+        .comment-user { font-weight: bold; color: var(--button-color); font-size: 13px; }
+        .comment-text { margin: 4px 0 0 0; font-size: 13px; color: #eee; }
+        .comment-del-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #ff3b30; cursor: pointer; font-size: 11px; }
+        
+        .comment-input-block { display: flex; gap: 8px; padding: 10px 15px; background: #141414; border-top: 1px solid #222; }
+        .comment-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 8px; font-size: 13px; }
+
+        @media screen and (min-width: 480px) { .catalog-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media screen and (min-width: 720px) { .catalog-grid { grid-template-columns: repeat(4, 1fr); } }
     </style>
 </head>
 <body>
 
-    <!-- ЭКРАН 1: КАТАЛОГ МАНГИ -->
-    <div id="catalogScreen" class="screen active">
-        <h2>Каталог Manhua</h2>
-        <div class="sorting-block">
-            <!-- Сортировка всегда автоматическая по ТЗ (Популярные выше) -->
-            <span>🔥 Сортировка: Сначала популярные</span>
+    <!-- ЭКРАН 1: ГЛАВНЫЙ КАТАЛОГ -->
+    <div id="mainScreen" class="screen active">
+        <div class="main-container">
+            <button class="donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
+
+            <div class="genre-tabs">
+                <button id="tab-all" class="genre-tab active" onclick="app.switchGenreTab(null)">Все</button>
+                <button id="tab-bara" class="genre-tab" onclick="app.switchGenreTab('bara')">Bara</button>
+                <button id="tab-furry" class="genre-tab" onclick="app.switchGenreTab('furry')">Furry</button>
+            </div>
+
+            <div class="filter-panel">
+                <div class="filter-row">
+                    <select id="authorSelect" class="author-select" onchange="app.filterByAuthor(this.value)">
+                        <option value="">Все авторы</option>
+                    </select>
+                    <button id="sortBtn" class="sort-btn" onclick="app.toggleSortPopular()">🔥 Популярные</button>
+                    <button id="resetBtn" class="reset-btn" onclick="app.resetFilters()">Сбросить</button>
+                </div>
+            </div>
+
+            <div class="catalog-grid" id="catalogGrid">Загрузка релизов...</div>
         </div>
-        <div id="catalogGrid" class="catalog-grid">Загрузка тайтлов...</div>
     </div>
 
-    <!-- ЭКРАН 2: ПРЕВЬЮ ТАЙТЛА (ОПИСАНИЕ, ЛАЙКИ, КОММЕНТАРИИ) -->
+    <!-- ЭКРАН 2: ПРЕВЬЮ С ЛАЙКАМИ И ОПИСАНИЕМ -->
     <div id="previewScreen" class="screen">
-        <button class="btn btn-like" onclick="app.showScreen('catalogScreen')">← Назад в каталог</button>
-        <div class="preview-header" style="margin-top:15px;">
-            <img id="previewCover" class="preview-cover" src="" alt="">
-            <div>
-                <h3 id="previewTitle" style="margin:0 0 5px 0;"></h3>
-                <p id="previewAuthor" style="color:#aaa; margin:0;"></p>
-                <p id="previewLikesCount" style="margin:10px 0 0 0; font-weight:bold;"></p>
+        <div class="main-container">
+            <button class="btn btn-like" onclick="app.showScreen('mainScreen')">← В каталог</button>
+            <div class="preview-header">
+                <img id="previewCover" class="preview-cover" src="" alt="">
+                <div>
+                    <h3 id="previewTitle" style="margin:0 0 5px 0;"></h3>
+                    <p id="previewAuthor" style="color:#aaa; margin:0; font-size:14px;"></p>
+                    <p id="previewLikesCount" style="margin:10px 0 0 0; font-weight:bold; font-size:14px; color:#00eb87;"></p>
+                </div>
             </div>
-        </div>
-        
-        <button id="startReadBtn" class="btn">Читать мангу</button>
-        <button id="likeBtn" class="btn btn-like">🤍 Лайкнуть</button>
-
-        <div class="comments-section">
-            <h4>Комментарии пользователей</h4>
-            <div id="commentsList">Загрузка комментариев...</div>
             
-            <div class="comment-input-block">
-                <input type="text" id="commentInputField" class="comment-input" placeholder="Напишите комментарий...">
-                <button class="btn" style="width:auto; margin:0;" onclick="app.sendComment()">Отправить</button>
-            </div>
+            <button id="startReadBtn" class="btn">Читать перевод</button>
+            <button id="likeBtn" class="btn btn-like">🤍 В список понравившегося</button>
         </div>
     </div>
 
-    <!-- ЭКРАН 3: ЧИТАЛКА (ФУЛЛСКРИН С СУПЕР-СКРОЛЛОМ И ЗУМОМ) -->
-    <div id="readerScreen" class="screen">
-        <button class="reader-close" onclick="app.closeMangaReader()">✕</button>
-        <div id="readerContainer" class="reader-container"></div>
+    <!-- ЭКРАН 3: ГОРИЗОНТАЛЬНАЯ ЧИТАЛКА -->
+    <div id="readerScreen" class="screen reader-screen">
+        <div id="readerHeader" class="reader-header">
+            <button class="sort-btn" style="color:#fff;" onclick="app.closeMangaReader()">✕ Выйти</button>
+            <div class="page-counter" id="pageCounter">0 / 0</div>
+            <button class="reader-donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
+        </div>
+        <div id="readerTrack" class="reader-track"></div>
+
+        <!-- Постраничный Bottom Sheet комментариев -->
+        <div id="commentsPanel" class="page-comments-panel">
+            <div class="comments-header">
+                <span id="commentsTitle" style="font-weight:bold; font-size:14px;">Комментарии к странице 1</span>
+                <button class="sort-btn" style="padding:4px 10px; font-size:12px;" onclick="reader.toggleComments(false)">Скрыть</button>
+            </div>
+            <div id="commentsScroll" class="comments-scroll"></div>
+            <div class="comment-input-block">
+                <input type="text" id="commentInputField" class="comment-input" placeholder="Написать комментарий к странице...">
+                <button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="reader.sendPageComment()">Отправить</button>
+            </div>
+        </div>
     </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script src="api.js"></script>
 <script src="reader.js"></script>
 <script src="app.js"></script>
-    
 </body>
 </html>
