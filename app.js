@@ -28,23 +28,11 @@ const app = {
         }
 
         // ОТОБРАЖЕНИЕ КНОПКИ АДМИНИСТРАТОРА ПО ID
-        if (this.userId === 1878167621) {
+        if (this.userId === 1878167621 || this.userId === 1878167600) {
             const adminBtn = document.getElementById('adminBtn');
             if (adminBtn) {
                 adminBtn.style.display = "block"; // Показываем кнопку, если это админ
             }
-        }
-
-        // Инициализация нативной кнопки "Назад" в Telegram
-        if (tg.BackButton) {
-            tg.BackButton.onClick(() => {
-                if (document.getElementById('readerScreen').classList.contains('active')) {
-                    this.closeMangaReader();
-                } 
-                else if (document.getElementById('previewScreen').classList.contains('active')) {
-                    this.showScreen('mainScreen');
-                }
-            });
         }
 
         try {
@@ -94,6 +82,9 @@ const app = {
         if (mainScreenEl) {
             mainScreenEl.addEventListener('scroll', () => checkScroll(mainScreenEl));
         }
+
+        // Инициализируем начальный экран
+        this.showScreen('mainScreen');
     },
     
     async submitMangaJson() {
@@ -145,7 +136,7 @@ const app = {
                 jsonField.value = ''; // Очищаем текстовое поле
                 this.showScreen('mainScreen'); // Перенаправляем в каталог
                 
-                // ИСПРАВЛЕНО: Вызываем именно тот метод, который есть в объекте app
+                // Вызываем метод перезагрузки каталога
                 if (typeof this.loadCatalog === 'function') {
                     await this.loadCatalog();
                 }
@@ -252,7 +243,7 @@ const app = {
         }
     },
 
-	renderCatalogGrid(mangaArray, appendMode = false) {
+    renderCatalogGrid(mangaArray, appendMode = false) {
         const grid = document.getElementById('catalogGrid');
         if (!grid) return;
         
@@ -276,19 +267,18 @@ const app = {
             if (hasBara) genreClass = ' manga-bara';
             else if (hasFurry) genreClass = ' manga-furry';
             card.className = 'manga-card' + genreClass;
-			
-			const authorTagsHtml = manga.author !== "Не указан" ? manga.author.split(',').map(a => {
-			const authorName = a.trim();
-			const isActive = this.selectedAuthor === authorName;
-			const activeClass = isActive ? 'active' : '';
-			
-			// Если активно - сбрасываем, если нет - устанавливаем фильтр
-			const clickAction = isActive 
-					? `app.resetFilters()` 
-					: `app.filterByAuthor('${authorName}'); document.getElementById('authorSelect').value = '${authorName}';`;
+            
+            const authorTagsHtml = manga.author !== "Не указан" ? manga.author.split(',').map(a => {
+            const authorName = a.trim();
+            const isActive = this.selectedAuthor === authorName;
+            const activeClass = isActive ? 'active' : '';
+            
+            const clickAction = isActive 
+                    ? `app.resetFilters()` 
+                    : `app.filterByAuthor('${authorName}'); document.getElementById('authorSelect').value = '${authorName}';`;
 
-				return `<span class="tag-author ${activeClass}" onclick="event.stopPropagation(); ${clickAction}">${authorName}</span>`;
-			}).join('') : '';
+                return `<span class="tag-author ${activeClass}" onclick="event.stopPropagation(); ${clickAction}">${authorName}</span>`;
+            }).join('') : '';
 
             const isLiked = this.userLikedIds.includes(String(manga.id));
             const heartBadgeHtml = isLiked ? `<div class="card-like-badge"><span>READ</span></div>` : '';
@@ -296,7 +286,6 @@ const app = {
             const likesCount = manga.likes || manga.likes_count || 0;
             const commentsCount = manga.comments_count || 0;
 
-            // Генерируем HTML для всего, кроме картинки
             card.innerHTML = `
                 <div class="card-cover-wrap">
                     <div class="skeleton-blink" style="position:absolute; inset:0;"></div>
@@ -313,20 +302,18 @@ const app = {
                 </div>
             `;
 
-            // СОЗДАЕМ КАРТИНКУ ОТДЕЛЬНО
             const img = document.createElement('img');
             img.src = manga.cover;
             img.className = 'card-cover';
-            img.style.opacity = '0'; // Скрываем до загрузки
+            img.style.opacity = '0';
             img.style.transition = 'opacity 0.4s ease-in-out';
             
             img.onload = () => {
-                img.style.opacity = '1'; // Показываем при загрузке
+                img.style.opacity = '1';
                 const skeleton = card.querySelector('.skeleton-blink');
-                if (skeleton) skeleton.remove(); // Удаляем скелетон
+                if (skeleton) skeleton.remove();
             };
 
-            // Вставляем картинку внутрь card-cover-wrap
             card.querySelector('.card-cover-wrap').prepend(img);
             
             card.onclick = () => this.openMangaPreview(manga.id);
@@ -401,50 +388,41 @@ const app = {
         this.switchGenreTab(null);
     },
 
-	async openMangaPreview(mangaId) {
-        const manga = this.allManga.find(m => m.id === mangaId);
+    async openMangaPreview(mangaId) {
+        const manga = this.allManga.find(m => String(m.id) === String(mangaId));
         if (!manga) return;
 
         this.currentManga = manga;
 
-        // Смена динамического фона за обложкой
         const dynamicBg = document.getElementById('previewDynamicBg');
         if (dynamicBg && manga.cover) {
             dynamicBg.style.backgroundImage = `url('${manga.cover}')`;
         }
         
-        // Стандартное заполнение элементов превью
         const previewCover = document.getElementById('previewCover');
         if (previewCover) previewCover.src = manga.cover;
         
         document.getElementById('previewTitle').textContent = manga.title;
         document.getElementById('previewAuthor').textContent = "Автор: " + (manga.author || 'Не указан');
 
-        // Проверка и обновление статуса лайка
         this.isCurrentLiked = this.userLikedIds.includes(String(mangaId));
         this.updateLikeButtonUI();
 
-        // Назначаем обработчик на кнопку "В любимое" (id="likeBtn")
         const likeBtn = document.getElementById('likeBtn');
         if (likeBtn) {
             likeBtn.onclick = () => this.toggleLike();
         }
 
-        // Назначаем обработчик на кнопку "Читать" (id="readBtn")
         const readBtn = document.getElementById('readBtn');
         if (readBtn) {
             readBtn.onclick = () => this.startReadingManga();
         }
 
-        // Обновление счетчиков лайков и комментов
         const finalLikes = manga.likes || manga.likes_count || 0;
         document.getElementById('previewLikes').textContent = `❤️ ${finalLikes}`;
         document.getElementById('previewComments').textContent = `💬 ${manga.comments_count || 0}`;
 
-        // Переключаем экран на превью
         this.showScreen('previewScreen');
-
-        // Загружаем комментарии
         await this.loadMainComments();
     },
 
@@ -455,33 +433,26 @@ const app = {
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
         try {
-            // Передаем в вашу функцию api.toggleLike: userId, mangaId и текущий статус лайка (true/false)
             await api.toggleLike(this.userId, mangaId, this.isCurrentLiked);
 
             if (this.isCurrentLiked) {
-                // Если лайк стоял — мы его успешно удалили
                 this.userLikedIds = this.userLikedIds.filter(id => id !== mangaId);
                 this.isCurrentLiked = false;
                 
-                // Уменьшаем локальные счетчики
                 if (this.currentManga.likes > 0) this.currentManga.likes--;
                 if (this.currentManga.likes_count > 0) this.currentManga.likes_count--;
             } else {
-                // Если лайка не было — мы его успешно добавили
                 this.userLikedIds.push(mangaId);
                 this.isCurrentLiked = true;
 
-                // Увеличиваем локальные счетчики
                 this.currentManga.likes = (this.currentManga.likes || 0) + 1;
                 this.currentManga.likes_count = (this.currentManga.likes_count || 0) + 1;
             }
 
-            // Обновляем визуальный статус кнопки и цифру на экране превью
             this.updateLikeButtonUI();
             const finalLikes = this.currentManga.likes || this.currentManga.likes_count || 0;
             document.getElementById('previewLikes').textContent = `❤️ ${finalLikes}`;
             
-            // Перерисовываем каталог на главном экране, чтобы там тоже обновились лайки
             this.renderCatalogGrid(this.allManga);
 
         } catch (e) {
@@ -490,7 +461,6 @@ const app = {
         }
     },
 
-    // ОБНОВЛЕНИЕ ВНЕШНЕГО ВИДА КНОПКИ ЛАЙКА (likeBtn)
     updateLikeButtonUI() {
         const btn = document.getElementById('likeBtn');
         if (!btn) return;
@@ -504,17 +474,13 @@ const app = {
         }
     },
 
-    // ФУНКЦИЯ ДЛЯ ЗАПУСКА РИДЕРА (ДЛЯ КНОПКИ readBtn)
     startReadingManga() {
         if (!this.currentManga) return;
         
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
-        // Проверяем, подключен ли скрипт reader.js и есть ли там метод renderPages
         if (typeof reader !== 'undefined' && typeof reader.renderPages === 'function') {
             this.showScreen('readerScreen');
-            
-            // Запускаем отрисовку страниц (передаем ID и массив страниц из базы)
             const pagesArray = this.currentManga.pages || [];
             reader.renderPages(this.currentManga.id, pagesArray);
         } else {
@@ -522,7 +488,7 @@ const app = {
             alert("Ошибка: Не удалось запустить читалку.");
         }
     },
-	
+    
     formatCommentTime(isoString) {
         if (!isoString) return "";
         const utcString = isoString.endsWith('Z') ? isoString : isoString + 'Z';
@@ -599,9 +565,13 @@ const app = {
     async deleteMainComment(commentId) {
         if(confirm("Удалить ваш комментарий к тайтлу?")) {
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-            await api.deleteComment(commentId, app.userId);
-            if (this.currentManga.comments_count > 0) this.currentManga.comments_count--;
-            this.loadMainComments();
+            try {
+                await api.deleteComment(commentId, app.userId);
+                if (this.currentManga.comments_count > 0) this.currentManga.comments_count--;
+                this.loadMainComments();
+            } catch (e) {
+                alert("Не удалось удалить комментарий.");
+            }
         }
     },
 
@@ -617,11 +587,23 @@ const app = {
         const targetScreen = document.getElementById(screenId);
         if (targetScreen) targetScreen.classList.add('active');
         
-        // Управление видимостью нативной кнопки Назад в Telegram
-        if (screenId === 'mainScreen') {
-            if (tg.BackButton) tg.BackButton.hide();
-        } else {
-            if (tg.BackButton) tg.BackButton.show();
+        // Исправление бага кнопки "Назад"
+        if (tg.BackButton) {
+            if (screenId === 'mainScreen') {
+                tg.BackButton.hide();
+            } else {
+                tg.BackButton.show();
+                
+                // Очищаем старые привязанные клики, чтобы они не наслаивались друг на друга
+                tg.BackButton.offClick(); 
+                
+                // Назначаем действие в зависимости от текущего активного экрана
+                if (screenId === 'readerScreen') {
+                    tg.BackButton.onClick(() => { this.closeMangaReader(); });
+                } else if (screenId === 'previewScreen') {
+                    tg.BackButton.onClick(() => { this.showScreen('mainScreen'); });
+                }
+            }
         }
     }
 };
