@@ -20,23 +20,22 @@ const api = {
 
     async getUserLikesList(userId) {
         if (!userId) return [];
-        const { data, error } = await _supabase.from('likes').select('manga_id').eq('user_id', String(userId));
-        if (error) return [];
+        const { data } = await _supabase.from('likes').select('manga_id').eq('user_id', Number(userId));
         return data ? data.map(item => String(item.manga_id)) : [];
     },
 
     async checkUserLike(userId, mangaId) {
         if (!userId) return false;
-        const { data } = await _supabase.from('likes').select('id').eq('user_id', String(userId)).eq('manga_id', String(mangaId));
+        const { data } = await _supabase.from('likes').select('id').eq('user_id', Number(userId)).eq('manga_id', String(mangaId));
         return data && data.length > 0;
     },
 
     async toggleLike(userId, mangaId, isAlreadyLiked) {
         if (!userId) return;
         if (isAlreadyLiked) {
-            await _supabase.from('likes').delete().eq('user_id', String(userId)).eq('manga_id', String(mangaId));
+            await _supabase.from('likes').delete().eq('user_id', Number(userId)).eq('manga_id', String(mangaId));
         } else {
-            await _supabase.from('likes').insert([{ user_id: String(userId), manga_id: String(mangaId) }]);
+            await _supabase.from('likes').insert([{ user_id: Number(userId), manga_id: String(mangaId) }]);
         }
     },
 
@@ -52,17 +51,18 @@ const api = {
     },
 
     async addPageComment(mangaId, pageIndex, userId, userName, text) {
-        const { data, error } = await _supabase
+        // Изменено: Отправляем без удержания и возврата ответа данных, чтобы избежать ошибок парсинга Supabase v2
+        const { error } = await _supabase
             .from('comments')
             .insert([{
                 manga_id: String(mangaId),
                 page_index: parseInt(pageIndex),
-                user_id: String(userId),
+                user_id: Number(userId),
                 user_name: userName || "Читатель",
                 text: String(text)
             }]);
         if (error) throw error;
-        return data;
+        return true;
     },
 
     async deleteComment(commentId, userId) {
@@ -70,7 +70,7 @@ const api = {
             .from('comments')
             .delete()
             .eq('id', commentId)
-            .eq('user_id', String(userId));
+            .eq('user_id', Number(userId));
         if (error) throw error;
     }
 };
