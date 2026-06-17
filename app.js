@@ -86,7 +86,6 @@ const app = {
             return matchGenre && matchAuthor;
         });
 
-        // Жесткая сортировка по количеству лайков в порядке убывания
         if (this.sortPopularActive) {
             this.filteredManga.sort((a, b) => Number(b.likes) - Number(a.likes));
         }
@@ -99,7 +98,6 @@ const app = {
         this.filteredManga.forEach(manga => {
             const card = document.createElement('div');
             
-            // Определяем класс карточки на основе тегов
             let genreClass = '';
             const hasBara = manga.tags.some(t => t.toLowerCase() === 'bara');
             const hasFurry = manga.tags.some(t => t.toLowerCase() === 'furry');
@@ -121,6 +119,7 @@ const app = {
             const isLiked = this.userLikedIds.includes(String(manga.id));
             const heartBadgeHtml = isLiked ? `<div class="card-like-badge">🤍</div>` : '';
 
+            // Код разметки приведен к жесткому каркасу со статичными зонами для выравнивания
             card.innerHTML = `
                 <div class="card-cover-wrap">
                     ${heartBadgeHtml}
@@ -128,8 +127,8 @@ const app = {
                 </div>
                 <div class="card-info">
                     <h3 class="card-title">${manga.title}</h3>
-                    <div class="card-tags">${authorTagsHtml}</div>
-                    <div class="card-tags">${tagsHtml}</div>
+                    <div class="card-author-zone">${authorTagsHtml}</div>
+                    <div class="card-tags-zone">${tagsHtml}</div>
                     <div class="card-stats">Лайков: ${manga.likes}</div>
                 </div>
             `;
@@ -260,7 +259,7 @@ const app = {
 
     async deleteMainComment(commentId) {
         if(confirm("Удалить ваш комментарий к тайтлу?")) {
-            await api.deleteComment(commentId, this.userId);
+            await api.deleteComment(commentId, app.userId);
             this.loadMainComments();
         }
     },
