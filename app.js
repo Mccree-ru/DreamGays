@@ -110,7 +110,15 @@ const app = {
             // Генерируем автора с кликом
             const authorTagsHtml = manga.author !== "Не указан" ? manga.author.split(',').map(a => {
                 const authorName = a.trim();
-                return `<span class="tag-author" onclick="event.stopPropagation(); app.filterByAuthor('${authorName}'); document.getElementById('authorSelect').value = '${authorName}';">${authorName}</span>`;
+                const isActive = this.selectedAuthor === authorName;
+                const activeClass = isActive ? 'active' : '';
+                
+                // Если активно - сбрасываем, если нет - устанавливаем фильтр
+                const clickAction = isActive 
+                    ? `app.resetFilters()` 
+                    : `app.filterByAuthor('${authorName}'); document.getElementById('authorSelect').value = '${authorName}';`;
+
+                return `<span class="tag-author ${activeClass}" onclick="event.stopPropagation(); ${clickAction}">${authorName}</span>`;
             }).join('') : '';
 
             const isLiked = this.userLikedIds.includes(String(manga.id));
