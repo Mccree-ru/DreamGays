@@ -609,26 +609,26 @@
         </div>
     </div>
 
-    <div id="readerScreen" class="screen reader-screen">
-        <div id="readerHeader" class="reader-header">
-            <button class="sort-btn" style="color:#fff;" onclick="app.closeMangaReader()">✕ Выйти</button>
-            <div class="page-counter" id="pageCounter">0 / 0</div>
-            <button class="reader-donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
-        </div>
-        <div id="readerTrack" class="reader-track" onclick="if(document.getElementById('commentsPanel').classList.contains('open')) reader.toggleComments(false);"></div>
-        <button id="openCommentsBtn" class="open-comments-trigger-btn" onclick="reader.toggleComments(true)">💬</button>
-        <div id="commentsPanel" class="page-comments-panel">
-            <div class="comments-header">
-                <span id="commentsTitle" style="font-weight:bold; font-size:14px; color:#fff;">Комментарии</span>
-                <button class="sort-btn" style="padding:4px 12px; font-size:12px;" onclick="reader.toggleComments(false)">▼ Скрыть</button>
-            </div>
-            <div id="pageCommentsScroll" class="comments-scroll"></div>
-            <div class="comment-input-block">
-                <input type="text" id="pageCommentInputField" class="comment-input" placeholder="Написать комментарий к странице...">
-                <button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="reader.sendPageComment()">Отправить</button>
-            </div>
-        </div>
-    </div>
+	<div id="readerScreen" class="screen reader-screen">
+		<div id="readerHeader" class="reader-header">
+			<button class="sort-btn" style="color:#fff;" onclick="app.closeMangaReader()">✕ Выйти</button>
+			<div class="page-counter" id="pageCounter">0 / 0</div>
+			<button class="reader-donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
+		</div>
+		<div id="readerTrack" class="reader-track"></div>
+		<button id="openCommentsBtn" class="open-comments-trigger-btn" onclick="reader.toggleComments(true)">💬</button>
+		<div id="commentsPanel" class="page-comments-panel">
+			<div class="comments-header">
+				<span id="commentsTitle" style="font-weight:bold; font-size:14px; color:#fff;">Комментарии</span>
+				<button class="sort-btn" style="padding:4px 12px; font-size:12px;" onclick="reader.toggleComments(false)">▼ Скрыть</button>
+			</div>
+			<div id="pageCommentsScroll" class="comments-scroll"></div>
+			<div class="comment-input-block">
+				<input type="text" id="pageCommentInputField" class="comment-input" placeholder="Написать комментарий к странице...">
+				<button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="reader.sendPageComment()">Отправить</button>
+			</div>
+		</div>
+	</div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
