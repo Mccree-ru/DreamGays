@@ -199,27 +199,28 @@ const app = {
             btn.className = "btn-like-compact";
         }
     },
-
+    
     formatCommentTime(isoString) {
-        if(!isoString) return "";
+        if (!isoString) return "";
+    
+        // Добавляем 'Z' в конец, если его там нет.
+        // Это заставит JS интерпретировать строку именно как UTC.
+        const utcString = isoString.endsWith('Z') ? isoString : isoString + 'Z';
         
-        // При создании объекта Date из ISO-строки, 
-        // браузер сам конвертирует его в локальное время пользователя.
-        const d = new Date(isoString);
-        if(isNaN(d.getTime())) return "";
-        
+        const d = new Date(utcString);
+        if (isNaN(d.getTime())) return "";
+    
+        // Теперь браузер автоматически добавит смещение твоего часового пояса
         const now = new Date();
         const pad = (n) => String(n).padStart(2, '0');
         
         const hours = pad(d.getHours());
         const minutes = pad(d.getMinutes());
         
-        // Сравниваем даты по местному времени
-        if(d.toDateString() === now.toDateString()) {
+        if (d.toDateString() === now.toDateString()) {
             return `${hours}:${minutes}`;
         }
-        
-        return `${pad(d.getDate())}.${pad(d.getMonth()+1)} ${hours}:${minutes}`;
+        return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${hours}:${minutes}`;
     },
 
     async loadMainComments() {
