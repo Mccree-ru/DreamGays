@@ -202,17 +202,23 @@ const app = {
 
     formatCommentTime(isoString) {
         if(!isoString) return "";
+        
+        // При создании объекта Date из ISO-строки, 
+        // браузер сам конвертирует его в локальное время пользователя.
         const d = new Date(isoString);
         if(isNaN(d.getTime())) return "";
         
+        const now = new Date();
         const pad = (n) => String(n).padStart(2, '0');
+        
         const hours = pad(d.getHours());
         const minutes = pad(d.getMinutes());
         
-        const now = new Date();
+        // Сравниваем даты по местному времени
         if(d.toDateString() === now.toDateString()) {
             return `${hours}:${minutes}`;
         }
+        
         return `${pad(d.getDate())}.${pad(d.getMonth()+1)} ${hours}:${minutes}`;
     },
 
