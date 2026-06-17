@@ -4,24 +4,51 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const api = {
-    async fetchCatalog() {
-        // Запрос манги с подсчетом лайков через связь, сортировка по internal_id
-        const { data, error } = await _supabase
-            .from('manga')
-            .select(`*, likes(count)`)
-            .order('internal_id', { ascending: false });
-            
+    // Получение списка ВСЕХ авторов для построения выпадающего списка
+    async fetchAllAuthors() {
+        const { data, error } = await _supabase.from('manga').select('author');
         if (error) throw error;
+        const authors = new Set();
+        data.forEach(m => {
+            if (m.author) {
+                m.author.split(',').forEach(a => authors.add(a.trim()));
+            }
+        });
+        return Array.from(authors).sort();
+    },
 
-        // Запрос списка всех комментариев для подсчета
-        const { data: cData } = await _supabase.from('comments').select('manga_id');
-        
-        const commentCounts = {};
-        if (cData) {
-            cData.forEach(c => {
-                commentCounts[c.manga_id] = (commentCounts[c.manga_id] || 0) + 1;
-            });
+    // Серверная пагинация, фильтрация и сортировка
+    async fetchCatalog({ page = 0, limit = 6, genre = null, author = '', sortByPopular = false }) {
+        const from = page * limit;
+        const to = from + limit - 1;
+
+        // Оптимизировано: сразу считаем лайки и комментарии на сервере базы данных
+        let query = _supabase
+            .from('manga')
+            .select(`*, likes(count), comments(count)`);
+
+        // Фильтрация по жанру (если массив тегов содержит выбранный)
+        if (genre) {
+            query = query.contains('tags', [genre]);
         }
+
+        // Фильтрация по автору (поиск подстроки)
+        if (author) {
+            query = query.ilike('author', `%${author}%`);
+        }
+
+        // Сортировка: либо по количеству лайков (внешняя связь), либо по internal_id
+        if (sortByPopular) {
+            query = query.order('likes_count', { ascending: false, foreignTable: 'likes' });
+        } else {
+            query = query.order('internal_id', { ascending: false });
+        }
+
+        // Ограничение диапазона (пагинация)
+        query = query.range(from, to);
+
+        const { data, error } = await query;
+        if (error) throw error;
 
         return data.map(m => ({
             id: String(m.id),
@@ -30,24 +57,35 @@ const api = {
             cover: m.cover || "",
             tags: Array.isArray(m.tags) ? m.tags : [],
             pages: Array.isArray(m.pages) ? m.pages : JSON.parse(m.pages || '[]'),
-            likes: m.likes[0]?.count || 0,
-            comments_count: commentCounts[String(m.id)] || 0
+            likes: m.likes?.[0]?.count || 0,
+            comments_count: m.comments?.[0]?.count || 0 // Больше нет N+1 запроса!
         }));
     },
 
     async getUserLikesList(userId) {
-        if (!userId) return [];
-        const { data } = await _supabase.from('likes').select('manga_id').eq('user_id', Number(userId));
+        const { data, error } = await _supabase
+            .from('likes')
+            .select('manga_id')
+            .eq('user_id', Number(userId));
+        if (error) throw error;
         return data ? data.map(item => String(item.manga_id)) : [];
     },
 
     async toggleLike(userId, mangaId, isAlreadyLiked) {
-        if (!userId) return;
         if (isAlreadyLiked) {
-            await _supabase.from('likes').delete().eq('user_id', Number(userId)).eq('manga_id', String(mangaId));
+            const { error } = await _supabase
+                .from('likes')
+                .delete()
+                .eq('user_id', Number(userId))
+                .eq('manga_id', String(mangaId));
+            if (error) throw error;
         } else {
-            await _supabase.from('likes').insert([{ user_id: Number(userId), manga_id: String(mangaId) }]);
+            const { error } = await _supabase
+                .from('likes')
+                .insert([{ user_id: Number(userId), manga_id: String(mangaId) }]);
+            if (error) throw error;
         }
+        return true;
     },
 
     async fetchPageComments(mangaId, pageIndex) {
@@ -78,7 +116,7 @@ const api = {
             user_id: Number(userId),
             user_name: userName || "Читатель",
             text: String(text),
-            created_at: new Date().toISOString() // Явно указываем время
+            created_at: new Date().toISOString()
         };
         
         if (pageIndex !== null) {
@@ -97,5 +135,6 @@ const api = {
             .eq('id', commentId)
             .eq('user_id', Number(userId));
         if (error) throw error;
+        return true;
     }
 };
