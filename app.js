@@ -4,7 +4,7 @@ const app = {
     userId: 12345, 
     userName: "Читатель",
     allManga: [],
-    userLikedIds: [], // Массив ID релизов, которые юзер уже лайкнул
+    userLikedIds: [], 
     currentManga: null,
     isCurrentLiked: false,
     
@@ -16,16 +16,16 @@ const app = {
         if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
             tg.ready();
             try { tg.expand(); } catch(e){}
-            this.userId = tg.initDataUnsafe.user.id;
+            this.userId = String(tg.initDataUnsafe.user.id);
             this.userName = tg.initDataUnsafe.user.first_name || "Читатель";
         }
 
-        // Получаем лайки пользователя для вывода статусов на главной
+        // Подгружаем лайки сразу
         this.userLikedIds = await api.getUserLikesList(this.userId);
         await this.loadCatalog();
 
         if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
-            const startId = tg.initDataUnsafe.start_param;
+            const startId = String(tg.initDataUnsafe.start_param);
             if (this.allManga.some(m => m.id === startId)) {
                 this.openMangaPreview(startId);
             }
@@ -38,7 +38,7 @@ const app = {
             this.buildAuthorSelect();
             this.applyFiltersAndRender();
         } catch (err) {
-            document.getElementById('catalogGrid').innerText = "Ошибка коннекта к Supabase.";
+            document.getElementById('catalogGrid').innerText = "Ошибка соединения.";
         }
     },
 
@@ -49,8 +49,8 @@ const app = {
         
         this.allManga.forEach(m => {
             if (m.author && m.author !== "Не указан") {
-                // Разделяем авторов по запятым, слэшам или союзам
-                m.author.split(/[,/]| и /).forEach(a => {
+                // Разделяем авторов ТОЛЬКО по запятым, чтобы не дробить двойные имена
+                m.author.split(',').forEach(a => {
                     if(a.trim()) authorsSet.add(a.trim());
                 });
             }
@@ -104,20 +104,23 @@ const app = {
             const cleanTags = manga.tags.filter(t => t.toLowerCase() !== 'bara' && t.toLowerCase() !== 'furry');
             const tagsHtml = cleanTags.map(t => `<span class="tag">${t}</span>`).join('');
             
-            // Нарезаем авторов для создания отдельных тегов под карточкой
+            // Нарезка авторов по запятым
             const authorTagsHtml = manga.author !== "Не указан" 
-                ? manga.author.split(/[,/]| и /).map(a => `<span class="tag-author">${a.trim()}</span>`).join('') 
+                ? manga.author.split(',').map(a => `<span class="tag-author">${a.trim()}</span>`).join('') 
                 : '';
 
-            // Проверяем лайк на главной
-            const isLiked = this.userLikedIds.includes(manga.id);
-            const likedBadge = isLiked ? `<span class="tag-liked">✅ В Понравившемся</span>` : '';
+            // Условие отображения иконки ❤️ прямо поверх картинки обложки
+            const isLiked = this.userLikedIds.includes(String(manga.id));
+            const heartBadgeHtml = isLiked ? `<div class="card-like-badge">❤️</div>` : '';
 
             card.innerHTML = `
-                <div class="card-cover-wrap"><img src="${manga.cover}" class="card-cover" loading="lazy"></div>
+                <div class="card-cover-wrap">
+                    ${heartBadgeHtml}
+                    <img src="${manga.cover}" class="card-cover" loading="lazy">
+                </div>
                 <div class="card-info">
                     <h3 class="card-title">${manga.title}</h3>
-                    <div class="card-tags">${authorTagsHtml} ${likedBadge}</div>
+                    <div class="card-tags">${authorTagsHtml}</div>
                     <div class="card-tags">${tagsHtml}</div>
                     <div class="card-stats">❤️ Лайков: ${manga.likes}</div>
                 </div>
@@ -137,39 +140,42 @@ const app = {
     },
 
     async openMangaPreview(mangaId) {
-        this.currentManga = this.allManga.find(m => m.id === mangaId);
+        this.currentManga = this.allManga.find(m => m.id === String(mangaId));
         if (!this.currentManga) return;
 
         this.showScreen('previewScreen');
         document.getElementById('previewCover').src = this.currentManga.cover;
         document.getElementById('previewTitle').innerText = this.currentManga.title;
         document.getElementById('previewAuthor').innerText = `Автор(ы): ${this.currentManga.author}`;
-        document.getElementById('previewLikesCount').innerText = `🔥 В списке понравившегося у: ${this.currentManga.likes} читателей`;
+        document.getElementById('previewLikesCount').innerText = `🔥 Понравилось: ${this.currentManga.likes}`;
 
         document.getElementById('startReadBtn').onclick = () => {
             this.showScreen('readerScreen');
             reader.renderPages(this.currentManga.id, this.currentManga.pages);
         };
 
-        this.isCurrentLiked = await api.checkUserLike(this.userId, mangaId);
+        // Синхронно берем актуальный статус лайка
+        this.isCurrentLiked = this.userLikedIds.includes(String(this.currentManga.id));
         this.updateLikeButtonUI();
-
-        // Загружаем комментарии главной страницы тайтла
         this.loadMainComments();
 
         document.getElementById('likeBtn').onclick = async () => {
+            // Отправляем изменения в бд
             await api.toggleLike(this.userId, this.currentManga.id, this.isCurrentLiked);
+            
             this.isCurrentLiked = !this.isCurrentLiked;
             this.currentManga.likes += this.isCurrentLiked ? 1 : -1;
             
-            // Обновляем локальный список лайков для главной страницы
+            // Сразу же пересохраняем состояние локально
             if (this.isCurrentLiked) {
-                if(!this.userLikedIds.includes(mangaId)) this.userLikedIds.push(mangaId);
+                if(!this.userLikedIds.includes(String(this.currentManga.id))) {
+                    this.userLikedIds.push(String(this.currentManga.id));
+                }
             } else {
-                this.userLikedIds = this.userLikedIds.filter(id => id !== mangaId);
+                this.userLikedIds = this.userLikedIds.filter(id => id !== String(this.currentManga.id));
             }
 
-            document.getElementById('previewLikesCount').innerText = `🔥 В списке понравившегося у: ${this.currentManga.likes} читателей`;
+            document.getElementById('previewLikesCount').innerText = `🔥 Понравилось: ${this.currentManga.likes}`;
             this.updateLikeButtonUI();
         };
     },
@@ -185,21 +191,21 @@ const app = {
         }
     },
 
-    // ЛОГИКА КОММЕНТАРИЕВ ДЛЯ ГЛАВНОЙ СТРАНИЦЫ ТАЙТЛА (page_index = -1)
+    // Комментарии к главной странице тайтла (page_index = -1)
     async loadMainComments() {
         const container = document.getElementById('mainCommentsScroll');
-        container.innerHTML = "Загрузка...";
+        container.innerHTML = "Загрузка обсуждения...";
         try {
             const comments = await api.fetchPageComments(this.currentManga.id, -1);
-            if(comments.length === 0) {
-                container.innerHTML = "<p style='color:#777; font-size:13px;'>У этого тайтла пока нет комментариев. Напишите что-нибудь первым!</p>";
+            if(!comments || comments.length === 0) {
+                container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>У этого тайтла пока нет комментариев. Напишите что-нибудь первым!</p>";
                 return;
             }
             container.innerHTML = "";
             comments.forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'comment-item';
-                const isMyComment = Number(c.user_id) === Number(this.userId);
+                const isMyComment = String(c.user_id) === String(this.userId);
                 const delBtnHtml = isMyComment ? `<button class="comment-del-btn" onclick="app.deleteMainComment('${c.id}')">🗑 Удалить</button>` : '';
 
                 item.innerHTML = `
@@ -222,9 +228,9 @@ const app = {
         try {
             await api.addPageComment(this.currentManga.id, -1, this.userId, this.userName, text);
             input.value = "";
-            this.loadMainComments();
+            await this.loadMainComments();
         } catch(e) {
-            alert("Ошибка отправки комментария.");
+            alert("Не удалось отправить комментарий.");
         }
     },
 
@@ -238,7 +244,6 @@ const app = {
     closeMangaReader() {
         reader.toggleComments(false);
         this.showScreen('previewScreen');
-        this.loadMainComments(); // Обновляем данные при возврате
     },
 
     showScreen(screenId) {
