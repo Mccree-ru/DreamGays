@@ -56,10 +56,12 @@ const reader = {
         this.scale = 1; this.lastScale = 1;
         this.posX = 0; this.posY = 0;
         this.lastPosX = 0; this.lastPosY = 0;
-        document.querySelectorAll('.zoom-container').forEach(c => {
-            c.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
-        });
-        this.toggleUiVisibility(true); // Показываем UI при сбросе
+        
+        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+        if (container) {
+            container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
+        }
+        this.toggleUiVisibility(true);
     },
 
     applyZoomTransform() {
@@ -70,15 +72,14 @@ const reader = {
             this.scale = 1;
             this.posX = 0; 
             this.posY = 0; 
-            this.toggleUiVisibility(true); // Полноценно показываем UI на 100% масштабе
+            container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
+            this.toggleUiVisibility(true);
         } else {
-            this.toggleUiVisibility(false); // Прячем UI при любом уровне приближения
+            container.style.transform = `translate3d(${this.posX}px, ${this.posY}px, 0px) scale(${this.scale})`;
+            this.toggleUiVisibility(false); // Жестко прячем весь UI
         }
-        
-        container.style.transform = `translate3d(${this.posX}px, ${this.posY}px, 0px) scale(${this.scale})`;
     },
 
-    // Функция скрытия/показа UI элементов интерфейса читалщика
     toggleUiVisibility(show) {
         const header = document.getElementById('readerHeader');
         const commentBtn = document.getElementById('openCommentsBtn');
@@ -211,20 +212,18 @@ const reader = {
                 const diffX = e.changedTouches[0].clientX - startX;
                 const diffY = e.changedTouches[0].clientY - startY;
 
-                // Быстрый свайп страниц на 0.15s
                 if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30 && this.scale === 1) {
                     if (diffX > 0 && this.currentIndex > 0) { this.currentIndex--; this.updateTrack(); }
                     else if (diffX < 0 && this.currentIndex < this.pages.length - 1) { this.currentIndex++; this.updateTrack(); }
                     return;
                 }
 
-                // Клик или Двойной клик
                 if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
                     const now = Date.now();
                     if (now - lastTapTime < 300) {
                         clearTimeout(tapTimeout);
                         
-                        // ДАБЛ-ТАП С УЧЕТОМ КООРДИНАТ КЛИКА
+                        // ИСПРАВЛЕННЫЙ НА ТЕХНИЧЕСКОМ УРОВНЕ ДАБЛ-ТАП В ТОЧКУ НАЖАТИЯ С ГАРАНТИРОВАННЫМ СКРЫТИЕМ UI
                         if (this.scale > 1) { 
                             this.resetZoom(); 
                         } else { 
@@ -234,15 +233,15 @@ const reader = {
                             const clickY = e.changedTouches[0].clientY;
 
                             this.scale = 2.5;
-                            // Направление смещения холста в точку клика
+                            // Рассчитываем смещение относительно центра
                             this.posX = (screenWidth / 2 - clickX) * (this.scale - 1);
                             this.posY = (screenHeight / 2 - clickY) * (this.scale - 1);
+                            
                             this.applyZoomTransform(); 
                         }
                         lastTapTime = 0;
                     } else {
                         lastTapTime = now;
-                        // Быстрый тач краев экрана (ускорен под 0.15s)
                         tapTimeout = setTimeout(() => {
                             if (this.scale === 1) {
                                 const screenWidth = window.innerWidth;
