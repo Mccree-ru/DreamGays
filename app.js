@@ -107,7 +107,7 @@ const app = {
             // 1. Парсим входящую строку в объект
             const parsedData = JSON.parse(rawValue);
 
-            // Валидация минимальных обязательных полей (not null в структуре таблицы)
+            // Валидация минимальных обязательных полей (not null в структуру таблицы)
             if (!parsedData.id || !parsedData.title) {
                 alert('Ошибка: У объекта JSON обязательно должны быть заполнены поля "id" и "title"!');
                 return;
@@ -583,21 +583,48 @@ const app = {
     },
 
     showScreen(screenId) {
+        // 1. Полностью скрываем ВСЕ экраны, удаляя класс active
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        
+        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ БАГА: Если мы уходим из читалки, принудительно скрываем её контейнер и хедер
+        const readerScreen = document.getElementById('readerScreen');
+        const readerHeader = document.getElementById('readerHeader');
+        
+        if (screenId !== 'readerScreen') {
+            if (readerScreen) {
+                readerScreen.classList.remove('active');
+                readerScreen.style.display = 'none'; // Гарантированно убираем из потока видимости
+            }
+            if (readerHeader) {
+                // Выключаем перехват событий и скрываем элементы оверлея
+                readerHeader.style.pointerEvents = 'none';
+                readerHeader.style.opacity = '0';
+                readerHeader.style.transform = 'translateY(-100%)';
+            }
+        } else {
+            // Если мы заходим в читалку — включаем видимость
+            if (readerScreen) {
+                readerScreen.style.display = 'block';
+            }
+            if (readerHeader) {
+                readerHeader.style.pointerEvents = 'auto';
+                readerHeader.style.opacity = '1';
+                readerHeader.style.transform = 'translateY(0px)';
+            }
+        }
+
+        // 2. Делаем активным целевой экран
         const targetScreen = document.getElementById(screenId);
         if (targetScreen) targetScreen.classList.add('active');
         
-        // Исправление бага кнопки "Назад"
+        // 3. Динамическое переопределение логики нативной кнопки "Назад" в Telegram
         if (tg.BackButton) {
             if (screenId === 'mainScreen') {
                 tg.BackButton.hide();
             } else {
                 tg.BackButton.show();
+                tg.BackButton.offClick(); // Очищаем старые привязанные клики
                 
-                // Очищаем старые привязанные клики, чтобы они не наслаивались друг на друга
-                tg.BackButton.offClick(); 
-                
-                // Назначаем действие в зависимости от текущего активного экрана
                 if (screenId === 'readerScreen') {
                     tg.BackButton.onClick(() => { this.closeMangaReader(); });
                 } else if (screenId === 'previewScreen') {
