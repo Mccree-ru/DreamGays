@@ -33,18 +33,7 @@
 
         .main-container { padding: 15px; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
 
-        .donate-btn {
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            background: linear-gradient(135deg, #ff9500, #ff5e00); color: #ffffff;
-            border: none; width: 100%; padding: 12px; border-radius: 12px;
-            font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 15px;
-        }
-        .reader-donate-btn {
-            background: linear-gradient(135deg, #ff9500, #ff5e00); color: #ffffff; border: none; 
-            padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;
-        }
-
-        .genre-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
+        .genre-tabs { display: flex; gap: 8px; margin-bottom: 15px; margin-top: 5px; }
         .genre-tab {
             flex: 1; padding: 10px; border: none; border-radius: 10px;
             background-color: var(--card-bg); color: var(--text-color);
@@ -81,24 +70,31 @@
 
         .card-info { padding: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .card-title { font-size: 13px; font-weight: 600; margin: 0 0 6px 0; line-height: 1.25; }
-        .card-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
-        .tag { font-size: 9px; background-color: rgba(0, 235, 135, 0.1); color: var(--link-color); padding: 2px 5px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
-        .tag-author { font-size: 9px; background-color: #ff7b00; color: #ffffff; padding: 2px 5px; border-radius: 5px; font-weight: bold; }
+        .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+        
+        /* СТИЛИ ПЛАШЕК ЖАНРОВ */
+        .tag { font-size: 9px; background-color: rgba(0, 235, 135, 0.1); color: var(--link-color); padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
+        .tag-author { font-size: 9px; background-color: #ff7b00; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; }
+        .tag-bara { font-size: 9px; background-color: #8b0000; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
+        .tag-furry { font-size: 9px; background-color: #6a0dad; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
+        
         .card-stats { font-size: 11px; color: var(--hint-color); margin-top: 5px; font-weight: bold; }
 
         /* Экран Превью */
-        .preview-header { display: flex; gap: 15px; margin-top: 15px; align-items: flex-start; }
+        .preview-nav-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-half { flex: 1; margin: 0; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; border: none; font-size: 14px; }
+        
+        .preview-header { display: flex; gap: 15px; margin-top: 5px; align-items: flex-start; }
         .preview-cover-block { display: flex; flex-direction: column; width: 130px; gap: 8px; flex-shrink: 0; }
         .preview-cover { width: 100%; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
         
         .btn { background: var(--button-color); color: var(--button-text); border: none; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; }
         .btn-read { background: var(--button-color); color: var(--button-text); padding: 10px; font-size: 15px; margin-top: 0; }
         
-        /* Компактная кнопка лайка */
-        .likes-row-container { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+        .likes-row-container { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
         .btn-like-compact { 
-            background: #ff3b30; color: #fff; border: none; padding: 6px 12px; 
-            font-size: 12px; font-weight: bold; border-radius: 20px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+            background: #ff3b30; color: #fff; border: none; padding: 6px 14px; 
+            font-size: 12px; font-weight: bold; border-radius: 20px; cursor: pointer; display: inline-flex; align-items: center;
         }
         .btn-like-compact.not-liked { background: #2a2a2a; color: #ccc; border: 1px solid #444; }
 
@@ -157,11 +153,8 @@
 </head>
 <body>
 
-    <!-- ЭКРАН 1: ГЛАВНЫЙ КАТАЛОГ -->
     <div id="mainScreen" class="screen active">
         <div class="main-container">
-            <button class="donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
-
             <div class="genre-tabs">
                 <button id="tab-all" class="genre-tab active" onclick="app.switchGenreTab(null)">Все</button>
                 <button id="tab-bara" class="genre-tab" onclick="app.switchGenreTab('bara')">Bara</button>
@@ -182,10 +175,12 @@
         </div>
     </div>
 
-    <!-- ЭКРАН 2: ПРЕВЬЮ ТАЙТЛА -->
     <div id="previewScreen" class="screen">
         <div class="main-container">
-            <button class="btn" style="background:#333; color:#fff; margin-bottom:10px;" onclick="app.showScreen('mainScreen')">← В каталог</button>
+            <div class="preview-nav-row">
+                <button class="btn-half" style="background:#333; color:#fff;" onclick="app.showScreen('mainScreen')">← В каталог</button>
+                <button class="btn-half" style="background: linear-gradient(135deg, #ff9500, #ff5e00); color:#fff;" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
+            </div>
             
             <div class="preview-header">
                 <div class="preview-cover-block">
@@ -196,10 +191,9 @@
                     <h3 id="previewTitle" style="margin:0 0 5px 0; font-size:18px;"></h3>
                     <p id="previewAuthor" style="color:#aaa; margin:0 0 5px 0; font-size:14px;"></p>
                     
-                    <!-- Ряд: текст Понравилось + компактная кнопка лайка рядом -->
                     <div class="likes-row-container">
                         <span id="previewLikesCount" style="font-weight:bold; font-size:14px; color:#00eb87;"></span>
-                        <button id="likeBtn" class="btn-like-compact">❤️ Добавить в понравившееся</button>
+                        <button id="likeBtn" class="btn-like-compact">Добавить в понравившееся</button>
                     </div>
                 </div>
             </div>
@@ -213,7 +207,6 @@
         </div>
     </div>
 
-    <!-- ЭКРАН 3: ГОРИЗОНТАЛЬНАЯ ЧИТАЛКА -->
     <div id="readerScreen" class="screen reader-screen">
         <div id="readerHeader" class="reader-header">
             <button class="sort-btn" style="color:#fff;" onclick="app.closeMangaReader()">✕ Выйти</button>
