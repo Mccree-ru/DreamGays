@@ -20,16 +20,13 @@ const reader = {
         this.resetZoom();
 
         const track = document.getElementById('readerTrack');
-        track.innerHTML = "";
+        track.innerHTML = \"\";
 
         this.pages.forEach((pageUrl, index) => {
             const slide = document.createElement('div');
             slide.className = 'reader-slide';
             slide.innerHTML = `
-                <div class="zoom-container" id="zoomContainer-${index}">
-                    <img class="reader-img" src="${pageUrl}" draggable="false">
-                </div>
-            `;
+                <div class=\"zoom-container\" id=\"zoomContainer-${index}\">\n                    <img class=\"reader-img\" src=\"${pageUrl}\" draggable=\"false\">\n                </div>\n            `;
             track.appendChild(slide);
         });
 
@@ -45,7 +42,6 @@ const reader = {
         const track = document.getElementById('readerTrack');
         track.style.transform = `translate3d(-${this.currentIndex * 100}vw, 0px, 0px)`;
         document.getElementById('pageCounter').textContent = `${this.currentIndex + 1} / ${this.pages.length}`;
-        
         if (document.getElementById('commentsPanel').classList.contains('open')) {
             document.getElementById('commentsTitle').textContent = `Комментарии к странице ${this.currentIndex + 1}`;
             this.loadCommentsForCurrentPage();
@@ -53,45 +49,35 @@ const reader = {
     },
 
     resetZoom() {
-        this.scale = 1; this.lastScale = 1;
-        this.posX = 0; this.posY = 0;
-        this.lastPosX = 0; this.lastPosY = 0;
-        
-        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
-        if (container) {
-            container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
-        }
+        this.scale = 1;
+        this.posX = 0;
+        this.posY = 0;
+        this.applyZoomTransform();
         this.toggleUiVisibility(true);
     },
 
     applyZoomTransform() {
         const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
-        if (!container) return;
-        
-        if (this.scale <= 1) { 
-            this.scale = 1;
-            this.posX = 0; 
-            this.posY = 0; 
-            container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
-            this.toggleUiVisibility(true);
-        } else {
+        if (container) {
             container.style.transform = `translate3d(${this.posX}px, ${this.posY}px, 0px) scale(${this.scale})`;
-            this.toggleUiVisibility(false); // Жестко прячем весь UI
         }
     },
 
     toggleUiVisibility(show) {
         const header = document.getElementById('readerHeader');
-        const commentBtn = document.getElementById('openCommentsBtn');
-        
+        const counter = document.getElementById('pageCounter');
+        const triggerBtn = document.getElementById('openCommentsBtn');
+
         if (show) {
             header.classList.remove('ui-hidden');
-            if(!document.getElementById('commentsPanel').classList.contains('open')) {
-                commentBtn.classList.remove('ui-hidden');
+            counter.classList.remove('ui-hidden');
+            if (!document.getElementById('commentsPanel').classList.contains('open')) {
+                triggerBtn.classList.remove('ui-hidden');
             }
         } else {
             header.classList.add('ui-hidden');
-            commentBtn.classList.add('ui-hidden');
+            counter.classList.add('ui-hidden');
+            triggerBtn.classList.add('ui-hidden');
         }
     },
 
@@ -100,44 +86,46 @@ const reader = {
         const triggerBtn = document.getElementById('openCommentsBtn');
         if (show) {
             panel.classList.add('open');
-            triggerBtn.style.display = 'none';
+            triggerBtn.classList.add('ui-hidden'); 
             document.getElementById('commentsTitle').textContent = `Комментарии к странице ${this.currentIndex + 1}`;
             this.loadCommentsForCurrentPage();
         } else {
             panel.classList.remove('open');
-            if (this.scale === 1) triggerBtn.style.display = 'flex';
+            if (this.scale === 1) {
+                triggerBtn.classList.remove('ui-hidden');
+            }
         }
     },
 
     async loadCommentsForCurrentPage() {
         const container = document.getElementById('pageCommentsScroll');
-        container.innerHTML = "<span style='color:#777; font-size:12px;'>Загрузка...</span>";
+        container.innerHTML = \"Загрузка...\";
         try {
-            const pageComments = await api.fetchPageComments(this.mangaId, this.currentIndex);
-            if(!pageComments || pageComments.length === 0) {
-                container.innerHTML = "<p style='color:#777; font-size:12px; text-align:center;'>На этой странице пока нет комментариев.</p>";
+            const list = await api.fetchPageComments(this.mangaId, this.currentIndex);
+            container.innerHTML = \"\";
+            if (list.length === 0) {
+                container.innerHTML = \"<div style='color:#888; text-align:center; padding:15px; font-size:13px;'>К этой странице пока нет комментов.</div>\";
                 return;
             }
-            container.innerHTML = "";
-            pageComments.forEach(c => {
+            list.forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'comment-item';
-                const isMyComment = Number(c.user_id) === Number(app.userId);
-                const delBtnHtml = isMyComment ? `<button class="comment-del-btn" onclick="reader.deletePageComment('${c.id}')">🗑 Удалить</button>` : '';
-                const timeString = app.formatCommentTime(c.created_at);
-
+                let deleteBtn = '';
+                if (Number(c.user_id) === Number(app.userId)) {
+                    deleteBtn = `<span class=\"delete-comment-btn\" onclick=\"reader.deletePageComment('${c.id}')\">Удалить</span>`;
+                }
                 item.innerHTML = `
-                    <div class="comment-top-line">
-                        <span class="comment-user">${c.user_name}</span>
-                        <span class="comment-time">${timeString}</span>
+                    <div class=\"comment-meta\">
+                        <span class=\"comment-author\">${c.user_name}</span>
+                        <span class=\"comment-time\">${app.formatCommentTime(c.created_at)}</span>
                     </div>
-                    <p class="comment-text">${c.text}</p>
-                    ${delBtnHtml}
+                    <div class=\"comment-text\">${c.text}</div>
+                    ${deleteBtn}
                 `;
                 container.appendChild(item);
             });
         } catch(e) {
-            container.innerHTML = "<span style='color:#ff3b30; font-size:12px;'>Ошибка загрузки.</span>";
+            container.innerHTML = \"<span style='color:#ff3b30;'>Ошибка загрузки.</span>\";
         }
     },
 
@@ -145,23 +133,24 @@ const reader = {
         const input = document.getElementById('pageCommentInputField');
         const text = input.value.trim();
         if (!text) return;
+
         try {
             await api.addComment(this.mangaId, this.currentIndex, app.userId, app.userName, text);
-            input.value = "";
+            input.value = \"\";
             await this.loadCommentsForCurrentPage();
         } catch(e) {
-            alert("Ошибка отправки.");
+            alert(\"Не удалось отправить комментарий.\");
         }
     },
 
     async deletePageComment(commentId) {
-        if(confirm("Удалить ваш комментарий?")) {
+        if (confirm(\"Удалить ваш комментарий к странице?\")) {
             await api.deleteComment(commentId, app.userId);
             this.loadCommentsForCurrentPage();
         }
     },
 
-	initTouchGestures() {
+    initTouchGestures() {
         const screen = document.getElementById('readerScreen');
         const commentsPanel = document.getElementById('commentsPanel');
         let startX = 0, startY = 0;
@@ -169,8 +158,14 @@ const reader = {
         let tapTimeout = null;
 
         screen.addEventListener('touchstart', (e) => {
-            // Если открыт чат — игнорируем любые жесты перелистывания
-            if (commentsPanel.classList.contains('open')) return;
+            // ИСПРАВЛЕНО: Полностью изолируем тачи внутри панели комментов
+            if (commentsPanel.classList.contains('open')) {
+                if (!e.target.closest('#commentsPanel')) {
+                    // Разрешаем дальнейшую логику (клик мимо закроет окно)
+                } else {
+                    return; // Игнорируем жесты читалки внутри чата
+                }
+            }
 
             if (e.target.closest('#openCommentsBtn') || e.target.closest('#readerHeader')) return;
 
@@ -191,7 +186,6 @@ const reader = {
         }, { passive: true });
 
         screen.addEventListener('touchmove', (e) => {
-            // Блокируем скролл/свайп, если чат открыт
             if (commentsPanel.classList.contains('open')) return;
 
             if (this.scale > 1 && this.isDragging && e.touches.length === 1) {
@@ -206,9 +200,11 @@ const reader = {
         }, { passive: true });
 
         screen.addEventListener('touchend', (e) => {
-            // Если был открыт чат, просто закрываем его и НИЧЕГО больше не делаем
+            // ИСПРАВЛЕНО: Закрываем чат только при тапе МИМО панели
             if (commentsPanel.classList.contains('open')) {
-                this.toggleComments(false);
+                if (!e.target.closest('#commentsPanel')) {
+                    this.toggleComments(false);
+                }
                 return; 
             }
 
@@ -219,21 +215,18 @@ const reader = {
                 const diffX = e.changedTouches[0].clientX - startX;
                 const diffY = e.changedTouches[0].clientY - startY;
 
-                // Перелистывание только если масштаб 1
                 if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30 && this.scale === 1) {
                     if (diffX > 0 && this.currentIndex > 0) { this.currentIndex--; this.updateTrack(); }
                     else if (diffX < 0 && this.currentIndex < this.pages.length - 1) { this.currentIndex++; this.updateTrack(); }
                     return;
                 }
 
-                // Логика тапов
                 if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
                     const now = Date.now();
                     if (now - lastTapTime < 300) {
                         clearTimeout(tapTimeout);
                         if (this.scale > 1) this.resetZoom();
                         else {
-                            // Зум по двойному тапу
                             const screenWidth = window.innerWidth;
                             const screenHeight = window.innerHeight;
                             const clickX = e.changedTouches[0].clientX;
