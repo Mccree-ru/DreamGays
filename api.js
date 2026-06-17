@@ -8,7 +8,7 @@ const api = {
         const { data, error } = await _supabase.from('manga').select(`*, likes(count)`);
         if (error) throw error;
         return data.map(m => ({
-            id: m.id,
+            id: String(m.id),
             title: m.title,
             author: m.author || "Не указан",
             cover: m.cover || "",
@@ -20,22 +20,23 @@ const api = {
 
     async getUserLikesList(userId) {
         if (!userId) return [];
-        const { data } = await _supabase.from('likes').select('manga_id').eq('user_id', userId);
-        return data ? data.map(item => item.manga_id) : [];
+        const { data, error } = await _supabase.from('likes').select('manga_id').eq('user_id', String(userId));
+        if (error) return [];
+        return data ? data.map(item => String(item.manga_id)) : [];
     },
 
     async checkUserLike(userId, mangaId) {
         if (!userId) return false;
-        const { data } = await _supabase.from('likes').select('id').eq('user_id', userId).eq('manga_id', mangaId);
+        const { data } = await _supabase.from('likes').select('id').eq('user_id', String(userId)).eq('manga_id', String(mangaId));
         return data && data.length > 0;
     },
 
     async toggleLike(userId, mangaId, isAlreadyLiked) {
         if (!userId) return;
         if (isAlreadyLiked) {
-            await _supabase.from('likes').delete().eq('user_id', userId).eq('manga_id', mangaId);
+            await _supabase.from('likes').delete().eq('user_id', String(userId)).eq('manga_id', String(mangaId));
         } else {
-            await _supabase.from('likes').insert({ user_id: userId, manga_id: mangaId });
+            await _supabase.from('likes').insert([{ user_id: String(userId), manga_id: String(mangaId) }]);
         }
     },
 
@@ -43,25 +44,23 @@ const api = {
         const { data, error } = await _supabase
             .from('comments')
             .select('*')
-            .eq('manga_id', mangaId)
-            .eq('page_index', pageIndex)
+            .eq('manga_id', String(mangaId))
+            .eq('page_index', parseInt(pageIndex))
             .order('created_at', { ascending: true });
         if (error) throw error;
-        return data;
+        return data || [];
     },
 
     async addPageComment(mangaId, pageIndex, userId, userName, text) {
-        // Добавлен .select() в конец, чтобы v2 Supabase возвращал созданную строку и не падал скрипт
         const { data, error } = await _supabase
             .from('comments')
-            .insert({
-                manga_id: mangaId,
-                page_index: pageIndex,
-                user_id: userId,
+            .insert([{
+                manga_id: String(mangaId),
+                page_index: parseInt(pageIndex),
+                user_id: String(userId),
                 user_name: userName || "Читатель",
-                text: text
-            })
-            .select();
+                text: String(text)
+            }]);
         if (error) throw error;
         return data;
     },
@@ -71,7 +70,7 @@ const api = {
             .from('comments')
             .delete()
             .eq('id', commentId)
-            .eq('user_id', userId);
+            .eq('user_id', String(userId));
         if (error) throw error;
     }
 };
