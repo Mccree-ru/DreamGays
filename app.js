@@ -119,7 +119,7 @@ const app = {
             const isLiked = this.userLikedIds.includes(String(manga.id));
             const heartBadgeHtml = isLiked ? `<div class="card-like-badge">🤍</div>` : '';
 
-            // ПОЛУЧЕНИЕ И ОТОБРАЖЕНИЕ КОЛИЧЕСТВА КОММЕНТАРИЕВ ДЛЯ КАЖДОГО ТАЙТЛА
+            // 3. ИСПРАВЛЕНО: Вытаскиваем comments_count из объекта тайтла
             const commentsCount = manga.comments_count || 0;
 
             card.innerHTML = `
@@ -256,7 +256,8 @@ const app = {
         try {
             await api.addComment(this.currentManga.id, null, this.userId, this.userName, text);
             input.value = "";
-            // Обновляем счетчик локально для главного меню
+            
+            // Динамически увеличиваем счетчик на фронтенде для обновления в меню
             if (this.currentManga.comments_count !== undefined) {
                 this.currentManga.comments_count++;
             } else {
