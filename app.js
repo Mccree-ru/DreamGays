@@ -1,54 +1,29 @@
 const tg = window.Telegram.WebApp;
 
 const app = {
-    userId: null,
-    userName: null, // Здесь будет храниться безопасное имя для комментариев
+    userId: 123456789, // Временный ID для тестов на ПК, пока отлаживаем базу
+    userName: "Тестовый Пользователь",
     allManga: [],
     currentManga: null,
     isCurrentLiked: false,
 
     async init() {
-        // Проверяем, запущено ли приложение внутри Telegram и есть ли данные пользователя
+        // Временно пропускаем всех (и с ПК, и с телефона) для удобства тестов
         if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
             tg.ready();
             try { tg.expand(); } catch(e){}
-            
             this.userId = tg.initDataUnsafe.user.id;
             
-            // БЕЗОПАСНОСТЬ: Используем ТОЛЬКО имя профиля (first_name).
-            // Никаких логинов (@username), чтобы защитить аккаунты от спама.
             const user = tg.initDataUnsafe.user;
             if (user.first_name) {
                 this.userName = user.first_name.trim();
-            } else {
-                this.userName = "Читатель"; // Заглушка, если имя не заполнено
             }
-            
-            // Если всё отлично, запускаем загрузку каталога
-            await this.loadCatalog();
         } else {
-            // Если зашли с ПК или обычного браузера — блокируем интерфейс
-            this.handleAuthError();
+            console.log("Запущено на ПК. Используются тестовые данные пользователя.");
         }
-    },
-
-    // Обработка ошибки авторизации (если зашли не через Telegram бот)
-    handleAuthError() {
-        console.error("Ошибка: Приложение запущено вне Telegram или не удалось получить User ID.");
         
-        const grid = document.getElementById('catalogGrid');
-        if (grid) {
-            grid.style.display = "block";
-            grid.innerHTML = `
-                <div style="background: #251414; border: 1px solid #ff3b30; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px;">
-                    <span style="font-size: 40px;">🔒</span>
-                    <h3 style="color: #ff3b30; margin: 10px 0;">Доступ ограничен</h3>
-                    <p style="color: #ccc; font-size: 14px; line-height: 1.4;">
-                        Пожалуйста, откройте это приложение через официального Telegram-бота, чтобы получить доступ к читалке manhua.
-                    </p>
-                </div>
-            `;
-        }
+        // Сразу загружаем каталог
+        await this.loadCatalog();
     },
 
     async loadCatalog() {
@@ -69,12 +44,12 @@ const app = {
                 grid.appendChild(card);
             });
         } catch (err) {
-            console.error("Детальная ошибка загрузки:", err);
-            // Выводим детальный текст ошибки прямо на экран мобильного, чтобы сразу видеть косяки базы
+            console.error("Критическая ошибка Supabase:", err);
+            // Выводим ошибку ОГРОМНЫМ блоком прямо на экран
             document.getElementById('catalogGrid').innerHTML = `
-                <div style="padding: 15px; color: #ff3b30; font-size: 13px; text-align: left; background: #222; border-radius: 6px;">
-                    <b>Ошибка загрузки данных:</b><br>
-                    ${err.message || err.details || JSON.stringify(err)}
+                <div style="padding: 20px; color: #ff3b30; font-size: 14px; text-align: left; background: #222; border: 2px solid #ff3b30; border-radius: 8px;">
+                    <b>Критическая ошибка загрузки базы данных:</b><br><br>
+                    <code>${err.message || err.details || JSON.stringify(err)}</code>
                 </div>
             `;
         }
@@ -86,19 +61,16 @@ const app = {
 
         this.showScreen('previewScreen');
         
-        // Заполнение полей
         document.getElementById('previewCover').src = this.currentManga.cover;
         document.getElementById('previewTitle').innerText = this.currentManga.title;
         document.getElementById('previewAuthor').innerText = `Автор: ${this.currentManga.author}`;
         document.getElementById('previewLikesCount').innerText = `❤️ Всего лайков: ${this.currentManga.likes}`;
 
-        // Настройка кнопки Читать
         document.getElementById('startReadBtn').onclick = () => {
             this.showScreen('readerScreen');
             reader.renderPages('readerContainer', this.currentManga.pages);
         };
 
-        // Обработка лайков
         this.isCurrentLiked = await api.checkUserLike(this.userId, mangaId);
         this.updateLikeButtonUI();
 
@@ -108,10 +80,9 @@ const app = {
             this.currentManga.likes += this.isCurrentLiked ? 1 : -1;
             document.getElementById('previewLikesCount').innerText = `❤️ Всего лайков: ${this.currentManga.likes}`;
             this.updateLikeButtonUI();
-            this.loadCatalog(); // Тихий апдейт счетчиков в каталоге
+            this.loadCatalog();
         };
 
-        // Загрузка комментов
         this.loadComments(mangaId);
     },
 
@@ -156,8 +127,8 @@ const app = {
         if(!text) return;
 
         await api.addComment(this.currentManga.id, this.userId, this.userName, text);
-        input.value = ""; // Очищаем поле
-        this.loadComments(this.currentManga.id); // Перерисовываем список комментов
+        input.value = "";
+        this.loadComments(this.currentManga.id);
     },
 
     closeMangaReader() {
@@ -170,5 +141,4 @@ const app = {
     }
 };
 
-// Запуск при старте приложения
 window.onload = () => app.init();
