@@ -1,8 +1,19 @@
 const tg = window.Telegram.WebApp;
 
+// Инициализация данных авторизации из localStorage
+let userId = localStorage.getItem('tg_user_id');
+let userName = localStorage.getItem('tg_user_name');
+
+// Функция-обработчик для Telegram Login Widget
+function onTelegramAuth(user) {
+    localStorage.setItem('tg_user_id', user.id);
+    localStorage.setItem('tg_user_name', user.first_name);
+    location.reload(); 
+}
+
 const app = {
-    userId: 12345, 
-    userName: "Читатель",
+    userId: userId, 
+    userName: userName,
     allManga: [],
     userLikedIds: [], 
     currentManga: null,
@@ -12,12 +23,34 @@ const app = {
     selectedAuthor: "",
     sortPopularActive: false,
 
+    // Проверка авторизации
+    checkAuth() {
+        // 1. Проверяем Telegram WebApp
+        if (window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+            const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+            this.userId = tgUser.id;
+            this.userName = tgUser.first_name;
+            localStorage.setItem('tg_user_id', this.userId);
+            localStorage.setItem('tg_user_name', this.userName);
+        }
+
+        // 2. Если данных нет, показываем экран блокировки
+        if (!this.userId) {
+            document.getElementById('authWall').style.display = 'flex';
+            return false;
+        } else {
+            document.getElementById('authWall').style.display = 'none';
+            return true;
+        }
+    },
+
     async init() {
-        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+        // Сначала проверяем авторизацию
+        if (!this.checkAuth()) return;
+
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
             tg.ready();
             try { tg.expand(); } catch(e){}
-            this.userId = Number(tg.initDataUnsafe.user.id);
-            this.userName = tg.initDataUnsafe.user.first_name || "Читатель";
         }
 
         this.userLikedIds = await api.getUserLikesList(this.userId);
@@ -107,13 +140,11 @@ const app = {
 
             card.className = 'manga-card' + genreClass;
 
-            // Генерируем автора с кликом
             const authorTagsHtml = manga.author !== "Не указан" ? manga.author.split(',').map(a => {
                 const authorName = a.trim();
                 const isActive = this.selectedAuthor === authorName;
                 const activeClass = isActive ? 'active' : '';
                 
-                // Если активно - сбрасываем, если нет - устанавливаем фильтр
                 const clickAction = isActive 
                     ? `app.resetFilters()` 
                     : `app.filterByAuthor('${authorName}'); document.getElementById('authorSelect').value = '${authorName}';`;
@@ -154,6 +185,7 @@ const app = {
     },
 
     async openMangaPreview(mangaId) {
+        if (!this.userId) return;
         this.currentManga = this.allManga.find(m => m.id === String(mangaId));
         if (!this.currentManga) return;
 
@@ -202,21 +234,13 @@ const app = {
     
     formatCommentTime(isoString) {
         if (!isoString) return "";
-    
-        // Добавляем 'Z' в конец, если его там нет.
-        // Это заставит JS интерпретировать строку именно как UTC.
         const utcString = isoString.endsWith('Z') ? isoString : isoString + 'Z';
-        
         const d = new Date(utcString);
         if (isNaN(d.getTime())) return "";
-    
-        // Теперь браузер автоматически добавит смещение твоего часового пояса
         const now = new Date();
         const pad = (n) => String(n).padStart(2, '0');
-        
         const hours = pad(d.getHours());
         const minutes = pad(d.getMinutes());
-        
         if (d.toDateString() === now.toDateString()) {
             return `${hours}:${minutes}`;
         }
@@ -228,7 +252,6 @@ const app = {
         container.innerHTML = "Загрузка обсуждения...";
         try {
             const mainComments = await api.fetchMainComments(this.currentManga.id);
-
             if(!mainComments || mainComments.length === 0) {
                 container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>У этого тайтла пока нет комментариев.</p>";
                 return;
@@ -239,9 +262,7 @@ const app = {
                 item.className = 'comment-item';
                 const isMyComment = Number(c.user_id) === Number(this.userId);
                 const delBtnHtml = isMyComment ? `<button class="comment-del-btn" onclick="app.deleteMainComment('${c.id}')">🗑 Удалить</button>` : '';
-
                 const timeString = this.formatCommentTime(c.created_at);
-
                 item.innerHTML = `
                     <div class="comment-top-line">
                         <span class="comment-user">${c.user_name}</span>
@@ -261,16 +282,11 @@ const app = {
         const input = document.getElementById('mainCommentInputField');
         const text = input.value.trim();
         if (!text) return;
-
         try {
             await api.addComment(this.currentManga.id, null, this.userId, this.userName, text);
             input.value = "";
-            
-            if (this.currentManga.comments_count !== undefined) {
-                this.currentManga.comments_count++;
-            } else {
-                this.currentManga.comments_count = 1;
-            }
+            if (this.currentManga.comments_count !== undefined) this.currentManga.comments_count++;
+            else this.currentManga.comments_count = 1;
             await this.loadMainComments();
         } catch(e) {
             alert("Не удалось отправить комментарий.");
