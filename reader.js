@@ -2,6 +2,7 @@ const reader = {
     mangaId: null,
     pages: [],
     currentIndex: 0,
+    isGesturesInitialized: false,
     
     scale: 1,
     lastScale: 1,
@@ -33,7 +34,12 @@ const reader = {
         });
 
         this.updateTrack();
-        this.initTouchGestures();
+        
+        // Вешаем жесты строго один раз за всё время жизни приложения
+        if (!this.isGesturesInitialized) {
+            this.initTouchGestures();
+            this.isGesturesInitialized = true;
+        }
     },
 
     updateTrack() {
@@ -81,7 +87,6 @@ const reader = {
         const container = document.getElementById('pageCommentsScroll');
         container.innerHTML = "<span style='color:#777; font-size:12px;'>Загрузка комментариев...</span>";
         try {
-            // Делаем чистый точечный запрос в созданную колонку
             const pageComments = await api.fetchPageComments(this.mangaId, this.currentIndex);
 
             if(!pageComments || pageComments.length === 0) {
@@ -118,7 +123,7 @@ const reader = {
         if (!text) return;
 
         try {
-            await api.addPageComment(this.mangaId, this.currentIndex, app.userId, app.userName, text);
+            await api.addComment(this.mangaId, this.currentIndex, app.userId, app.userName, text);
             input.value = "";
             await this.loadCommentsForCurrentPage();
         } catch(e) {
