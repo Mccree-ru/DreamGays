@@ -5,6 +5,16 @@ const reader = {
     isGesturesInitialized: false,
     isPCControlsInitialized: false,
     
+    // Переменные для зума и панорамирования
+    scale: 1,
+    currentX: 0,
+    currentY: 0,
+    startX: 0,
+    startY: 0,
+    initialDistance: 0,
+    initialScale: 1,
+    isDragging: false,
+
     // Очередь для хранения фоновых объектов картинок (защита от Garbage Collector)
     preloadQueue: [], 
     // Набор URL, которые уже были поставлены на загрузку (защита от дублирования запросов)
@@ -16,6 +26,9 @@ const reader = {
         this.mangaId = mangaId;
         this.pages = pagesArray;
         this.currentIndex = 0;
+        this.scale = 1;
+        this.currentX = 0;
+        this.currentY = 0;
         this.resetZoom();
 
         const track = document.getElementById('readerTrack');
@@ -28,7 +41,7 @@ const reader = {
             slide.className = 'reader-slide';
             
             slide.innerHTML = `
-                <div class="zoom-container" id="zoomContainer-${index}">
+                <div class="zoom-container" id="zoomContainer-${index}" style="transform-origin: 50% 50%;">
                     <div class="reader-skeleton" id="skeleton-${index}">
                         <div class="reader-skeleton-inner skeleton-blink"></div>
                     </div>
@@ -46,21 +59,17 @@ const reader = {
         this.preloadedUrls = new Set();
         this.isBackgroundLoading = false;
 
-        // Отмечаем первую страницу как уже загружаемую (её качает сам браузер через тег img)
         if (this.pages[0]) {
             this.preloadedUrls.add(this.pages[0]);
         }
 
-        // Запускаем умный расчет приоритетов прелоада
         this.managePreload();
 
-        // Инициализация мобильных жестов (однократно)
         if (!this.isGesturesInitialized) {
             this.initTouchGestures();
             this.isGesturesInitialized = true;
         }
 
-        // Инициализация управления на ПК (однократно)
         if (!this.isPCControlsInitialized) {
             this.initKeyboardControls();
             this.initClickZones();
@@ -68,11 +77,9 @@ const reader = {
         }
     },
 
-    // Умное управление приоритетами загрузки фреймов
     managePreload() {
         if (!this.pages || this.pages.length === 0) return;
 
-        // ПРИОРИТЕТ 1: Горячая зона — 3 страницы строго перед глазами пользователя
         const nextPagesCount = 3; 
         const priorityIndices = [];
 
@@ -83,16 +90,13 @@ const reader = {
             }
         }
 
-        // Параллельно запускаем скачивание приоритетных страниц
         priorityIndices.forEach(index => {
             this.preloadSingleUrl(this.pages[index], true);
         });
 
-        // ПРИОРИТЕТ 2: Фоновый догруз всего остального тайтла (строго по очереди)
         this.preloadRemainingSequentially();
     },
 
-    // Асинхронное скачивание одного изображения
     preloadSingleUrl(url, isPriority = false) {
         if (this.preloadedUrls.has(url)) return Promise.resolve();
 
@@ -101,13 +105,9 @@ const reader = {
             const img = new Image();
             
             img.onload = () => {
-                if (isPriority) {
-                    console.log(`[Preloader] Приоритетная страница загружена: ${url.substring(url.lastIndexOf('/'))}`);
-                }
                 resolve();
             };
             img.onerror = () => {
-                // Если произошла сетевая ошибка — даем шанс скачать картинку заново при листании
                 this.preloadedUrls.delete(url); 
                 resolve();
             };
@@ -117,15 +117,12 @@ const reader = {
         });
     },
 
-    // Последовательный догруз оставшейся части главы без забивания канала связи
     async preloadRemainingSequentially() {
         if (this.isBackgroundLoading) return;
         this.isBackgroundLoading = true;
 
         for (let i = 0; i < this.pages.length; i++) {
             const url = this.pages[i];
-            
-            // Если до страницы еще не дошла очередь — скачиваем её и дожидаемся (await)
             if (!this.preloadedUrls.has(url)) {
                 await this.preloadSingleUrl(url, false);
             }
@@ -139,7 +136,6 @@ const reader = {
             const readerScreen = document.getElementById('readerScreen');
             if (!readerScreen || !readerScreen.classList.contains('active')) return;
 
-            // Если фокус в инпуте комментариев — стрелочки не должны переключать страницы
             if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
                 return;
             }
@@ -168,19 +164,25 @@ const reader = {
         let lastClickTime = 0;
 
         track.addEventListener('click', (event) => {
-            // Игнорируем клики, если они пришлись на кнопки, инпуты или панель комментариев
             if (event.target.closest('button') || event.target.closest('.page-comments-panel') || event.target.closest('.comment-input-block')) return;
+
+            // РЕШЕНИЕ ЗАДАЧИ 3: Если панель комментариев открыта — просто закрываем её без перелистываний и зума
+            const commentsPanel = document.getElementById('commentsPanel');
+            if (commentsPanel && commentsPanel.classList.contains('open')) {
+                this.toggleComments(false);
+                if (clickTimeout) clearTimeout(clickTimeout);
+                return; 
+            }
 
             const currentTime = new Date().getTime();
             const clickDelay = currentTime - lastClickTime;
 
-            // ИСПРАВЛЕНИЕ ПРОБЛЕМЫ 2: Если клик произошел быстрее чем за 300мс — это ДАБЛ-ТАП
+            // РЕШЕНИЕ ЗАДАЧИ 2: Быстрый дабл-тап
             if (clickDelay < 300) {
                 if (clickTimeout) {
                     clearTimeout(clickTimeout);
                     clickTimeout = null;
                 }
-                // Запускаем зум в точку клика
                 this.toggleZoom(event);
                 lastClickTime = 0; 
                 return;
@@ -188,11 +190,10 @@ const reader = {
             
             lastClickTime = currentTime;
 
-            // Одиночный клик оборачиваем в таймаут, чтобы дать время на проверку дабл-тапа
             clickTimeout = setTimeout(() => {
                 clickTimeout = null;
 
-                // Если страница приближена — не перелистываем кликами по краям
+                // Если страница приближена — одиночные клики по краям заблокированы для удобства скролла
                 if (this.scale && this.scale > 1) return;
 
                 const screenWidth = window.innerWidth;
@@ -218,24 +219,153 @@ const reader = {
         });
     },
 
-    // ИСПРАВЛЕНИЕ ПРОБЛЕМЫ 1: Увеличиваем ровно ту область, куда нажал пользователь
+    // Плавное переключение зума по дабл-тапу
     toggleZoom(event) {
         const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
         if (!container) return;
 
+        // Включаем идеальную плавность только на момент дабл-тапа
+        container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
+
         if (this.scale && this.scale > 1) {
             this.resetZoom();
         } else {
-            this.scale = 2.5; // Сила приближения
+            this.scale = 2.5;
 
             const rect = container.getBoundingClientRect();
-            // Находим координаты клика относительно самого контейнера изображения
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
 
-            // Сдвигаем центр трансформации в точку нажатия
+            // Ставим фокус-точку один раз перед приближением
             container.style.transformOrigin = `${x}px ${y}px`;
+            this.currentX = 0;
+            this.currentY = 0;
+            
             container.style.transform = `translate3d(0px, 0px, 0px) scale(${this.scale})`;
+            
+            // РЕШЕНИЕ ЗАДАЧИ 4: Прячем верхнюю панель при зуме
+            this.toggleTopPanel(false);
+        }
+    },
+
+    // РЕШЕНИЕ ЗАДАЧИ 1 & 2: Написание плавного мультитач жеста и панорамирования
+    initTouchGestures() {
+        const track = document.getElementById('readerTrack');
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        track.addEventListener('touchstart', (e) => {
+            const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+            if (!container) return;
+
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                
+                // Фиксируем координаты под плавный сдвиг (pan)
+                this.startX = e.touches[0].clientX - this.currentX;
+                this.startY = e.touches[0].clientY - this.currentY;
+                
+                if (this.scale > 1) {
+                    container.style.transition = 'none'; // Убираем задержки при перетаскивании пальцем
+                    this.isDragging = true;
+                }
+            } else if (e.touches.length === 2) {
+                // Старт жеста Pinch-to-zoom двумя пальцами
+                container.style.transition = 'none';
+                this.isDragging = false;
+                this.initialDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                this.initialScale = this.scale || 1;
+            }
+        }, { passive: true });
+
+        track.addEventListener('touchmove', (e) => {
+            const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+            if (!container) return;
+
+            if (e.touches.length === 1 && this.isDragging) {
+                // Перетаскивание картинки одной рукой внутри зума
+                this.currentX = e.touches[0].clientX - this.startX;
+                this.currentY = e.touches[0].clientY - this.startY;
+
+                // Математический барьер: не даем картинке полностью улететь за экран
+                const maxMoveX = (window.innerWidth * (this.scale - 1)) / 2;
+                const maxMoveY = (window.innerHeight * (this.scale - 1)) / 2;
+                this.currentX = Math.max(-maxMoveX, Math.min(maxMoveX, this.currentX));
+                this.currentY = Math.max(-maxMoveY, Math.min(maxMoveY, this.currentY));
+
+                container.style.transform = `translate3d(${this.currentX}px, ${this.currentY}px, 0px) scale(${this.scale})`;
+            } else if (e.touches.length === 2) {
+                // Изменение масштаба двумя пальцами на лету
+                const dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+
+                let newScale = (dist / this.initialDistance) * this.initialScale;
+                this.scale = Math.max(1, Math.min(4, newScale)); // Ограничение от 1х до 4х
+
+                if (this.scale === 1) {
+                    this.currentX = 0;
+                    this.currentY = 0;
+                }
+
+                container.style.transform = `translate3d(${this.currentX}px, ${this.currentY}px, 0px) scale(${this.scale})`;
+                
+                // Скрываем/показываем топ-панель в зависимости от масштаба
+                this.toggleTopPanel(this.scale === 1);
+            }
+        }, { passive: true });
+
+        track.addEventListener('touchend', (e) => {
+            const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+            if (!container) return;
+
+            this.isDragging = false;
+
+            if (e.touches.length === 0) {
+                if (this.scale < 1.1) {
+                    this.resetZoom();
+                } else {
+                    container.style.transition = 'transform 0.2s ease-out';
+                }
+            }
+
+            // Перелистывание обычным свайпом (только если масштаб 1:1)
+            if (e.changedTouches.length === 1 && (!this.scale || this.scale === 1)) {
+                touchEndX = e.changedTouches[0].clientX;
+                const diffX = touchStartX - touchEndX;
+
+                if (diffX > 60 && this.currentIndex < this.pages.length - 1) {
+                    this.currentIndex++;
+                    this.resetZoom();
+                    this.updateTrack();
+                } else if (diffX < -60 && this.currentIndex > 0) {
+                    this.currentIndex--;
+                    this.resetZoom();
+                    this.updateTrack();
+                }
+            }
+        }, { passive: true });
+    },
+
+    // РЕШЕНИЕ ЗАДАЧИ 4: Универсальное управление отображением верхней панели ридера
+    toggleTopPanel(show) {
+        const counter = document.getElementById('pageCounter');
+        if (counter && counter.parentElement) {
+            const topBar = counter.parentElement;
+            topBar.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+            if (show) {
+                topBar.style.transform = 'translateY(0)';
+                topBar.style.opacity = '1';
+                topBar.style.pointerEvents = 'auto';
+            } else {
+                topBar.style.transform = 'translateY(-100%)';
+                topBar.style.opacity = '0';
+                topBar.style.pointerEvents = 'none';
+            }
         }
     },
 
@@ -260,7 +390,6 @@ const reader = {
             this.loadCommentsForCurrentPage();
         }
 
-        // ПЕРЕРАСЧЕТ: Каждый раз при смене кадра обновляем приоритеты загрузки
         this.managePreload();
     },
 
@@ -270,40 +399,14 @@ const reader = {
         this.currentY = 0;
         const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
         if (container) {
+            container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
             container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
+            // Возвращаем origin в центр по умолчанию после завершения анимации уменьшения
+            setTimeout(() => {
+                if (this.scale === 1) container.style.transformOrigin = '50% 50%';
+            }, 250);
         }
-    },
-
-    initTouchGestures() {
-        const track = document.getElementById('readerTrack');
-        let touchStartX = 0;
-        let touchEndX = 0;
-
-        track.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                touchStartX = e.touches[0].clientX;
-            }
-        }, { passive: true });
-
-        track.addEventListener('touchend', (e) => {
-            if (e.changedTouches.length === 1) {
-                touchEndX = e.changedTouches[0].clientX;
-                const diffX = touchStartX - touchEndX;
-
-                if (this.scale && this.scale > 1) return;
-
-                if (diffX > 60 && this.currentIndex < this.pages.length - 1) {
-                    this.currentIndex++;
-                    this.resetZoom();
-                    this.updateTrack();
-                }
-                else if (diffX < -60 && this.currentIndex > 0) {
-                    this.currentIndex--;
-                    this.resetZoom();
-                    this.updateTrack();
-                }
-            }
-        }, { passive: true });
+        this.toggleTopPanel(true);
     },
 
     toggleComments(show) {
@@ -319,16 +422,12 @@ const reader = {
         }
     },
 
-    // ИСПРАВЛЕНИЕ ПРОБЛЕМЫ 3: Добавлены реальные методы для работы с комментариями страниц
-
-    // 3.1. Загрузка и рендеринг комментариев текущей страницы
     async loadCommentsForCurrentPage() {
         const container = document.getElementById('pageCommentsScroll');
         if (!container) return;
         container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>Загрузка комментариев страницы...</p>";
         
         try {
-            // Вызываем рабочий метод из api.js
             const comments = await api.fetchPageComments(this.mangaId, this.currentIndex);
 
             if (!comments || comments.length === 0) {
@@ -360,7 +459,6 @@ const reader = {
         }
     },
 
-    // 3.2. Отправка комментария к странице
     async sendPageComment() {
         const input = document.getElementById('pageCommentInputField');
         if (!input) return;
@@ -372,11 +470,9 @@ const reader = {
                 window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
             }
 
-            // Добавляем запись в таблицу Supabase через api.js
             await api.addComment(this.mangaId, this.currentIndex, app.userId, app.userName, text);
             input.value = "";
 
-            // Синхронизируем и увеличиваем общий счетчик тайтла в объекте app
             if (app.currentManga) {
                 if (app.currentManga.comments_count !== undefined) {
                     app.currentManga.comments_count++;
@@ -384,19 +480,16 @@ const reader = {
                     app.currentManga.comments_count = 1;
                 }
                 
-                // Обновляем текст счетчика на экране превью тайтла
                 const previewComments = document.getElementById('previewComments');
                 if (previewComments) {
                     previewComments.textContent = `💬 ${app.currentManga.comments_count}`;
                 }
 
-                // Перерисовываем карточки каталога, чтобы цифры обновились и на главном экране
                 if (typeof app.renderCatalogGrid === 'function') {
                     app.renderCatalogGrid(app.allManga);
                 }
             }
 
-            // Обновляем список комментариев на панели чтения
             await this.loadCommentsForCurrentPage();
         } catch (e) {
             console.error("Ошибка при отправке комментария страницы:", e);
@@ -404,7 +497,6 @@ const reader = {
         }
     },
 
-    // 3.3. Удаление комментария к странице
     async deletePageComment(commentId) {
         if (confirm("Удалить ваш комментарий к странице?")) {
             try {
@@ -412,10 +504,8 @@ const reader = {
                     window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
                 }
 
-                // Удаляем из Supabase
                 await api.deleteComment(commentId, app.userId);
                 
-                // Уменьшаем счетчики
                 if (app.currentManga && app.currentManga.comments_count > 0) {
                     app.currentManga.comments_count--;
                     const previewComments = document.getElementById('previewComments');
@@ -427,7 +517,6 @@ const reader = {
                     }
                 }
                 
-                // Перезагружаем список
                 await this.loadCommentsForCurrentPage();
             } catch (e) {
                 console.error("Ошибка при удалении комментария:", e);
