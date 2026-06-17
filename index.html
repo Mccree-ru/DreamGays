@@ -22,6 +22,13 @@
             color: var(--text-color); 
             margin: 0; padding: 0;
             overflow: hidden;
+            -webkit-user-select: none; user-select: none;
+        }
+
+        /* Полное отключение системного выделения при кликах на мобильных устройствах */
+        button, .genre-tab, .sort-btn, .reset-btn, .manga-card, select, .open-comments-trigger-btn {
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
         }
 
         .screen {
@@ -34,7 +41,6 @@
 
         .main-container { padding: 15px; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
 
-        /* Лаконичный текст кнопки доната */
         .top-coffee-banner {
             width: 100%; background: var(--coffee-gradient); color: #fff;
             border: none; padding: 14px; border-radius: 12px; font-size: 15px;
@@ -66,14 +72,12 @@
 
         .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         
-        /* СТИЛИ КАРТОЧЕК */
         .manga-card { 
             background-color: var(--card-bg); border-radius: 12px; overflow: hidden; 
             display: flex; flex-direction: column; cursor: pointer; position: relative; 
             border: 1px solid rgba(255, 255, 255, 0.08); 
         }
         
-        /* Приятный глазу тёмно-кофейный тон для Bara без агрессивных обводок */
         .manga-card.manga-bara { background-color: #1b1616; }
         .manga-card.manga-furry { background-color: #15131c; }
 
@@ -88,7 +92,6 @@
             font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; border: 1px solid rgba(255,255,255,0.2);
         }
 
-        /* Выделение фиксированных зон для жесткого статического выравнивания */
         .card-info { 
             padding: 10px; flex-grow: 1; 
             display: flex; flex-direction: column; 
@@ -97,15 +100,22 @@
             font-size: 13px; font-weight: 600; margin: 0 0 8px 0; line-height: 1.25;
             min-height: 32px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
         }
-        .card-author-zone { min-height: 16px; margin-bottom: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
-        .card-tags-zone { min-height: 16px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
         
-        .tag { font-size: 9px; background-color: rgba(0, 235, 135, 0.1); color: var(--link-color); padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
-        .tag-author { font-size: 9px; background-color: #ff7b00; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; }
-        .tag-bara { font-size: 9px; background-color: #7a2828; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
-        .tag-furry { font-size: 9px; background-color: #4c3585; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
+        /* ИСПРАВЛЕНО: Добавлены отступы gap и высота строки, чтобы авторы не наезжали друг на друга */
+        .card-author-zone { min-height: 18px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px; line-height: 1.4; }
+        .card-tags-zone { min-height: 18px; margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 6px; line-height: 1.4; }
         
-        .card-stats { font-size: 11px; color: var(--hint-color); margin-top: auto; font-weight: bold; padding-top: 2px; }
+        .tag { font-size: 9px; background-color: rgba(0, 235, 135, 0.1); color: var(--link-color); padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+        .tag-author { font-size: 9px; background-color: #ff7b00; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; white-space: nowrap; }
+        .tag-bara { font-size: 9px; background-color: #7a2828; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+        .tag-furry { font-size: 9px; background-color: #4c3585; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+        
+        /* Статичная зона под обновленную статистику с иконками */
+        .card-stats { 
+            font-size: 11px; color: var(--hint-color); margin-top: auto; font-weight: bold; padding-top: 2px;
+            display: flex; gap: 10px; align-items: center;
+        }
+        .stat-item { display: flex; align-items: center; gap: 3px; }
 
         /* Экран Превью */
         .preview-nav-row { display: flex; gap: 10px; margin-bottom: 15px; }
@@ -135,7 +145,7 @@
         .comment-text { margin: 0; font-size: 13px; color: #eee; word-break: break-word; }
         .comment-del-btn { position: absolute; bottom: 8px; right: 8px; background: none; border: none; color: #ff3b30; cursor: pointer; font-size: 11px; }
         .comment-input-block { display: flex; gap: 8px; margin-top: 10px; }
-        .comment-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 8px; font-size: 13px; }
+        .comment-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 8px; font-size: 13px; -webkit-user-select: text; user-select: text; }
 
         /* Читалка */
         .reader-screen { background-color: #000; overflow: hidden; touch-action: none; }
@@ -172,7 +182,6 @@
             transition: opacity 0.15s ease, transform 0.15s ease;
         }
 
-        /* Системный класс скрытия панелей */
         .ui-hidden { opacity: 0 !important; pointer-events: none !important; }
 
         .page-comments-panel {
@@ -190,19 +199,15 @@
     </style>
 </head>
 <body>
-
-    <!-- ЭКРАН 1: ГЛАВНЫЙ КАТАЛОГ -->
+    <!-- Содержимое body остается прежним -->
     <div id="mainScreen" class="screen active">
         <div class="main-container">
-            <!-- Кнопка очищена от лишнего текста -->
             <button class="top-coffee-banner" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
-
             <div class="genre-tabs">
                 <button id="tab-all" class="genre-tab active" onclick="app.switchGenreTab(null)">Все</button>
                 <button id="tab-bara" class="genre-tab" onclick="app.switchGenreTab('bara')">Bara</button>
                 <button id="tab-furry" class="genre-tab" onclick="app.switchGenreTab('furry')">Furry</button>
             </div>
-
             <div class="filter-panel">
                 <div class="filter-row">
                     <select id="authorSelect" class="author-select" onchange="app.filterByAuthor(this.value)">
@@ -212,19 +217,16 @@
                     <button id="resetBtn" class="reset-btn" onclick="app.resetFilters()">Сбросить</button>
                 </div>
             </div>
-
             <div class="catalog-grid" id="catalogGrid">Загрузка релизов...</div>
         </div>
     </div>
 
-    <!-- ЭКРАН 2: ПРЕВЬЮ ТАЙТЛА -->
     <div id="previewScreen" class="screen">
         <div class="main-container">
             <div class="preview-nav-row">
                 <button class="btn-half" style="background:#333; color:#fff;" onclick="app.showScreen('mainScreen')">← В каталог</button>
                 <button class="btn-half" style="background: var(--coffee-gradient); color:#fff;" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
             </div>
-            
             <div class="preview-header">
                 <div class="preview-cover-block">
                     <img id="previewCover" class="preview-cover" src="" alt="">
@@ -233,14 +235,12 @@
                 <div style="flex-grow: 1; padding-top: 4px;">
                     <h3 id="previewTitle" style="margin:0 0 5px 0; font-size:18px;"></h3>
                     <p id="previewAuthor" style="color:#aaa; margin:0 0 5px 0; font-size:14px;"></p>
-                    
                     <div class="likes-row-container">
                         <span id="previewLikesCount" style="font-weight:bold; font-size:14px; color:#00eb87;"></span>
                         <button id="likeBtn" class="btn-like-compact">Добавить в понравившееся</button>
                     </div>
                 </div>
             </div>
-
             <div class="comments-section-title">Обсуждение тайтла</div>
             <div id="mainCommentsScroll" class="comments-scroll">Синхронизация сообщений...</div>
             <div class="comment-input-block">
@@ -250,18 +250,14 @@
         </div>
     </div>
 
-    <!-- ЭКРАН 3: ГОРИЗОНТАЛЬНАЯ ЧИТАЛКА -->
     <div id="readerScreen" class="screen reader-screen">
         <div id="readerHeader" class="reader-header">
             <button class="sort-btn" style="color:#fff;" onclick="app.closeMangaReader()">✕ Выйти</button>
             <div class="page-counter" id="pageCounter">0 / 0</div>
             <button class="reader-donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
         </div>
-        
         <div id="readerTrack" class="reader-track" onclick="if(document.getElementById('commentsPanel').classList.contains('open')) reader.toggleComments(false);"></div>
-
         <button id="openCommentsBtn" class="open-comments-trigger-btn" onclick="reader.toggleComments(true)">💬</button>
-
         <div id="commentsPanel" class="page-comments-panel">
             <div class="comments-header">
                 <span id="commentsTitle" style="font-weight:bold; font-size:14px; color:#fff;">Комментарии</span>
