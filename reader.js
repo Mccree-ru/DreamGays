@@ -5,6 +5,19 @@ const reader = {
     isGesturesInitialized: false,
     isPCControlsInitialized: false,
     
+    // Для зума
+    scale: 1,
+    minScale: 1,
+    maxScale: 3,
+    currentX: 0,
+    currentY: 0,
+    
+    // Для отслеживания двойного тапа
+    lastTapTime: 0,
+    lastTapX: 0,
+    lastTapY: 0,
+    isZooming: false,
+    
     // Очередь для хранения фоновых объектов картинок (защита от Garbage Collector)
     preloadQueue: [], 
     // Набор URL, которые уже были поставлены на загрузку (защита от дублирования запросов)
@@ -167,6 +180,12 @@ const reader = {
         track.addEventListener('click', (event) => {
             // Игнорируем клики, если они пришлись на кнопки или панель комментариев
             if (event.target.closest('button') || event.target.closest('.page-comments-panel')) return;
+            
+            // Игнорируем клик, если это был двойной тап (зум)
+            if (this.isZooming) {
+                this.isZooming = false;
+                return;
+            }
 
             const screenWidth = window.innerWidth;
             const clickX = event.clientX;
@@ -208,9 +227,7 @@ const reader = {
         if (commentsPanel && commentsPanel.classList.contains('open')) {
             const commentsTitle = document.getElementById('commentsTitle');
             if (commentsTitle) commentsTitle.textContent = `Комментарии к странице ${this.currentIndex + 1}`;
-            if (typeof this.loadCommentsForCurrentPage === 'function') {
-                this.loadCommentsForCurrentPage();
-            }
+            this.loadCommentsForCurrentPage();
         }
 
         // ПЕРЕРАСЧЕТ: Каждый раз при смене кадра обновляем приоритеты загрузки
@@ -224,6 +241,7 @@ const reader = {
         const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
         if (container) {
             container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
+            container.style.transformOrigin = 'center center';
         }
     },
 
@@ -231,30 +249,158 @@ const reader = {
         const track = document.getElementById('readerTrack');
         let touchStartX = 0;
         let touchEndX = 0;
+        let touchStartY = 0;
+        let isSwiping = false;
+        
+        // Переменные для пинч-зума
+        let initialPinchDistance = 0;
+        let initialScale = 1;
+        let initialX = 0;
+        let initialY = 0;
+        let pinchCenterX = 0;
+        let pinchCenterY = 0;
+        let isPinching = false;
 
         track.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
-                touchStartX = e.touches[0].clientX;
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                isSwiping = true;
+                
+                // Проверка на двойной тап
+                const now = Date.now();
+                const timeSinceLastTap = now - this.lastTapTime;
+                
+                if (timeSinceLastTap < 300) {
+                    // Это двойной тап!
+                    this.isZooming = true;
+                    this.handleDoubleTap(touch.clientX, touch.clientY);
+                }
+                
+                this.lastTapTime = now;
+                this.lastTapX = touch.clientX;
+                this.lastTapY = touch.clientY;
+                
+            } else if (e.touches.length === 2) {
+                // Начало пинча
+                isPinching = true;
+                isSwiping = false;
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                initialPinchDistance = this.getDistance(touch1, touch2);
+                pinchCenterX = (touch1.clientX + touch2.clientX) / 2;
+                pinchCenterY = (touch1.clientY + touch2.clientY) / 2;
+                
+                const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+                if (container) {
+                    const rect = container.getBoundingClientRect();
+                    const xPercent = ((pinchCenterX - rect.left) / rect.width) * 100;
+                    const yPercent = ((pinchCenterY - rect.top) / rect.height) * 100;
+                    container.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+                }
+                
+                initialScale = this.scale;
+                initialX = this.currentX;
+                initialY = this.currentY;
             }
         }, { passive: true });
 
-        track.addEventListener('touchend', (e) => {
-            if (e.changedTouches.length === 1) {
-                touchEndX = e.changedTouches[0].clientX;
-                const diffX = touchStartX - touchEndX;
+        track.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1 && isSwiping) {
+                // Свайп для перелистывания только если зум = 1
+                if (this.scale === 1) {
+                    const touch = e.touches[0];
+                    const diffX = touchStartX - touch.clientX;
+                    
+                    // Если смещение больше порога - считаем свайпом
+                    if (Math.abs(diffX) > 20) {
+                        isSwiping = false;
+                    }
+                }
+            } else if (e.touches.length === 2 && isPinching) {
+                // Пинч-зум
+                e.preventDefault();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const currentDistance = this.getDistance(touch1, touch2);
+                const scaleFactor = currentDistance / initialPinchDistance;
+                
+                let newScale = initialScale * scaleFactor;
+                newScale = Math.min(Math.max(newScale, this.minScale), this.maxScale);
+                
+                // Обновляем трансформацию
+                const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+                if (container) {
+                    container.style.transform = `translate3d(0px, 0px, 0px) scale(${newScale})`;
+                }
+                this.scale = newScale;
+            }
+        }, { passive: false });
 
-                if (diffX > 60 && this.currentIndex < this.pages.length - 1) {
+        track.addEventListener('touchend', (e) => {
+            // Если это был свайп и зум = 1
+            if (isSwiping && this.scale === 1) {
+                const diffX = touchStartX - touchEndX;
+                
+                if (diffX > 50 && this.currentIndex < this.pages.length - 1) {
                     this.currentIndex++;
                     this.resetZoom();
                     this.updateTrack();
                 }
-                else if (diffX < -60 && this.currentIndex > 0) {
+                else if (diffX < -50 && this.currentIndex > 0) {
                     this.currentIndex--;
                     this.resetZoom();
                     this.updateTrack();
                 }
             }
+            
+            isSwiping = false;
+            isPinching = false;
+            
+            // Сбрасываем флаг зума после небольшой задержки
+            setTimeout(() => {
+                this.isZooming = false;
+            }, 100);
         }, { passive: true });
+        
+        // Сохраняем touchEndX в touchend
+        track.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length === 1) {
+                touchEndX = e.changedTouches[0].clientX;
+            }
+        }, { passive: true });
+    },
+    
+    // Вспомогательная функция для расчета расстояния между двумя точками
+    getDistance(touch1, touch2) {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    },
+    
+    // Обработка двойного тапа для зума к месту касания
+    handleDoubleTap(x, y) {
+        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+        if (!container) return;
+        
+        const rect = container.getBoundingClientRect();
+        
+        // Вычисляем процентное положение тапа относительно контейнера
+        const xPercent = ((x - rect.left) / rect.width) * 100;
+        const yPercent = ((y - rect.top) / rect.height) * 100;
+        
+        // Устанавливаем точку трансформации в место тапа
+        container.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+        
+        if (this.scale === 1) {
+            // Увеличиваем
+            this.scale = 2.5;
+            container.style.transform = `translate3d(0px, 0px, 0px) scale(${this.scale})`;
+        } else {
+            // Сбрасываем зум
+            this.resetZoom();
+        }
     },
 
     toggleComments(show) {
@@ -264,11 +410,93 @@ const reader = {
             panel.classList.add('open');
             const commentsTitle = document.getElementById('commentsTitle');
             if (commentsTitle) commentsTitle.textContent = `Комментарии к странице ${this.currentIndex + 1}`;
-            if (typeof this.loadCommentsForCurrentPage === 'function') {
-                this.loadCommentsForCurrentPage();
-            }
+            this.loadCommentsForCurrentPage();
         } else {
             panel.classList.remove('open');
+        }
+    },
+    
+    // Загрузка комментариев для текущей страницы
+    async loadCommentsForCurrentPage() {
+        const container = document.getElementById('pageCommentsScroll');
+        if (!container) return;
+        
+        container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>Загрузка комментариев...</p>";
+        
+        try {
+            const comments = await api.fetchPageComments(this.mangaId, this.currentIndex);
+            
+            if (!comments || comments.length === 0) {
+                container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>Нет комментариев к этой странице</p>";
+                return;
+            }
+            
+            container.innerHTML = "";
+            comments.forEach(c => {
+                const item = document.createElement('div');
+                item.className = 'comment-item';
+                const isMyComment = Number(c.user_id) === Number(app.userId);
+                const delBtnHtml = isMyComment ? `<button class="comment-del-btn" onclick="reader.deletePageComment('${c.id}')">🗑 Удалить</button>` : '';
+                
+                // Форматирование времени
+                let timeString = "";
+                if (c.created_at) {
+                    const d = new Date(c.created_at);
+                    const pad = (n) => String(n).padStart(2, '0');
+                    timeString = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                }
+                
+                item.innerHTML = `
+                    <div class="comment-top-line">
+                        <span class="comment-user">${c.user_name}</span>
+                        <span class="comment-time">${timeString}</span>
+                    </div>
+                    <p class="comment-text">${c.text}</p>
+                    ${delBtnHtml}
+                `;
+                container.appendChild(item);
+            });
+        } catch (e) {
+            container.innerHTML = "<span style='color:#ff3b30;'>Не удалось загрузить комментарии.</span>";
+        }
+    },
+    
+    // Отправка комментария к странице
+    async sendPageComment() {
+        const input = document.getElementById('pageCommentInputField');
+        if (!input) return;
+        const text = input.value.trim();
+        if (!text) return;
+        
+        try {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            }
+            
+            await api.addComment(
+                this.mangaId,
+                this.currentIndex,
+                app.userId,
+                app.userName,
+                text
+            );
+            
+            input.value = "";
+            await this.loadCommentsForCurrentPage();
+        } catch(e) {
+            alert("Не удалось отправить комментарий.");
+            console.error(e);
+        }
+    },
+    
+    // Удаление комментария к странице
+    async deletePageComment(commentId) {
+        if (confirm("Удалить ваш комментарий?")) {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+            }
+            await api.deleteComment(commentId, app.userId);
+            await this.loadCommentsForCurrentPage();
         }
     }
 };
