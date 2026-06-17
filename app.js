@@ -25,23 +25,27 @@ const app = {
 
     // Проверка авторизации
     checkAuth() {
-        // 1. Проверяем Telegram WebApp
+        // Если пользователь открыл ссылку ВНУТРИ Telegram
         if (window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
             const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
             this.userId = tgUser.id;
             this.userName = tgUser.first_name;
             localStorage.setItem('tg_user_id', this.userId);
             localStorage.setItem('tg_user_name', this.userName);
-        }
-
-        // 2. Если данных нет, показываем экран блокировки
-        if (!this.userId) {
-            document.getElementById('authWall').style.display = 'flex';
-            return false;
-        } else {
+            
             document.getElementById('authWall').style.display = 'none';
             return true;
         }
+    
+        // Если пользователь в обычном браузере, проверяем localStorage
+        if (this.userId) {
+            document.getElementById('authWall').style.display = 'none';
+            return true;
+        }
+    
+        // Если ничего из этого нет — показываем экран с кнопкой виджета
+        document.getElementById('authWall').style.display = 'flex';
+        return false;
     },
 
     async init() {
