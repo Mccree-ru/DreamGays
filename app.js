@@ -119,7 +119,9 @@ const app = {
             const isLiked = this.userLikedIds.includes(String(manga.id));
             const heartBadgeHtml = isLiked ? `<div class="card-like-badge">🤍</div>` : '';
 
-            // Код разметки приведен к жесткому каркасу со статичными зонами для выравнивания
+            // ПОЛУЧЕНИЕ И ОТОБРАЖЕНИЕ КОЛИЧЕСТВА КОММЕНТАРИЕВ ДЛЯ КАЖДОГО ТАЙТЛА
+            const commentsCount = manga.comments_count || 0;
+
             card.innerHTML = `
                 <div class="card-cover-wrap">
                     ${heartBadgeHtml}
@@ -129,7 +131,10 @@ const app = {
                     <h3 class="card-title">${manga.title}</h3>
                     <div class="card-author-zone">${authorTagsHtml}</div>
                     <div class="card-tags-zone">${tagsHtml}</div>
-                    <div class="card-stats">Лайков: ${manga.likes}</div>
+                    <div class="card-stats">
+                        <span class="stat-item">❤️ ${manga.likes}</span>
+                        <span class="stat-item">💬 ${commentsCount}</span>
+                    </div>
                 </div>
             `;
             card.onclick = () => this.openMangaPreview(manga.id);
@@ -251,6 +256,12 @@ const app = {
         try {
             await api.addComment(this.currentManga.id, null, this.userId, this.userName, text);
             input.value = "";
+            // Обновляем счетчик локально для главного меню
+            if (this.currentManga.comments_count !== undefined) {
+                this.currentManga.comments_count++;
+            } else {
+                this.currentManga.comments_count = 1;
+            }
             await this.loadMainComments();
         } catch(e) {
             alert("Не удалось отправить комментарий.");
@@ -260,6 +271,7 @@ const app = {
     async deleteMainComment(commentId) {
         if(confirm("Удалить ваш комментарий к тайтлу?")) {
             await api.deleteComment(commentId, app.userId);
+            if (this.currentManga.comments_count > 0) this.currentManga.comments_count--;
             this.loadMainComments();
         }
     },
