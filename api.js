@@ -4,7 +4,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const api = {
-    // Получение списка ВСЕХ авторов для построения выпадающего списка
+    // Получение уникального списка авторов с сервера для построения селекта
     async fetchAllAuthors() {
         const { data, error } = await _supabase.from('manga').select('author');
         if (error) throw error;
@@ -17,38 +17,41 @@ const api = {
         return Array.from(authors).sort();
     },
 
-    // Серверная пагинация, фильтрация и сортировка
+    // Серверная пагинация, фильтрация И сортировка через SQL-функции
     async fetchCatalog({ page = 0, limit = 6, genre = null, author = '', sortByPopular = false }) {
         const from = page * limit;
         const to = from + limit - 1;
 
-        // Оптимизировано: сразу считаем лайки и комментарии на сервере базы данных
+        // Запрашиваем данные и две вычисляемые на сервере колонки лайков и комментов
         let query = _supabase
             .from('manga')
-            .select(`*, likes(count), comments(count)`);
+            .select(`*, likes_count:manga_likes_count(), comments_count:manga_comments_count()`);
 
-        // Фильтрация по жанру (если массив тегов содержит выбранный)
+        // Серверный фильтр по жанру
         if (genre) {
             query = query.contains('tags', [genre]);
         }
 
-        // Фильтрация по автору (поиск подстроки)
+        // Серверный фильтр по автору (без учета регистра)
         if (author) {
             query = query.ilike('author', `%${author}%`);
         }
 
-        // Сортировка: либо по количеству лайков (внешняя связь), либо по internal_id
+        // Серверная сортировка
         if (sortByPopular) {
-            query = query.order('likes_count', { ascending: false, foreignTable: 'likes' });
+            query = query.order('manga_likes_count', { ascending: false });
         } else {
             query = query.order('internal_id', { ascending: false });
         }
 
-        // Ограничение диапазона (пагинация)
+        // Серверный срез (пагинация)
         query = query.range(from, to);
 
         const { data, error } = await query;
-        if (error) throw error;
+        if (error) {
+            console.error("Ошибка Supabase при загрузке каталога:", error);
+            throw error;
+        }
 
         return data.map(m => ({
             id: String(m.id),
@@ -57,8 +60,8 @@ const api = {
             cover: m.cover || "",
             tags: Array.isArray(m.tags) ? m.tags : [],
             pages: Array.isArray(m.pages) ? m.pages : JSON.parse(m.pages || '[]'),
-            likes: m.likes?.[0]?.count || 0,
-            comments_count: m.comments?.[0]?.count || 0 // Больше нет N+1 запроса!
+            likes: m.likes_count || 0,
+            comments_count: m.comments_count || 0
         }));
     },
 
