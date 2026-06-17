@@ -101,12 +101,8 @@ const app = {
 
             const cleanTags = manga.tags.filter(t => t.toLowerCase() !== 'bara' && t.toLowerCase() !== 'furry');
             const tagsHtml = cleanTags.map(t => `<span class="tag">${t}</span>`).join('');
-            
-            const authorTagsHtml = manga.author !== "Не указан" 
-                ? manga.author.split(',').map(a => `<span class="tag-author">${a.trim()}</span>`).join('') 
-                : '';
+            const authorTagsHtml = manga.author !== "Не указан" ? manga.author.split(',').map(a => `<span class="tag-author">${a.trim()}</span>`).join('') : '';
 
-            // Красивое белое сердечко на размытом красном фоне для главного меню
             const isLiked = this.userLikedIds.includes(String(manga.id));
             const heartBadgeHtml = isLiked ? `<div class="card-like-badge">🤍</div>` : '';
 
@@ -144,7 +140,7 @@ const app = {
         document.getElementById('previewCover').src = this.currentManga.cover;
         document.getElementById('previewTitle').innerText = this.currentManga.title;
         document.getElementById('previewAuthor').innerText = `Автор(ы): ${this.currentManga.author}`;
-        document.getElementById('previewLikesCount').innerText = `❤️ Понравилось: ${this.currentManga.likes}`;
+        document.getElementById('previewLikesCount').innerText = `Понравилось: ${this.currentManga.likes}`;
 
         document.getElementById('startReadBtn').onclick = () => {
             this.showScreen('readerScreen');
@@ -156,7 +152,6 @@ const app = {
         this.loadMainComments();
 
         document.getElementById('likeBtn').onclick = async () => {
-            // Оптимистичное обновление UI: меняем на лету, не дожидаясь ответа сервера
             this.isCurrentLiked = !this.isCurrentLiked;
             this.currentManga.likes += this.isCurrentLiked ? 1 : -1;
             
@@ -166,10 +161,9 @@ const app = {
                 this.userLikedIds = this.userLikedIds.filter(id => id !== String(this.currentManga.id));
             }
 
-            document.getElementById('previewLikesCount').innerText = `❤️ Понравилось: ${this.currentManga.likes}`;
+            document.getElementById('previewLikesCount').innerText = `Понравилось: ${this.currentManga.likes}`;
             this.updateLikeButtonUI();
 
-            // Запрос в БД идет на заднем плане
             await api.toggleLike(this.userId, this.currentManga.id, !this.isCurrentLiked);
         };
     },
@@ -177,32 +171,59 @@ const app = {
     updateLikeButtonUI() {
         const btn = document.getElementById('likeBtn');
         if (this.isCurrentLiked) {
-            btn.innerText = "🗑 Убрать из понравившегося";
-            btn.className = "btn btn-like not-liked"; // делаем кнопку темной/нейтральной
+            btn.innerText = "🗑 Убрать";
+            btn.className = "btn-like-compact not-liked";
         } else {
             btn.innerText = "❤️ Добавить в понравившееся";
-            btn.className = "btn btn-like"; // делаем кнопку красной
+            btn.className = "btn-like-compact";
         }
+    },
+
+    // Утилита форматирования времени отправки
+    formatCommentTime(isoString) {
+        if(!isoString) return "";
+        const d = new Date(isoString);
+        if(isNaN(d.getTime())) return "";
+        
+        const pad = (n) => String(n).padStart(2, '0');
+        const hours = pad(d.getHours());
+        const minutes = pad(d.getMinutes());
+        
+        const now = new Date();
+        if(d.toDateString() === now.toDateString()) {
+            return `${hours}:${minutes}`;
+        }
+        return `${pad(d.getDate())}.${pad(d.getMonth()+1)} ${hours}:${minutes}`;
     },
 
     async loadMainComments() {
         const container = document.getElementById('mainCommentsScroll');
         container.innerHTML = "Загрузка обсуждения...";
         try {
-            const comments = await api.fetchPageComments(this.currentManga.id, -1);
-            if(!comments || comments.length === 0) {
-                container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>У этого тайтла пока нет комментариев. Напишите что-нибудь первым!</p>";
+            const allComments = await api.fetchComments(this.currentManga.id);
+            allComments.sort((a,b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+
+            // Для главного обсуждения берем комменты БЕЗ страничных маркеров
+            const mainComments = allComments.filter(c => !c.text || !c.text.startsWith('[Стр.'));
+
+            if(mainComments.length === 0) {
+                container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>У этого тайтла пока нет комментариев.</p>";
                 return;
             }
             container.innerHTML = "";
-            comments.forEach(c => {
+            mainComments.forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'comment-item';
                 const isMyComment = Number(c.user_id) === Number(this.userId);
                 const delBtnHtml = isMyComment ? `<button class="comment-del-btn" onclick="app.deleteMainComment('${c.id}')">🗑 Удалить</button>` : '';
 
+                const timeString = this.formatCommentTime(c.created_at);
+
                 item.innerHTML = `
-                    <div class="comment-user">${c.user_name}</div>
+                    <div class="comment-top-line">
+                        <span class="comment-user">${c.user_name}</span>
+                        <span class="comment-time">${timeString}</span>
+                    </div>
                     <p class="comment-text">${c.text}</p>
                     ${delBtnHtml}
                 `;
@@ -219,7 +240,7 @@ const app = {
         if (!text) return;
 
         try {
-            await api.addPageComment(this.currentManga.id, -1, this.userId, this.userName, text);
+            await api.addComment(this.currentManga.id, this.userId, this.userName, text);
             input.value = "";
             await this.loadMainComments();
         } catch(e) {
