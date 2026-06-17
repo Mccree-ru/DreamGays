@@ -1,58 +1,131 @@
 const tg = window.Telegram.WebApp;
 
 const app = {
-    userId: 123456789, // Временный ID для тестов на ПК, пока отлаживаем базу
-    userName: "Тестовый Пользователь",
+    userId: 12345, 
+    userName: "Читатель",
     allManga: [],
+    filteredManga: [],
     currentManga: null,
     isCurrentLiked: false,
+    
+    selectedGenreTab: null,
+    selectedAuthor: "",
+    sortPopularActive: false, // По умолчанию сортировка отключена (пункт 1)
 
     async init() {
-        // Временно пропускаем всех (и с ПК, и с телефона) для удобства тестов
         if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
             tg.ready();
             try { tg.expand(); } catch(e){}
             this.userId = tg.initDataUnsafe.user.id;
-            
-            const user = tg.initDataUnsafe.user;
-            if (user.first_name) {
-                this.userName = user.first_name.trim();
-            }
-        } else {
-            console.log("Запущено на ПК. Используются тестовые данные пользователя.");
+            this.userName = tg.initDataUnsafe.user.first_name || "Читатель";
         }
-        
-        // Сразу загружаем каталог
+
         await this.loadCatalog();
+
+        // СИСТЕМА ДИРЕКТ-ССЫЛОК (Пункт 7)
+        // Проверяем параметр старта, если совпал — сразу открываем плашку релиза для лайков/комментов
+        if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+            const startId = tg.initDataUnsafe.start_param;
+            const hasManga = this.allManga.some(m => m.id === startId);
+            if (hasManga) {
+                this.openMangaPreview(startId);
+            }
+        }
     },
 
     async loadCatalog() {
         try {
-            const grid = document.getElementById('catalogGrid');
             this.allManga = await api.fetchCatalog();
-            
-            grid.innerHTML = "";
-            this.allManga.forEach(manga => {
-                const card = document.createElement('div');
-                card.className = 'manga-card';
-                card.innerHTML = `
-                    <img src="${manga.cover}">
-                    <h4 style="margin:8px 0 4px 0; font-size:14px;">${manga.title}</h4>
-                    <span style="font-size:12px; color:#00eb87;">🔥 Лайков: ${manga.likes}</span>
-                `;
-                card.onclick = () => this.openMangaPreview(manga.id);
-                grid.appendChild(card);
-            });
+            this.buildAuthorSelect();
+            this.applyFiltersAndRender();
         } catch (err) {
-            console.error("Критическая ошибка Supabase:", err);
-            // Выводим ошибку ОГРОМНЫМ блоком прямо на экран
-            document.getElementById('catalogGrid').innerHTML = `
-                <div style="padding: 20px; color: #ff3b30; font-size: 14px; text-align: left; background: #222; border: 2px solid #ff3b30; border-radius: 8px;">
-                    <b>Критическая ошибка загрузки базы данных:</b><br><br>
-                    <code>${err.message || err.details || JSON.stringify(err)}</code>
+            document.getElementById('catalogGrid').innerText = "Ошибка соединения с базой.";
+        }
+    },
+
+    buildAuthorSelect() {
+        const select = document.getElementById('authorSelect');
+        select.innerHTML = '<option value="">Все авторы</option>';
+        const authorsSet = new Set();
+        
+        this.allManga.forEach(m => {
+            if (m.author && m.author !== "Не указан") {
+                m.author.split(/[,/]| и /).forEach(a => authorsSet.add(a.trim()));
+            }
+        });
+        authorsSet.forEach(a => {
+            const opt = document.createElement('option'); opt.value = a; opt.textContent = a; select.appendChild(opt);
+        });
+    },
+
+    switchGenreTab(genre) {
+        this.selectedGenreTab = genre;
+        document.querySelectorAll('.genre-tab').forEach(t => t.classList.remove('active'));
+        if (!genre) document.getElementById('tab-all').classList.add('active');
+        else document.getElementById(`tab-${genre}`).classList.add('active');
+        this.applyFiltersAndRender();
+    },
+
+    filterByAuthor(author) {
+        this.selectedAuthor = author;
+        this.applyFiltersAndRender();
+    },
+
+    toggleSortPopular() {
+        this.sortPopularActive = !this.sortPopularActive;
+        const btn = document.getElementById('sortBtn');
+        if (this.sortPopularActive) btn.classList.add('active');
+        else btn.classList.remove('active');
+        this.applyFiltersAndRender();
+    },
+
+    applyFiltersAndRender() {
+        // Фильтрация
+        this.filteredManga = this.allManga.filter(m => {
+            const matchGenre = !this.selectedGenreTab || m.tags.some(t => t.toLowerCase() === this.selectedGenreTab);
+            const matchAuthor = !this.selectedAuthor || m.author.includes(this.selectedAuthor);
+            return matchGenre && matchAuthor;
+        });
+
+        // Сортировка по кнопке (Пункт 1)
+        if (this.sortPopularActive) {
+            this.filteredManga.sort((a, b) => b.likes - a.likes);
+        }
+
+        // Рендер карточек с тегами и авторами (Пункт 2)
+        const grid = document.getElementById('catalogGrid');
+        grid.innerHTML = "";
+        
+        document.getElementById('resetBtn').style.display = (this.selectedGenreTab || this.selectedAuthor || this.sortPopularActive) ? "block" : "none";
+
+        this.filteredManga.forEach(manga => {
+            const card = document.createElement('div');
+            card.className = 'manga-card';
+
+            const cleanTags = manga.tags.filter(t => t.toLowerCase() !== 'bara' && t.toLowerCase() !== 'furry');
+            const tagsHtml = cleanTags.map(t => `<span class="tag">${t}</span>`).join('');
+            const authorsHtml = manga.author !== "Не указан" ? `<span class="tag-author">${manga.author}</span>` : '';
+
+            card.innerHTML = `
+                <div class="card-cover-wrap"><img src="${manga.cover}" class="card-cover" loading="lazy"></div>
+                <div class="card-info">
+                    <h3 class="card-title">${manga.title}</h3>
+                    <div class="card-tags">${authorsHtml}</div>
+                    <div class="card-tags">${tagsHtml}</div>
                 </div>
             `;
-        }
+            card.onclick = () => this.openMangaPreview(manga.id);
+            grid.appendChild(card);
+        });
+    },
+
+    resetFilters() {
+        this.selectedGenreTab = null;
+        this.selectedAuthor = "";
+        this.sortPopularActive = false;
+        document.getElementById('authorSelect').value = "";
+        document.getElementById('sortBtn').classList.remove('active');
+        this.switchGenreTab(null);
     },
 
     async openMangaPreview(mangaId) {
@@ -60,15 +133,14 @@ const app = {
         if (!this.currentManga) return;
 
         this.showScreen('previewScreen');
-        
         document.getElementById('previewCover').src = this.currentManga.cover;
         document.getElementById('previewTitle').innerText = this.currentManga.title;
         document.getElementById('previewAuthor').innerText = `Автор: ${this.currentManga.author}`;
-        document.getElementById('previewLikesCount').innerText = `❤️ Всего лайков: ${this.currentManga.likes}`;
+        document.getElementById('previewLikesCount').innerText = `🔥 В списке понравившегося у: ${this.currentManga.likes} читателей`;
 
         document.getElementById('startReadBtn').onclick = () => {
             this.showScreen('readerScreen');
-            reader.renderPages('readerContainer', this.currentManga.pages);
+            reader.renderPages(this.currentManga.id, this.currentManga.pages);
         };
 
         this.isCurrentLiked = await api.checkUserLike(this.userId, mangaId);
@@ -78,60 +150,24 @@ const app = {
             await api.toggleLike(this.userId, this.currentManga.id, this.isCurrentLiked);
             this.isCurrentLiked = !this.isCurrentLiked;
             this.currentManga.likes += this.isCurrentLiked ? 1 : -1;
-            document.getElementById('previewLikesCount').innerText = `❤️ Всего лайков: ${this.currentManga.likes}`;
+            document.getElementById('previewLikesCount').innerText = `🔥 В списке понравившегося у: ${this.currentManga.likes} читателей`;
             this.updateLikeButtonUI();
-            this.loadCatalog();
         };
-
-        this.loadComments(mangaId);
     },
 
     updateLikeButtonUI() {
         const btn = document.getElementById('likeBtn');
         if (this.isCurrentLiked) {
-            btn.innerText = "❤️ Лайкнуто тобой";
+            btn.innerText = "❤️ Добавлено в понравившееся";
             btn.classList.add('liked');
         } else {
-            btn.innerText = "🤍 Лайкнуть";
+            btn.innerText = "🤍 В список понравившегося";
             btn.classList.remove('liked');
         }
     },
 
-    async loadComments(mangaId) {
-        const listContainer = document.getElementById('commentsList');
-        listContainer.innerHTML = "Загрузка...";
-        try {
-            const comments = await api.fetchComments(mangaId);
-            if(comments.length === 0) {
-                listContainer.innerHTML = "<p style='color:#777;'>Комментариев пока нет. Будьте первым!</p>";
-                return;
-            }
-            listContainer.innerHTML = "";
-            comments.forEach(c => {
-                const item = document.createElement('div');
-                item.className = 'comment-item';
-                item.innerHTML = `
-                    <div class="comment-user">${c.user_name}</div>
-                    <p class="comment-text">${c.text}</p>
-                `;
-                listContainer.appendChild(item);
-            });
-        } catch(e) {
-            listContainer.innerHTML = "Не удалось загрузить комментарии.";
-        }
-    },
-
-    async sendComment() {
-        const input = document.getElementById('commentInputField');
-        const text = input.value.trim();
-        if(!text) return;
-
-        await api.addComment(this.currentManga.id, this.userId, this.userName, text);
-        input.value = "";
-        this.loadComments(this.currentManga.id);
-    },
-
     closeMangaReader() {
+        reader.toggleComments(false);
         this.showScreen('previewScreen');
     },
 
