@@ -30,6 +30,34 @@
             -webkit-tap-highlight-color: transparent;
             outline: none;
         }
+		
+		.header-buttons {
+			display: flex;
+			gap: 10px;
+			margin-bottom: 15px;
+		}
+
+		.top-nav-btn {
+			flex: 1;
+			border: none;
+			padding: 14px;
+			border-radius: 12px;
+			font-size: 14px;
+			font-weight: bold;
+			cursor: pointer;
+			text-align: center;
+		}
+
+		.dreamgays-btn {
+			background-color: #2481cc; /* Цвет Telegram */
+			color: #ffffff;
+		}
+
+		.coffee-btn {
+			background: var(--coffee-gradient);
+			color: #fff;
+			box-shadow: 0 4px 12px rgba(255, 94, 0, 0.2);
+		}
 
         .screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -219,7 +247,10 @@
 <body>
     <div id="mainScreen" class="screen active">
         <div class="main-container">
-            <button class="top-coffee-banner" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
+            <div class="header-buttons">
+				<button class="top-nav-btn dreamgays-btn" onclick="tg.openLink('https://t.me/DreamGays')">DreamGays</button>
+				<button class="top-nav-btn coffee-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
+			</div>
             <div class="genre-tabs">
                 <button id="tab-all" class="genre-tab active" onclick="app.switchGenreTab(null)">Все</button>
                 <button id="tab-bara" class="genre-tab" onclick="app.switchGenreTab('bara')">Bara</button>
