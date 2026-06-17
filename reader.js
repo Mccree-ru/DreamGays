@@ -15,7 +15,7 @@ const reader = {
     preloadedUrls: new Set(),
     isBackgroundLoading: false,
 
-renderPages(mangaId, pagesArray) {
+    renderPages(mangaId, pagesArray) {
         this.mangaId = mangaId;
         this.pages = pagesArray;
         this.currentIndex = 0;
@@ -59,8 +59,8 @@ renderPages(mangaId, pagesArray) {
             this.isPCControlsInitialized = true;
         }
     },
-	
-applyZoom(scale, x = 0, y = 0) {
+    
+    applyZoom(scale, x = 0, y = 0) {
         this.scale = Math.max(1, Math.min(scale, 3));
         this.currentX = x;
         this.currentY = y;
@@ -77,37 +77,89 @@ applyZoom(scale, x = 0, y = 0) {
 
     resetZoom() {
         this.scale = 1;
-        this.applyZoom(1, 0, 0);
+        this.currentX = 0;
+        this.currentY = 0;
+        this.lastScale = 1;
+        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+        if (container) {
+            container.style.transition = 'transform 0.2s';
+            container.style.transform = 'scale(1) translate(0px, 0px)';
+        }
+        // Показываем UI элементы
+        const uiElements = document.querySelectorAll('.reader-ui, .open-comments-trigger-btn');
+        uiElements.forEach(el => el.style.opacity = '1');
     },
 
     initTouchGestures() {
         const track = document.getElementById('readerTrack');
+        if (!track) return;
+        
         let initialPinchDist = 0;
+        let initialScale = 1;
         let touchStartX = 0;
+        let touchStartY = 0;
+        let isPinching = false;
+        let lastTap = 0;
 
-        track.addEventListener('touchstart', (e) => {
+        // Удаляем старые обработчики, чтобы избежать дублирования
+        track.removeEventListener('touchstart', this._touchStartHandler);
+        track.removeEventListener('touchmove', this._touchMoveHandler);
+        track.removeEventListener('touchend', this._touchEndHandler);
+        track.removeEventListener('click', this._clickHandler);
+
+        // Сохраняем ссылки на обработчики для возможности удаления
+        this._touchStartHandler = (e) => {
             if (e.touches.length === 2) {
-                initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            } else if (e.touches.length === 1) {
-                touchStartX = e.touches[0].clientX;
-            }
-        }, { passive: false });
-
-        track.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2 && this.scale > 1) {
+                // Начало жеста зума
+                isPinching = true;
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                initialPinchDist = Math.hypot(
+                    touch1.clientX - touch2.clientX,
+                    touch1.clientY - touch2.clientY
+                );
+                initialScale = this.scale;
                 e.preventDefault();
-                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                this.applyZoom(this.lastScale * (dist / initialPinchDist));
+            } else if (e.touches.length === 1 && this.scale === 1) {
+                // Запоминаем начальную позицию для свайпа
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
             }
-        }, { passive: false });
+        };
 
-        track.addEventListener('touchend', (e) => {
-            if (e.touches.length < 2) this.lastScale = this.scale;
-            
-            // Перелистывание только если масштаб 1:1
+        this._touchMoveHandler = (e) => {
+            if (e.touches.length === 2 && isPinching) {
+                // Обработка зума (пинч)
+                e.preventDefault();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const currentDist = Math.hypot(
+                    touch1.clientX - touch2.clientX,
+                    touch1.clientY - touch2.clientY
+                );
+                
+                if (initialPinchDist > 0) {
+                    const newScale = Math.max(1, Math.min(3, initialScale * (currentDist / initialPinchDist)));
+                    this.applyZoom(newScale);
+                }
+            }
+        };
+
+        this._touchEndHandler = (e) => {
+            // Сброс состояния пинча
+            if (isPinching) {
+                isPinching = false;
+                this.lastScale = this.scale;
+                return;
+            }
+
+            // Обработка свайпа только если масштаб 1:1
             if (this.scale === 1 && e.changedTouches.length === 1) {
                 const diffX = touchStartX - e.changedTouches[0].clientX;
-                if (Math.abs(diffX) > 60) {
+                const diffY = touchStartY - e.changedTouches[0].clientY;
+                
+                // Проверяем, что свайп горизонтальный (по X больше, чем по Y)
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
                     if (diffX > 0 && this.currentIndex < this.pages.length - 1) {
                         this.currentIndex++;
                         this.updateTrack();
@@ -117,24 +169,9 @@ applyZoom(scale, x = 0, y = 0) {
                     }
                 }
             }
-        });
+        };
 
-        // Двойной тап для зума
-        let lastTap = 0;
-        track.addEventListener('click', (e) => {
-            const now = new Date().getTime();
-            if (now - lastTap < 300) {
-                this.scale > 1 ? this.resetZoom() : this.applyZoom(2);
-            }
-            lastTap = now;
-        });
-    },
-
-    initClickZones() {
-        const track = document.getElementById('readerTrack');
-        if (!track) return;
-
-        track.addEventListener('click', (event) => {
+        this._clickHandler = (e) => {
             // Если открыты комментарии — только закрываем их и не перелистываем страницу
             const panel = document.getElementById('commentsPanel');
             if (panel && panel.classList.contains('open')) {
@@ -144,10 +181,25 @@ applyZoom(scale, x = 0, y = 0) {
 
             // Если картинка приближена — игнорируем клики для листания
             if (this.scale > 1) return;
-            if (event.target.closest('button')) return;
+            if (e.target.closest('button')) return;
 
+            // Двойной тап для зума
+            const now = new Date().getTime();
+            if (now - lastTap < 300) {
+                e.preventDefault();
+                if (this.scale > 1) {
+                    this.resetZoom();
+                } else {
+                    this.applyZoom(2);
+                }
+                lastTap = 0;
+                return;
+            }
+            lastTap = now;
+
+            // Обычный клик для перелистывания
             const screenWidth = window.innerWidth;
-            const clickX = event.clientX;
+            const clickX = e.clientX;
 
             if (clickX > screenWidth * 0.7 && this.currentIndex < this.pages.length - 1) {
                 this.currentIndex++;
@@ -156,7 +208,18 @@ applyZoom(scale, x = 0, y = 0) {
                 this.currentIndex--;
                 this.updateTrack();
             }
-        });
+        };
+
+        // Добавляем новые обработчики
+        track.addEventListener('touchstart', this._touchStartHandler, { passive: false });
+        track.addEventListener('touchmove', this._touchMoveHandler, { passive: false });
+        track.addEventListener('touchend', this._touchEndHandler, { passive: true });
+        track.addEventListener('click', this._clickHandler);
+    },
+
+    initClickZones() {
+        // Этот метод теперь объединен с initTouchGestures
+        // Оставляем только для совместимости
     },
 
     updateTrack() {
@@ -179,8 +242,7 @@ applyZoom(scale, x = 0, y = 0) {
         }
         this.managePreload();
     },
-	
-    // Умное управление приоритетами загрузки фреймов
+    
     managePreload() {
         if (!this.pages || this.pages.length === 0) return;
 
@@ -204,7 +266,6 @@ applyZoom(scale, x = 0, y = 0) {
         this.preloadRemainingSequentially();
     },
 
-    // Асинхронное скачивание одного изображения
     preloadSingleUrl(url, isPriority = false) {
         if (this.preloadedUrls.has(url)) return Promise.resolve();
 
@@ -219,7 +280,6 @@ applyZoom(scale, x = 0, y = 0) {
                 resolve();
             };
             img.onerror = () => {
-                // Если произошла сетевая ошибка — даем шанс скачать картинку заново при листании
                 this.preloadedUrls.delete(url); 
                 resolve();
             };
@@ -229,7 +289,6 @@ applyZoom(scale, x = 0, y = 0) {
         });
     },
 
-    // Последовательный догруз оставшейся части главы без забивания канала связи
     async preloadRemainingSequentially() {
         if (this.isBackgroundLoading) return;
         this.isBackgroundLoading = true;
@@ -237,7 +296,6 @@ applyZoom(scale, x = 0, y = 0) {
         for (let i = 0; i < this.pages.length; i++) {
             const url = this.pages[i];
             
-            // Если до страницы еще не дошла очередь — скачиваем её и дожидаемся (await)
             if (!this.preloadedUrls.has(url)) {
                 await this.preloadSingleUrl(url, false);
             }
@@ -247,11 +305,15 @@ applyZoom(scale, x = 0, y = 0) {
     },
 
     initKeyboardControls() {
-        window.addEventListener('keydown', (event) => {
+        // Удаляем старый обработчик, чтобы избежать дублирования
+        if (this._keydownHandler) {
+            window.removeEventListener('keydown', this._keydownHandler);
+        }
+
+        this._keydownHandler = (event) => {
             const readerScreen = document.getElementById('readerScreen');
             if (!readerScreen || !readerScreen.classList.contains('active')) return;
 
-            // Если фокус в инпуте комментариев — стрелочки не должны переключать страницы
             if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
                 return;
             }
@@ -269,107 +331,12 @@ applyZoom(scale, x = 0, y = 0) {
                     this.updateTrack();
                 }
             }
-        });
+        };
+
+        window.addEventListener('keydown', this._keydownHandler);
     },
 
-    initClickZones() {
-        const track = document.getElementById('readerTrack');
-        if (!track) return;
-
-        track.addEventListener('click', (event) => {
-            // Игнорируем клики, если они пришлись на кнопки или панель комментариев
-            if (event.target.closest('button') || event.target.closest('.page-comments-panel')) return;
-
-            const screenWidth = window.innerWidth;
-            const clickX = event.clientX;
-
-            const leftZoneBound = screenWidth * 0.3;
-            const rightZoneBound = screenWidth * 0.7;
-
-            if (clickX > rightZoneBound) {
-                if (this.currentIndex < this.pages.length - 1) {
-                    this.currentIndex++;
-                    this.resetZoom();
-                    this.updateTrack();
-                }
-            } else if (clickX < leftZoneBound) {
-                if (this.currentIndex > 0) {
-                    this.currentIndex--;
-                    this.resetZoom();
-                    this.updateTrack();
-                }
-            }
-        });
-    },
-
-    updateTrack() {
-        const track = document.getElementById('readerTrack');
-        if (!track) return;
-        track.style.transform = `translate3d(-${this.currentIndex * 100}vw, 0px, 0px)`;
-        
-        const counter = document.getElementById('pageCounter');
-        if (counter) {
-            counter.textContent = `${this.currentIndex + 1} / ${this.pages.length}`;
-        }
-        
-        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-        }
-
-        const commentsPanel = document.getElementById('commentsPanel');
-        if (commentsPanel && commentsPanel.classList.contains('open')) {
-            const commentsTitle = document.getElementById('commentsTitle');
-            if (commentsTitle) commentsTitle.textContent = `Комментарии к странице ${this.currentIndex + 1}`;
-            if (typeof this.loadCommentsForCurrentPage === 'function') {
-                this.loadCommentsForCurrentPage();
-            }
-        }
-
-        // ПЕРЕРАСЧЕТ: Каждый раз при смене кадра обновляем приоритеты загрузки
-        this.managePreload();
-    },
-
-    resetZoom() {
-        this.scale = 1;
-        this.currentX = 0;
-        this.currentY = 0;
-        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
-        if (container) {
-            container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
-        }
-    },
-
-    initTouchGestures() {
-        const track = document.getElementById('readerTrack');
-        let touchStartX = 0;
-        let touchEndX = 0;
-
-        track.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                touchStartX = e.touches[0].clientX;
-            }
-        }, { passive: true });
-
-        track.addEventListener('touchend', (e) => {
-            if (e.changedTouches.length === 1) {
-                touchEndX = e.changedTouches[0].clientX;
-                const diffX = touchStartX - touchEndX;
-
-                if (diffX > 60 && this.currentIndex < this.pages.length - 1) {
-                    this.currentIndex++;
-                    this.resetZoom();
-                    this.updateTrack();
-                }
-                else if (diffX < -60 && this.currentIndex > 0) {
-                    this.currentIndex--;
-                    this.resetZoom();
-                    this.updateTrack();
-                }
-            }
-        }, { passive: true });
-    },
-
-	toggleComments(show) {
+    toggleComments(show) {
         const panel = document.getElementById('commentsPanel');
         if (!panel) return;
         if (show) {
@@ -379,5 +346,11 @@ applyZoom(scale, x = 0, y = 0) {
         } else {
             panel.classList.remove('open');
         }
+    },
+
+    // Загрузка комментариев для текущей страницы
+    loadCommentsForCurrentPage() {
+        // Эта функция будет вызываться из app.js
+        // Реализация в app.js
     }
 };
