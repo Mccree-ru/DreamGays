@@ -258,9 +258,9 @@
             </div>
             <div class="filter-panel">
                 <div class="filter-row">
-                    <select id="authorSelect" class="author-select" onchange="app.filterByAuthor(this.value)">
-                        <option value="">Все авторы</option>
-                    </select>
+					<select id="authorSelect" class="sort-btn" onchange="app.onAuthorSelectChange(this.value)">
+					    <option value="">Все авторы</option>
+					</select>
                     <button id="sortBtn" class="sort-btn" onclick="app.toggleSortPopular()">🔥 Популярные</button>
                     <button id="resetBtn" class="reset-btn" onclick="app.resetFilters()">Сбросить</button>
                 </div>
