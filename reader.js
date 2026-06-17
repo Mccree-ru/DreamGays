@@ -35,7 +35,6 @@ const reader = {
 
         this.updateTrack();
         
-        // Вешаем жесты строго один раз за всё время жизни приложения
         if (!this.isGesturesInitialized) {
             this.initTouchGestures();
             this.isGesturesInitialized = true;
@@ -189,7 +188,8 @@ const reader = {
                 const diffX = e.changedTouches[0].clientX - startX;
                 const diffY = e.changedTouches[0].clientY - startY;
 
-                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50 && this.scale === 1) {
+                // Снизили порог чувствительности свайпа с 50 до 30 для более быстрого перелистывания
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30 && this.scale === 1) {
                     if (diffX > 0 && this.currentIndex > 0) { this.currentIndex--; this.updateTrack(); }
                     else if (diffX < 0 && this.currentIndex < this.pages.length - 1) { this.currentIndex++; this.updateTrack(); }
                     return;
