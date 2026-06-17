@@ -33,20 +33,17 @@
 
         .main-container { padding: 15px; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
 
-        /* Кнопки доната */
         .donate-btn {
             display: flex; align-items: center; justify-content: center; gap: 8px;
             background: linear-gradient(135deg, #ff9500, #ff5e00); color: #ffffff;
             border: none; width: 100%; padding: 12px; border-radius: 12px;
             font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 15px;
-            box-shadow: 0 4px 12px rgba(255, 149, 0, 0.2);
         }
         .reader-donate-btn {
             background: linear-gradient(135deg, #ff9500, #ff5e00); color: #ffffff; border: none; 
             padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;
         }
 
-        /* Жанры и Сортировка */
         .genre-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
         .genre-tab {
             flex: 1; padding: 10px; border: none; border-radius: 10px;
@@ -80,56 +77,60 @@
         .card-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
         .tag { font-size: 9px; background-color: rgba(0, 235, 135, 0.1); color: var(--link-color); padding: 2px 5px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
         .tag-author { font-size: 9px; background-color: #ff7b00; color: #ffffff; padding: 2px 5px; border-radius: 5px; font-weight: bold; }
+        .tag-liked { font-size: 9px; background-color: #ff3b30; color: #ffffff; padding: 2px 5px; border-radius: 5px; font-weight: bold; }
+        .card-stats { font-size: 11px; color: var(--hint-color); margin-top: 5px; font-weight: bold; }
 
         /* Превью */
         .preview-header { display: flex; gap: 15px; margin-top: 15px; }
-        .preview-cover { width: 120px; border-radius: 6px; }
+        .preview-cover { width: 120px; border-radius: 6px; object-fit: cover; }
         .btn { background: var(--button-color); color: var(--button-text); border: none; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; }
         .btn-like { background: #333; color: #fff; }
         .btn-like.liked { background: #ff3b30; }
 
-        /* Горизонтальная Читалка */
+        /* Общие стили блоков комментариев */
+        .comments-section-title { font-size: 16px; font-weight: bold; margin: 25px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .comments-scroll { overflow-y: auto; max-height: 400px; padding: 5px 0; }
+        .comment-item { background: #1c1c1c; padding: 10px; border-radius: 8px; margin-bottom: 8px; position: relative; }
+        .comment-user { font-weight: bold; color: var(--button-color); font-size: 13px; }
+        .comment-text { margin: 4px 0 0 0; font-size: 13px; color: #eee; }
+        .comment-del-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #ff3b30; cursor: pointer; font-size: 11px; }
+        .comment-input-block { display: flex; gap: 8px; margin-top: 10px; }
+        .comment-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 8px; font-size: 13px; }
+
+        /* Читалка */
         .reader-screen { background-color: #000; overflow: hidden; touch-action: none; }
         .reader-header {
             position: fixed; top: 0; left: 0; width: 100%; height: 60px; z-index: 100;
             display: flex; align-items: center; justify-content: space-between;
             background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
-            padding: 0 12px; box-sizing: border-box; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+            padding: 0 12px; box-sizing: border-box; transition: opacity 0.2s;
         }
-        .reader-header.visible { opacity: 1; pointer-events: auto; }
         .page-counter { color: #fff; font-size: 14px; font-weight: bold; }
         
         .reader-track { display: flex; height: 100%; width: 100%; transition: transform 0.25s ease-out; will-change: transform; }
         .reader-slide { flex: 0 0 100vw; width: 100vw; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-        .zoom-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform-origin: center center; }
-        .reader-img { width: 100%; height: 100%; object-fit: contain; }
+        
+        /* Контейнер для симуляции нативного зума */
+        .zoom-container { 
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; 
+            transition: transform 0.1s ease-out; transform-origin: center center;
+        }
+        .reader-img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 
-        .tap-zone-left { position: absolute; top: 0; left: 0; width: 25%; height: 100%; z-index: 40; }
-        .tap-zone-center { position: absolute; top: 0; left: 25%; width: 50%; height: 100%; z-index: 41; }
-        .tap-zone-right { position: absolute; top: 0; right: 0; width: 25%; height: 100%; z-index: 40; }
-
-        /* Постраничные комментарии */
+        /* Постраничные комментарии (Bottom Sheet) */
         .page-comments-panel {
-            position: absolute; bottom: 0; left: 0; width: 100%; max-height: 50vh;
-            background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px);
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 60vh;
+            background: rgba(20, 20, 20, 0.98); backdrop-filter: blur(15px);
             z-index: 150; border-top: 1px solid #333; box-sizing: border-box;
-            transform: translateY(100%); transition: transform 0.3s ease;
+            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
             display: flex; flex-direction: column;
         }
         .page-comments-panel.open { transform: translateY(0); }
-        .comments-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid #222; }
-        .comments-scroll { overflow-y: auto; flex-grow: 1; padding: 15px; }
+        .comments-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #222; }
         
-        .comment-item { background: #1c1c1c; padding: 10px; border-radius: 8px; margin-bottom: 8px; position: relative; }
-        .comment-user { font-weight: bold; color: var(--button-color); font-size: 13px; }
-        .comment-text { margin: 4px 0 0 0; font-size: 13px; color: #eee; }
-        .comment-del-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #ff3b30; cursor: pointer; font-size: 11px; }
-        
-        .comment-input-block { display: flex; gap: 8px; padding: 10px 15px; background: #141414; border-top: 1px solid #222; }
-        .comment-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 8px; font-size: 13px; }
-
-        @media screen and (min-width: 480px) { .catalog-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media screen and (min-width: 720px) { .catalog-grid { grid-template-columns: repeat(4, 1fr); } }
+        /* Внутри шторки свой независимый контейнер */
+        .page-comments-panel .comments-scroll { flex-grow: 1; max-height: none; padding: 15px; }
+        .page-comments-panel .comment-input-block { padding: 10px 15px; background: #141414; border-top: 1px solid #222; margin: 0; }
     </style>
 </head>
 <body>
@@ -159,7 +160,7 @@
         </div>
     </div>
 
-    <!-- ЭКРАН 2: ПРЕВЬЮ С ЛАЙКАМИ И ОПИСАНИЕМ -->
+    <!-- ЭКРАН 2: ПРЕВЬЮ ТАЙТЛА + КОММЕНТАРИИ К ТАЙТЛУ -->
     <div id="previewScreen" class="screen">
         <div class="main-container">
             <button class="btn btn-like" onclick="app.showScreen('mainScreen')">← В каталог</button>
@@ -174,6 +175,14 @@
             
             <button id="startReadBtn" class="btn">Читать перевод</button>
             <button id="likeBtn" class="btn btn-like">🤍 В список понравившегося</button>
+
+            <!-- Комментарии к главной странице тайтла -->
+            <div class="comments-section-title">Обсуждение тайтла</div>
+            <div id="mainCommentsScroll" class="comments-scroll">Загрузка комментариев...</div>
+            <div class="comment-input-block">
+                <input type="text" id="mainCommentInputField" class="comment-input" placeholder="Написать комментарий к тайтлу...">
+                <button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="app.sendMainComment()">Отправить</button>
+            </div>
         </div>
     </div>
 
@@ -184,17 +193,18 @@
             <div class="page-counter" id="pageCounter">0 / 0</div>
             <button class="reader-donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
         </div>
+        
         <div id="readerTrack" class="reader-track"></div>
 
-        <!-- Постраничный Bottom Sheet комментариев -->
+        <!-- Постраничная шторка комментариев (вызывается свайпом вверх) -->
         <div id="commentsPanel" class="page-comments-panel">
             <div class="comments-header">
-                <span id="commentsTitle" style="font-weight:bold; font-size:14px;">Комментарии к странице 1</span>
-                <button class="sort-btn" style="padding:4px 10px; font-size:12px;" onclick="reader.toggleComments(false)">Скрыть</button>
+                <span id="commentsTitle" style="font-weight:bold; font-size:14px; color:#fff;">Комментарии</span>
+                <span style="font-size:11px; color:#888;">Свайпните вниз, чтобы закрыть</span>
             </div>
-            <div id="commentsScroll" class="comments-scroll"></div>
+            <div id="pageCommentsScroll" class="comments-scroll"></div>
             <div class="comment-input-block">
-                <input type="text" id="commentInputField" class="comment-input" placeholder="Написать комментарий к странице...">
+                <input type="text" id="pageCommentInputField" class="comment-input" placeholder="Написать комментарий к странице...">
                 <button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="reader.sendPageComment()">Отправить</button>
             </div>
         </div>
