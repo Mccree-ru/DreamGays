@@ -86,8 +86,9 @@ const app = {
             return matchGenre && matchAuthor;
         });
 
+        // Жесткая сортировка по количеству лайков в порядке убывания
         if (this.sortPopularActive) {
-            this.filteredManga.sort((a, b) => b.likes - a.likes);
+            this.filteredManga.sort((a, b) => Number(b.likes) - Number(a.likes));
         }
 
         const grid = document.getElementById('catalogGrid');
@@ -97,9 +98,17 @@ const app = {
 
         this.filteredManga.forEach(manga => {
             const card = document.createElement('div');
-            card.className = 'manga-card';
+            
+            // Определяем класс карточки на основе тегов
+            let genreClass = '';
+            const hasBara = manga.tags.some(t => t.toLowerCase() === 'bara');
+            const hasFurry = manga.tags.some(t => t.toLowerCase() === 'furry');
+            
+            if (hasBara) genreClass = ' manga-bara';
+            else if (hasFurry) genreClass = ' manga-furry';
 
-            // Разделяем и стилизуем плашки жанров отдельно друг от друга
+            card.className = 'manga-card' + genreClass;
+
             const tagsHtml = manga.tags.map(t => {
                 const lower = t.toLowerCase();
                 if (lower === 'bara') return `<span class="tag-bara">Bara</span>`;
@@ -205,7 +214,6 @@ const app = {
         const container = document.getElementById('mainCommentsScroll');
         container.innerHTML = "Загрузка обсуждения...";
         try {
-            // Вызываем правильный метод фильтрации по NULL
             const mainComments = await api.fetchMainComments(this.currentManga.id);
 
             if(!mainComments || mainComments.length === 0) {
