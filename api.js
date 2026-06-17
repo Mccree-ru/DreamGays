@@ -1,47 +1,59 @@
-// Инициализация Supabase клиента
-const supabase = window.supabase.createClient('https://rigyzgsisqlcnucysamu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpZ3l6Z3Npc3FsY251Y3lzYW11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzE1MzMsImV4cCI6MjA5NzIwNzUzM30.VuZ2oYCazE74yx0Aof92SaWaF0Z-jgKgUBEjEzE2gT4');
+// Инициализация Supabase клиента с твоими ключами
+const SUPABASE_URL = 'https://rigyzgsisqlcnucysamu.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpZ3l6Z3Npc3FsY251Y3lzYW11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzE1MzMsImV4cCI6MjA5NzIwNzUzM30.VuZ2oYCazE74yx0Aof92SaWaF0Z-jgKgUBEjEzE2gT4';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const api = {
-    // Получение каталога: самые новые тайтлы сверху + точный подсчет комментариев
+    // Получение каталога: самые новые тайтлы сверху + безопасный подсчет комментариев
     async fetchCatalog() {
-        // 1. Запрашиваем все тайтлы манги. Сортируем по internal_id от БОЛЬШИХ к МЕНЬШИМ (новые будут первыми)
-        const { data: mangaData, error: mangaError } = await supabase
-            .from('manga')
-            .select('*')
-            .order('internal_id', { ascending: false }); 
+        try {
+            // 1. Запрашиваем все тайтлы манги. Сортируем по internal_id (новые будут первыми)
+            const { data: mangaData, error: mangaError } = await supabase
+                .from('manga')
+                .select('*')
+                .order('internal_id', { ascending: false }); 
 
-        if (mangaError) {
-            console.error("Ошибка при получении манги:", mangaError);
-            throw mangaError;
-        }
+            if (mangaError) {
+                console.error("Ошибка при получении манги из Supabase:", mangaError);
+                return []; 
+            }
 
-        // 2. Запрашиваем ТОЛЬКО колонку manga_id из таблицы комментариев (минимальная нагрузка на сеть)
-        const { data: commentsData, error: commentsError } = await supabase
-            .from('comments')
-            .select('manga_id');
+            if (!mangaData) return [];
 
-        if (commentsError) {
-            console.error("Ошибка при подсчете комментариев:", commentsError);
-        }
+            // 2. Безопасный запрос количества комментариев
+            let commentCounts = {};
+            try {
+                const { data: commentsData, error: commentsError } = await supabase
+                    .from('comments')
+                    .select('manga_id');
 
-        // 3. Группируем и считаем комментарии на стороне JS по текстовому ID телетайпа
-        const commentCounts = {};
-        if (commentsData) {
-            commentsData.forEach(c => {
-                if (c.manga_id) {
-                    commentCounts[c.manga_id] = (commentCounts[c.manga_id] || 0) + 1;
+                if (!commentsError && commentsData) {
+                    // Группируем и считаем комментарии на стороне клиента
+                    commentsData.forEach(c => {
+                        if (c && c.manga_id) {
+                            commentCounts[c.manga_id] = (commentCounts[c.manga_id] || 0) + 1;
+                        }
+                    });
                 }
-            });
-        }
+            } catch (e) {
+                console.error("Ошибка безопасного подсчета комментариев:", e);
+                // Если комментарии вызвали ошибку, приложение продолжит работу, проставив нули
+            }
 
-        // 4. Добавляем правильный comments_count к каждой манге
-        return mangaData.map(manga => {
-            return {
-                ...manga,
-                // Мапим по текстовому manga.id. Если комментов нет — пишем 0
-                comments_count: commentCounts[manga.id] || 0
-            };
-        });
+            // 3. Склеиваем данные тайтлов с количеством их комментариев
+            return mangaData.map(manga => {
+                const currentId = manga.id || manga.internal_id;
+                return {
+                    ...manga,
+                    comments_count: commentCounts[currentId] || 0
+                };
+            });
+
+        } catch (globalError) {
+            console.error("Критическая ошибка fetchCatalog:", globalError);
+            return [];
+        }
     },
 
     // Получение списка ID лайкнутых тайтлов текущим пользователем
