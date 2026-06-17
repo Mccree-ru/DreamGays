@@ -280,14 +280,15 @@
             transform: none;
         }
 
-        .card-right-stats {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            display: flex;
-            gap: 6px;
-            z-index: 2;
-        }
+		.card-right-stats {
+			position: absolute;
+			bottom: 10px;
+			right: 10px;
+			display: flex;
+			flex-direction: column; /* Изменяет направление на вертикальное */
+			gap: 6px;               /* Расстояние между элементами останется прежним */
+			z-index: 2;
+		}
 
         .card-stat-badge {
             background: rgba(20, 20, 20, 0.8); 
