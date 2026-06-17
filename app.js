@@ -99,8 +99,14 @@ const app = {
             const card = document.createElement('div');
             card.className = 'manga-card';
 
-            const cleanTags = manga.tags.filter(t => t.toLowerCase() !== 'bara' && t.toLowerCase() !== 'furry');
-            const tagsHtml = cleanTags.map(t => `<span class="tag">${t}</span>`).join('');
+            // Разделяем и стилизуем плашки жанров отдельно друг от друга
+            const tagsHtml = manga.tags.map(t => {
+                const lower = t.toLowerCase();
+                if (lower === 'bara') return `<span class="tag-bara">Bara</span>`;
+                if (lower === 'furry') return `<span class="tag-furry">Furry</span>`;
+                return `<span class="tag">${t}</span>`;
+            }).join('');
+            
             const authorTagsHtml = manga.author !== "Не указан" ? manga.author.split(',').map(a => `<span class="tag-author">${a.trim()}</span>`).join('') : '';
 
             const isLiked = this.userLikedIds.includes(String(manga.id));
@@ -115,7 +121,7 @@ const app = {
                     <h3 class="card-title">${manga.title}</h3>
                     <div class="card-tags">${authorTagsHtml}</div>
                     <div class="card-tags">${tagsHtml}</div>
-                    <div class="card-stats">❤️ Лайков: ${manga.likes}</div>
+                    <div class="card-stats">Лайков: ${manga.likes}</div>
                 </div>
             `;
             card.onclick = () => this.openMangaPreview(manga.id);
@@ -171,15 +177,14 @@ const app = {
     updateLikeButtonUI() {
         const btn = document.getElementById('likeBtn');
         if (this.isCurrentLiked) {
-            btn.innerText = "🗑 Убрать";
+            btn.innerText = "Убрать";
             btn.className = "btn-like-compact not-liked";
         } else {
-            btn.innerText = "❤️ Добавить в понравившееся";
+            btn.innerText = "Добавить в понравившееся";
             btn.className = "btn-like-compact";
         }
     },
 
-    // Утилита форматирования времени отправки
     formatCommentTime(isoString) {
         if(!isoString) return "";
         const d = new Date(isoString);
@@ -200,13 +205,10 @@ const app = {
         const container = document.getElementById('mainCommentsScroll');
         container.innerHTML = "Загрузка обсуждения...";
         try {
-            const allComments = await api.fetchComments(this.currentManga.id);
-            allComments.sort((a,b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+            // Вызываем правильный метод фильтрации по NULL
+            const mainComments = await api.fetchMainComments(this.currentManga.id);
 
-            // Для главного обсуждения берем комменты БЕЗ страничных маркеров
-            const mainComments = allComments.filter(c => !c.text || !c.text.startsWith('[Стр.'));
-
-            if(mainComments.length === 0) {
+            if(!mainComments || mainComments.length === 0) {
                 container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>У этого тайтла пока нет комментариев.</p>";
                 return;
             }
@@ -240,7 +242,7 @@ const app = {
         if (!text) return;
 
         try {
-            await api.addComment(this.currentManga.id, this.userId, this.userName, text);
+            await api.addComment(this.currentManga.id, null, this.userId, this.userName, text);
             input.value = "";
             await this.loadMainComments();
         } catch(e) {
