@@ -1,7 +1,8 @@
 const SUPABASE_URL = 'https://rigyzgsisqlcnucysamu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpZ3l6Z3Npc3FsY251Y3lzYW11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzE1MzMsImV4cCI6MjA5NzIwNzUzM30.VuZ2oYCazE74yx0Aof92SaWaF0Z-jgKgUBEjEzE2gT4';
 
-const _supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ИСПРАВЛЕНО: supabase пишется с маленькой буквы в CDN v2
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const api = {
     // Получить весь каталог манги со счетчиком лайков
