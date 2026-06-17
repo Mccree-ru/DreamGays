@@ -14,6 +14,7 @@ const reader = {
     initialDistance: 0,
     initialScale: 1,
     isDragging: false,
+    wasPinchOrZoomActive: false, // Флаг-предохранитель от случайного перелистывания
 
     // Очередь для хранения фоновых объектов картинок (защита от Garbage Collector)
     preloadQueue: [], 
@@ -29,6 +30,7 @@ const reader = {
         this.scale = 1;
         this.currentX = 0;
         this.currentY = 0;
+        this.wasPinchOrZoomActive = false;
         this.resetZoom();
 
         const track = document.getElementById('readerTrack');
@@ -166,7 +168,6 @@ const reader = {
         track.addEventListener('click', (event) => {
             if (event.target.closest('button') || event.target.closest('.page-comments-panel') || event.target.closest('.comment-input-block')) return;
 
-            // РЕШЕНИЕ ЗАДАЧИ 3: Если панель комментариев открыта — просто закрываем её без перелистываний и зума
             const commentsPanel = document.getElementById('commentsPanel');
             if (commentsPanel && commentsPanel.classList.contains('open')) {
                 this.toggleComments(false);
@@ -177,7 +178,6 @@ const reader = {
             const currentTime = new Date().getTime();
             const clickDelay = currentTime - lastClickTime;
 
-            // РЕШЕНИЕ ЗАДАЧИ 2: Быстрый дабл-тап
             if (clickDelay < 300) {
                 if (clickTimeout) {
                     clearTimeout(clickTimeout);
@@ -193,7 +193,6 @@ const reader = {
             clickTimeout = setTimeout(() => {
                 clickTimeout = null;
 
-                // Если страница приближена — одиночные клики по краям заблокированы для удобства скролла
                 if (this.scale && this.scale > 1) return;
 
                 const screenWidth = window.innerWidth;
@@ -219,36 +218,31 @@ const reader = {
         });
     },
 
-    // Плавное переключение зума по дабл-тапу
     toggleZoom(event) {
         const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
         if (!container) return;
 
-        // Включаем идеальную плавность только на момент дабл-тапа
         container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
 
         if (this.scale && this.scale > 1) {
             this.resetZoom();
         } else {
             this.scale = 2.5;
+            this.wasPinchOrZoomActive = true;
 
             const rect = container.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
 
-            // Ставим фокус-точку один раз перед приближением
             container.style.transformOrigin = `${x}px ${y}px`;
             this.currentX = 0;
             this.currentY = 0;
             
             container.style.transform = `translate3d(0px, 0px, 0px) scale(${this.scale})`;
-            
-            // РЕШЕНИЕ ЗАДАЧИ 4: Прячем верхнюю панель при зуме
             this.toggleTopPanel(false);
         }
     },
 
-    // РЕШЕНИЕ ЗАДАЧИ 1 & 2: Написание плавного мультитач жеста и панорамирования
     initTouchGestures() {
         const track = document.getElementById('readerTrack');
         let touchStartX = 0;
@@ -261,23 +255,33 @@ const reader = {
             if (e.touches.length === 1) {
                 touchStartX = e.touches[0].clientX;
                 
-                // Фиксируем координаты под плавный сдвиг (pan)
                 this.startX = e.touches[0].clientX - this.currentX;
                 this.startY = e.touches[0].clientY - this.currentY;
                 
                 if (this.scale > 1) {
-                    container.style.transition = 'none'; // Убираем задержки при перетаскивании пальцем
+                    container.style.transition = 'none';
                     this.isDragging = true;
                 }
             } else if (e.touches.length === 2) {
-                // Старт жеста Pinch-to-zoom двумя пальцами
+                // Активируем режим изменения масштаба (предотвращает свайпы)
+                this.wasPinchOrZoomActive = true;
                 container.style.transition = 'none';
                 this.isDragging = false;
+
+                // 1. Вычисляем расстояние между двумя пальцами
                 this.initialDistance = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
                     e.touches[0].clientY - e.touches[1].clientY
                 );
                 this.initialScale = this.scale || 1;
+
+                // 2. ИСПРАВЛЕНИЕ: Вычисляем геометрический центр между пальцами для точечного зума
+                const rect = container.getBoundingClientRect();
+                const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
+                // Устанавливаем фокусную точку трансформации туда, где находятся пальцы
+                container.style.transformOrigin = `${midX}px ${midY}px`;
             }
         }, { passive: true });
 
@@ -286,11 +290,9 @@ const reader = {
             if (!container) return;
 
             if (e.touches.length === 1 && this.isDragging) {
-                // Перетаскивание картинки одной рукой внутри зума
                 this.currentX = e.touches[0].clientX - this.startX;
                 this.currentY = e.touches[0].clientY - this.startY;
 
-                // Математический барьер: не даем картинке полностью улететь за экран
                 const maxMoveX = (window.innerWidth * (this.scale - 1)) / 2;
                 const maxMoveY = (window.innerHeight * (this.scale - 1)) / 2;
                 this.currentX = Math.max(-maxMoveX, Math.min(maxMoveX, this.currentX));
@@ -298,14 +300,13 @@ const reader = {
 
                 container.style.transform = `translate3d(${this.currentX}px, ${this.currentY}px, 0px) scale(${this.scale})`;
             } else if (e.touches.length === 2) {
-                // Изменение масштаба двумя пальцами на лету
                 const dist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
                     e.touches[0].clientY - e.touches[1].clientY
                 );
 
                 let newScale = (dist / this.initialDistance) * this.initialScale;
-                this.scale = Math.max(1, Math.min(4, newScale)); // Ограничение от 1х до 4х
+                this.scale = Math.max(1, Math.min(4, newScale));
 
                 if (this.scale === 1) {
                     this.currentX = 0;
@@ -313,8 +314,6 @@ const reader = {
                 }
 
                 container.style.transform = `translate3d(${this.currentX}px, ${this.currentY}px, 0px) scale(${this.scale})`;
-                
-                // Скрываем/показываем топ-панель в зависимости от масштаба
                 this.toggleTopPanel(this.scale === 1);
             }
         }, { passive: true });
@@ -326,15 +325,17 @@ const reader = {
             this.isDragging = false;
 
             if (e.touches.length === 0) {
-                if (this.scale < 1.1) {
+                if (this.scale < 1.05) {
                     this.resetZoom();
+                    // Даем микрозадержку перед очисткой флага, чтобы событие конца жеста не перелистнуло страницу
+                    setTimeout(() => { this.wasPinchOrZoomActive = false; }, 50);
                 } else {
                     container.style.transition = 'transform 0.2s ease-out';
                 }
             }
 
-            // Перелистывание обычным свайпом (только если масштаб 1:1)
-            if (e.changedTouches.length === 1 && (!this.scale || this.scale === 1)) {
+            // ИСПРАВЛЕНИЕ БАГА: Листаем свайпом ТОЛЬКО если масштаб изначально 1:1 И во время жеста не было зума/щипков
+            if (e.changedTouches.length === 1 && (!this.scale || this.scale <= 1) && !this.wasPinchOrZoomActive) {
                 touchEndX = e.changedTouches[0].clientX;
                 const diffX = touchStartX - touchEndX;
 
@@ -348,10 +349,15 @@ const reader = {
                     this.updateTrack();
                 }
             }
+
+            // Если все пальцы убраны, полностью обнуляем координаты старта свайпа
+            if (e.touches.length === 0) {
+                touchStartX = 0;
+                touchEndX = 0;
+            }
         }, { passive: true });
     },
 
-    // РЕШЕНИЕ ЗАДАЧИ 4: Универсальное управление отображением верхней панели ридера
     toggleTopPanel(show) {
         const counter = document.getElementById('pageCounter');
         if (counter && counter.parentElement) {
@@ -401,9 +407,11 @@ const reader = {
         if (container) {
             container.style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
             container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
-            // Возвращаем origin в центр по умолчанию после завершения анимации уменьшения
             setTimeout(() => {
-                if (this.scale === 1) container.style.transformOrigin = '50% 50%';
+                if (this.scale === 1) {
+                    container.style.transformOrigin = '50% 50%';
+                    this.wasPinchOrZoomActive = false; // Безопасный сброс триггера
+                }
             }, 250);
         }
         this.toggleTopPanel(true);
