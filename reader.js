@@ -79,22 +79,29 @@ const reader = {
 
     async loadCommentsForCurrentPage() {
         const container = document.getElementById('pageCommentsScroll');
-        container.innerHTML = "<span style='color:#777; font-size:12px;'>Загрузка обсуждения страницы...</span>";
+        container.innerHTML = "<span style='color:#777; font-size:12px;'>Загрузка комментариев...</span>";
         try {
-            const comments = await api.fetchPageComments(this.mangaId, this.currentIndex);
-            if(!comments || comments.length === 0) {
-                container.innerHTML = "<p style='color:#777; font-size:12px; text-align:center;'>Тут пусто. Напишите что-нибудь первым!</p>";
+            // Делаем чистый точечный запрос в созданную колонку
+            const pageComments = await api.fetchPageComments(this.mangaId, this.currentIndex);
+
+            if(!pageComments || pageComments.length === 0) {
+                container.innerHTML = "<p style='color:#777; font-size:12px; text-align:center;'>На этой странице пока нет комментариев.</p>";
                 return;
             }
             container.innerHTML = "";
-            comments.forEach(c => {
+            pageComments.forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'comment-item';
-                const isMyComment = String(c.user_id) === String(app.userId);
+                const isMyComment = Number(c.user_id) === Number(app.userId);
                 const delBtnHtml = isMyComment ? `<button class="comment-del-btn" onclick="reader.deletePageComment('${c.id}')">🗑 Удалить</button>` : '';
+                
+                const timeString = app.formatCommentTime(c.created_at);
 
                 item.innerHTML = `
-                    <div class="comment-user">${c.user_name}</div>
+                    <div class="comment-top-line">
+                        <span class="comment-user">${c.user_name}</span>
+                        <span class="comment-time">${timeString}</span>
+                    </div>
                     <p class="comment-text">${c.text}</p>
                     ${delBtnHtml}
                 `;
@@ -113,7 +120,6 @@ const reader = {
         try {
             await api.addPageComment(this.mangaId, this.currentIndex, app.userId, app.userName, text);
             input.value = "";
-            // Сразу же принудительно перерисовываем
             await this.loadCommentsForCurrentPage();
         } catch(e) {
             alert("Не удалось отправить сообщение.");
@@ -134,6 +140,10 @@ const reader = {
         let tapTimeout = null;
 
         screen.addEventListener('touchstart', (e) => {
+            if (e.target.closest('#commentsPanel') || e.target.closest('#openCommentsBtn') || e.target.closest('#readerHeader')) {
+                return;
+            }
+
             if (e.touches.length === 1) {
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
@@ -151,6 +161,8 @@ const reader = {
         }, { passive: true });
 
         screen.addEventListener('touchmove', (e) => {
+            if (e.target.closest('#commentsPanel') || e.target.closest('#openCommentsBtn')) return;
+
             if (this.scale > 1 && this.isDragging && e.touches.length === 1) {
                 this.posX = e.touches[0].clientX - this.lastPosX;
                 this.posY = e.touches[0].clientY - this.lastPosY;
@@ -163,30 +175,29 @@ const reader = {
         }, { passive: true });
 
         screen.addEventListener('touchend', (e) => {
+            if (e.target.closest('#commentsPanel') || e.target.closest('#openCommentsBtn') || e.target.closest('#readerHeader')) {
+                return;
+            }
+
             this.isDragging = false;
-            
             if (e.changedTouches.length > 0) {
                 const diffX = e.changedTouches[0].clientX - startX;
                 const diffY = e.changedTouches[0].clientY - startY;
 
-                // Если это был свайп (перелистывание жестом)
                 if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50 && this.scale === 1) {
                     if (diffX > 0 && this.currentIndex > 0) { this.currentIndex--; this.updateTrack(); }
                     else if (diffX < 0 && this.currentIndex < this.pages.length - 1) { this.currentIndex++; this.updateTrack(); }
                     return;
                 }
 
-                // Логика одиночных / двойных тапов по краям экрана
                 if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
                     const now = Date.now();
                     if (now - lastTapTime < 300) {
-                        // Обработка Двойного тапа (Зум)
                         clearTimeout(tapTimeout);
                         if (this.scale > 1) { this.resetZoom(); } 
                         else { this.scale = 2.5; this.applyZoomTransform(); }
                         lastTapTime = 0;
                     } else {
-                        // Обработка Одиночного тапа по зонам (25% слева / 25% справа)
                         lastTapTime = now;
                         tapTimeout = setTimeout(() => {
                             if (this.scale === 1) {
@@ -194,10 +205,8 @@ const reader = {
                                 const tapX = e.changedTouches[0].clientX;
                                 
                                 if (tapX < screenWidth * 0.25) {
-                                    // Клик слева -> Назад
                                     if (this.currentIndex > 0) { this.currentIndex--; this.updateTrack(); }
                                 } else if (tapX > screenWidth * 0.75) {
-                                    // Клик справа -> Вперед
                                     if (this.currentIndex < this.pages.length - 1) { this.currentIndex++; this.updateTrack(); }
                                 }
                             }
