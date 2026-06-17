@@ -66,28 +66,21 @@
         .sort-btn.active { border-color: var(--button-color); color: var(--button-color); }
         .reset-btn { background-color: #ff3b30; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none; }
 
-        /* Сетка каталога */
         .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .manga-card { background-color: var(--card-bg); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; position: relative; }
         .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #222; }
         .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
         
-        /* КРАСИВЫЙ СТИЛЬНЫЙ ЛАЙК НА ОБЛОЖКЕ ГЛАВНОГО МЕНЮ */
         .card-like-badge {
             position: absolute; top: 10px; right: 10px; 
-            background: rgba(255, 59, 48, 0.85);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
+            background: rgba(255, 59, 48, 0.85); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
             color: white; border-radius: 50%; width: 32px; height: 32px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            z-index: 10; border: 1px solid rgba(255,255,255,0.2);
-            transition: transform 0.2s;
+            font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 10; border: 1px solid rgba(255,255,255,0.2);
         }
 
         .card-info { padding: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .card-title { font-size: 13px; font-weight: 600; margin: 0 0 6px 0; line-height: 1.25; }
-        
         .card-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
         .tag { font-size: 9px; background-color: rgba(0, 235, 135, 0.1); color: var(--link-color); padding: 2px 5px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
         .tag-author { font-size: 9px; background-color: #ff7b00; color: #ffffff; padding: 2px 5px; border-radius: 5px; font-weight: bold; }
@@ -100,16 +93,24 @@
         
         .btn { background: var(--button-color); color: var(--button-text); border: none; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; }
         .btn-read { background: var(--button-color); color: var(--button-text); padding: 10px; font-size: 15px; margin-top: 0; }
-        .btn-like { background: #ff3b30; color: #fff; }
-        .btn-like.not-liked { background: #2a2a2a; color: #ccc; border: 1px solid #444; }
+        
+        /* Компактная кнопка лайка */
+        .likes-row-container { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+        .btn-like-compact { 
+            background: #ff3b30; color: #fff; border: none; padding: 6px 12px; 
+            font-size: 12px; font-weight: bold; border-radius: 20px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .btn-like-compact.not-liked { background: #2a2a2a; color: #ccc; border: 1px solid #444; }
 
         /* Комментарии */
         .comments-section-title { font-size: 16px; font-weight: bold; margin: 25px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
         .comments-scroll { overflow-y: auto; max-height: 400px; padding: 5px 0; }
         .comment-item { background: #1c1c1c; padding: 10px; border-radius: 8px; margin-bottom: 8px; position: relative; }
+        .comment-top-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .comment-user { font-weight: bold; color: var(--button-color); font-size: 13px; }
-        .comment-text { margin: 4px 0 0 0; font-size: 13px; color: #eee; }
-        .comment-del-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #ff3b30; cursor: pointer; font-size: 11px; }
+        .comment-time { color: var(--hint-color); font-size: 11px; }
+        .comment-text { margin: 0; font-size: 13px; color: #eee; word-break: break-word; }
+        .comment-del-btn { position: absolute; bottom: 8px; right: 8px; background: none; border: none; color: #ff3b30; cursor: pointer; font-size: 11px; }
         .comment-input-block { display: flex; gap: 8px; margin-top: 10px; }
         .comment-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 8px; font-size: 13px; }
 
@@ -119,7 +120,7 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 60px; z-index: 100;
             display: flex; align-items: center; justify-content: space-between;
             background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
-            padding: 0 12px; box-sizing: border-box; transition: opacity 0.2s;
+            padding: 0 12px; box-sizing: border-box;
         }
         .page-counter { color: #fff; font-size: 14px; font-weight: bold; }
         
@@ -132,16 +133,14 @@
         }
         .reader-img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 
-        /* КНОПКА КОММЕНТАРИЕВ С УВЕЛИЧЕННОЙ ЗОНОЙ НАЖАТИЯ */
         .open-comments-trigger-btn {
             position: fixed; bottom: 25px; right: 25px; min-width: 56px; min-height: 56px;
             background: var(--button-color); color: var(--button-text); border: none;
             border-radius: 50%; font-size: 24px; display: flex; align-items: center;
             justify-content: center; box-shadow: 0 6px 16px rgba(0,0,0,0.6);
-            z-index: 120; cursor: pointer; font-weight: bold; padding: 0;
+            z-index: 120; cursor: pointer; font-weight: bold;
         }
 
-        /* Постраничные комментарии (Bottom Sheet) */
         .page-comments-panel {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 65vh;
             background: rgba(20, 20, 20, 0.98); backdrop-filter: blur(15px);
@@ -158,6 +157,7 @@
 </head>
 <body>
 
+    <!-- ЭКРАН 1: ГЛАВНЫЙ КАТАЛОГ -->
     <div id="mainScreen" class="screen active">
         <div class="main-container">
             <button class="donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
@@ -182,6 +182,7 @@
         </div>
     </div>
 
+    <!-- ЭКРАН 2: ПРЕВЬЮ ТАЙТЛА -->
     <div id="previewScreen" class="screen">
         <div class="main-container">
             <button class="btn" style="background:#333; color:#fff; margin-bottom:10px;" onclick="app.showScreen('mainScreen')">← В каталог</button>
@@ -191,24 +192,28 @@
                     <img id="previewCover" class="preview-cover" src="" alt="">
                     <button id="startReadBtn" class="btn btn-read">Читать</button>
                 </div>
-                <div style="flex-grow: 1;">
+                <div style="flex-grow: 1; padding-top: 4px;">
                     <h3 id="previewTitle" style="margin:0 0 5px 0; font-size:18px;"></h3>
-                    <p id="previewAuthor" style="color:#aaa; margin:0 0 10px 0; font-size:14px;"></p>
-                    <p id="previewLikesCount" style="margin:5px 0 0 0; font-weight:bold; font-size:14px; color:#00eb87;"></p>
+                    <p id="previewAuthor" style="color:#aaa; margin:0 0 5px 0; font-size:14px;"></p>
+                    
+                    <!-- Ряд: текст Понравилось + компактная кнопка лайка рядом -->
+                    <div class="likes-row-container">
+                        <span id="previewLikesCount" style="font-weight:bold; font-size:14px; color:#00eb87;"></span>
+                        <button id="likeBtn" class="btn-like-compact">❤️ Добавить в понравившееся</button>
+                    </div>
                 </div>
             </div>
-            
-            <button id="likeBtn" class="btn btn-like">Добавить в понравившееся</button>
 
             <div class="comments-section-title">Обсуждение тайтла</div>
             <div id="mainCommentsScroll" class="comments-scroll">Синхронизация сообщений...</div>
             <div class="comment-input-block">
-                <input type="text" id="mainCommentInputField" class="comment-input" placeholder="Написать комментарий к тайтлу...">
+                <input type="text" id="mainCommentInputField" class="comment-input" placeholder="Написать комментарий...">
                 <button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="app.sendMainComment()">Отправить</button>
             </div>
         </div>
     </div>
 
+    <!-- ЭКРАН 3: ГОРИЗОНТАЛЬНАЯ ЧИТАЛКА -->
     <div id="readerScreen" class="screen reader-screen">
         <div id="readerHeader" class="reader-header">
             <button class="sort-btn" style="color:#fff;" onclick="app.closeMangaReader()">✕ Выйти</button>
