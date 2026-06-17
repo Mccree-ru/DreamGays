@@ -14,13 +14,10 @@ const reader = {
     initialDistance: 0,
     initialScale: 1,
     isDragging: false,
-    wasPinchOrZoomActive: false, // Флаг-предохранитель от случайного перелистывания
+    wasPinchOrZoomActive: false, 
 
-    // Очередь для хранения фоновых объектов картинок (защита от Garbage Collector)
     preloadQueue: [], 
-    // Набор URL, которые уже были поставлены на загрузку (защита от дублирования запросов)
     preloadedUrls: new Set(),
-    // Флаг активного фонового процесса последовательной догрузки
     isBackgroundLoading: false,
 
     renderPages(mangaId, pagesArray) {
@@ -37,7 +34,6 @@ const reader = {
         if (!track) return;
         track.innerHTML = "";
 
-        // Рендерим слайды для каждой страницы
         this.pages.forEach((pageUrl, index) => {
             const slide = document.createElement('div');
             slide.className = 'reader-slide';
@@ -56,7 +52,6 @@ const reader = {
 
         this.updateTrack();
         
-        // Сбрасываем кэш прелоадера под новый тайтл/главу
         this.preloadQueue = [];
         this.preloadedUrls = new Set();
         this.isBackgroundLoading = false;
@@ -81,39 +76,25 @@ const reader = {
 
     managePreload() {
         if (!this.pages || this.pages.length === 0) return;
-
         const nextPagesCount = 3; 
         const priorityIndices = [];
-
         for (let i = 1; i <= nextPagesCount; i++) {
             const nextIndex = this.currentIndex + i;
-            if (nextIndex < this.pages.length) {
-                priorityIndices.push(nextIndex);
-            }
+            if (nextIndex < this.pages.length) priorityIndices.push(nextIndex);
         }
-
         priorityIndices.forEach(index => {
             this.preloadSingleUrl(this.pages[index], true);
         });
-
         this.preloadRemainingSequentially();
     },
 
     preloadSingleUrl(url, isPriority = false) {
         if (this.preloadedUrls.has(url)) return Promise.resolve();
-
         return new Promise((resolve) => {
             this.preloadedUrls.add(url);
             const img = new Image();
-            
-            img.onload = () => {
-                resolve();
-            };
-            img.onerror = () => {
-                this.preloadedUrls.delete(url); 
-                resolve();
-            };
-            
+            img.onload = () => resolve();
+            img.onerror = () => { this.preloadedUrls.delete(url); resolve(); };
             img.src = url;
             this.preloadQueue.push(img);
         });
@@ -122,14 +103,12 @@ const reader = {
     async preloadRemainingSequentially() {
         if (this.isBackgroundLoading) return;
         this.isBackgroundLoading = true;
-
         for (let i = 0; i < this.pages.length; i++) {
             const url = this.pages[i];
             if (!this.preloadedUrls.has(url)) {
                 await this.preloadSingleUrl(url, false);
             }
         }
-
         this.isBackgroundLoading = false;
     },
 
@@ -137,10 +116,7 @@ const reader = {
         window.addEventListener('keydown', (event) => {
             const readerScreen = document.getElementById('readerScreen');
             if (!readerScreen || !readerScreen.classList.contains('active')) return;
-
-            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
-                return;
-            }
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
 
             if (event.key === 'ArrowRight') {
                 if (this.currentIndex < this.pages.length - 1) {
@@ -192,12 +168,10 @@ const reader = {
 
             clickTimeout = setTimeout(() => {
                 clickTimeout = null;
-
                 if (this.scale && this.scale > 1) return;
 
                 const screenWidth = window.innerWidth;
                 const clickX = event.clientX;
-
                 const leftZoneBound = screenWidth * 0.3;
                 const rightZoneBound = screenWidth * 0.7;
 
@@ -254,7 +228,6 @@ const reader = {
 
             if (e.touches.length === 1) {
                 touchStartX = e.touches[0].clientX;
-                
                 this.startX = e.touches[0].clientX - this.currentX;
                 this.startY = e.touches[0].clientY - this.currentY;
                 
@@ -263,25 +236,24 @@ const reader = {
                     this.isDragging = true;
                 }
             } else if (e.touches.length === 2) {
-                // Активируем режим изменения масштаба (предотвращает свайпы)
                 this.wasPinchOrZoomActive = true;
                 container.style.transition = 'none';
                 this.isDragging = false;
 
-                // 1. Вычисляем расстояние между двумя пальцами
                 this.initialDistance = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
                     e.touches[0].clientY - e.touches[1].clientY
                 );
                 this.initialScale = this.scale || 1;
 
-                // 2. ИСПРАВЛЕНИЕ: Вычисляем геометрический центр между пальцами для точечного зума
-                const rect = container.getBoundingClientRect();
-                const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-                const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
-
-                // Устанавливаем фокусную точку трансформации туда, где находятся пальцы
-                container.style.transformOrigin = `${midX}px ${midY}px`;
+                // ИСПРАВЛЕНИЕ: Меняем точку начала зума ТОЛЬКО если картинка в исходном масштабе 1:1.
+                // Если картинка уже приближена, не трогаем origin, чтобы избежать прыжков позиции («колбасы»).
+                if (!this.scale || this.scale <= 1.02) {
+                    const rect = container.getBoundingClientRect();
+                    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                    container.style.transformOrigin = `${midX}px ${midY}px`;
+                }
             }
         }, { passive: true });
 
@@ -308,13 +280,13 @@ const reader = {
                 let newScale = (dist / this.initialDistance) * this.initialScale;
                 this.scale = Math.max(1, Math.min(4, newScale));
 
-                if (this.scale === 1) {
+                if (this.scale <= 1) {
                     this.currentX = 0;
                     this.currentY = 0;
                 }
 
                 container.style.transform = `translate3d(${this.currentX}px, ${this.currentY}px, 0px) scale(${this.scale})`;
-                this.toggleTopPanel(this.scale === 1);
+                this.toggleTopPanel(this.scale <= 1);
             }
         }, { passive: true });
 
@@ -327,14 +299,12 @@ const reader = {
             if (e.touches.length === 0) {
                 if (this.scale < 1.05) {
                     this.resetZoom();
-                    // Даем микрозадержку перед очисткой флага, чтобы событие конца жеста не перелистнуло страницу
                     setTimeout(() => { this.wasPinchOrZoomActive = false; }, 50);
                 } else {
                     container.style.transition = 'transform 0.2s ease-out';
                 }
             }
 
-            // ИСПРАВЛЕНИЕ БАГА: Листаем свайпом ТОЛЬКО если масштаб изначально 1:1 И во время жеста не было зума/щипков
             if (e.changedTouches.length === 1 && (!this.scale || this.scale <= 1) && !this.wasPinchOrZoomActive) {
                 touchEndX = e.changedTouches[0].clientX;
                 const diffX = touchStartX - touchEndX;
@@ -350,7 +320,6 @@ const reader = {
                 }
             }
 
-            // Если все пальцы убраны, полностью обнуляем координаты старта свайпа
             if (e.touches.length === 0) {
                 touchStartX = 0;
                 touchEndX = 0;
@@ -410,7 +379,7 @@ const reader = {
             setTimeout(() => {
                 if (this.scale === 1) {
                     container.style.transformOrigin = '50% 50%';
-                    this.wasPinchOrZoomActive = false; // Безопасный сброс триггера
+                    this.wasPinchOrZoomActive = false; 
                 }
             }, 250);
         }
@@ -437,12 +406,10 @@ const reader = {
         
         try {
             const comments = await api.fetchPageComments(this.mangaId, this.currentIndex);
-
             if (!comments || comments.length === 0) {
                 container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>К этой странице пока нет комментариев.</p>";
                 return;
             }
-
             container.innerHTML = "";
             comments.forEach(c => {
                 const item = document.createElement('div');
@@ -477,7 +444,6 @@ const reader = {
             if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
                 window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
             }
-
             await api.addComment(this.mangaId, this.currentIndex, app.userId, app.userName, text);
             input.value = "";
 
@@ -487,17 +453,10 @@ const reader = {
                 } else {
                     app.currentManga.comments_count = 1;
                 }
-                
                 const previewComments = document.getElementById('previewComments');
-                if (previewComments) {
-                    previewComments.textContent = `💬 ${app.currentManga.comments_count}`;
-                }
-
-                if (typeof app.renderCatalogGrid === 'function') {
-                    app.renderCatalogGrid(app.allManga);
-                }
+                if (previewComments) previewComments.textContent = `💬 ${app.currentManga.comments_count}`;
+                if (typeof app.renderCatalogGrid === 'function') app.renderCatalogGrid(app.allManga);
             }
-
             await this.loadCommentsForCurrentPage();
         } catch (e) {
             console.error("Ошибка при отправке комментария страницы:", e);
@@ -511,20 +470,13 @@ const reader = {
                 if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
                     window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
                 }
-
                 await api.deleteComment(commentId, app.userId);
-                
                 if (app.currentManga && app.currentManga.comments_count > 0) {
                     app.currentManga.comments_count--;
                     const previewComments = document.getElementById('previewComments');
-                    if (previewComments) {
-                        previewComments.textContent = `💬 ${app.currentManga.comments_count}`;
-                    }
-                    if (typeof app.renderCatalogGrid === 'function') {
-                        app.renderCatalogGrid(app.allManga);
-                    }
+                    if (previewComments) previewComments.textContent = `💬 ${app.currentManga.comments_count}`;
+                    if (typeof app.renderCatalogGrid === 'function') app.renderCatalogGrid(app.allManga);
                 }
-                
                 await this.loadCommentsForCurrentPage();
             } catch (e) {
                 console.error("Ошибка при удалении комментария:", e);
