@@ -5,19 +5,6 @@ const reader = {
     isGesturesInitialized: false,
     isPCControlsInitialized: false,
     
-    // Для зума
-    scale: 1,
-    minScale: 1,
-    maxScale: 3,
-    currentX: 0,
-    currentY: 0,
-    
-    // Для отслеживания двойного тапа
-    lastTapTime: 0,
-    lastTapX: 0,
-    lastTapY: 0,
-    isZooming: false,
-    
     // Очередь для хранения фоновых объектов картинок (защита от Garbage Collector)
     preloadQueue: [], 
     // Набор URL, которые уже были поставлены на загрузку (защита от дублирования запросов)
@@ -177,36 +164,79 @@ const reader = {
         const track = document.getElementById('readerTrack');
         if (!track) return;
 
+        let clickTimeout = null;
+        let lastClickTime = 0;
+
         track.addEventListener('click', (event) => {
-            // Игнорируем клики, если они пришлись на кнопки или панель комментариев
-            if (event.target.closest('button') || event.target.closest('.page-comments-panel')) return;
-            
-            // Игнорируем клик, если это был двойной тап (зум)
-            if (this.isZooming) {
-                this.isZooming = false;
+            // Игнорируем клики, если они пришлись на кнопки, инпуты или панель комментариев
+            if (event.target.closest('button') || event.target.closest('.page-comments-panel') || event.target.closest('.comment-input-block')) return;
+
+            const currentTime = new Date().getTime();
+            const clickDelay = currentTime - lastClickTime;
+
+            // ИСПРАВЛЕНИЕ ПРОБЛЕМЫ 2: Если клик произошел быстрее чем за 300мс — это ДАБЛ-ТАП
+            if (clickDelay < 300) {
+                if (clickTimeout) {
+                    clearTimeout(clickTimeout);
+                    clickTimeout = null;
+                }
+                // Запускаем зум в точку клика
+                this.toggleZoom(event);
+                lastClickTime = 0; 
                 return;
             }
+            
+            lastClickTime = currentTime;
 
-            const screenWidth = window.innerWidth;
-            const clickX = event.clientX;
+            // Одиночный клик оборачиваем в таймаут, чтобы дать время на проверку дабл-тапа
+            clickTimeout = setTimeout(() => {
+                clickTimeout = null;
 
-            const leftZoneBound = screenWidth * 0.3;
-            const rightZoneBound = screenWidth * 0.7;
+                // Если страница приближена — не перелистываем кликами по краям
+                if (this.scale && this.scale > 1) return;
 
-            if (clickX > rightZoneBound) {
-                if (this.currentIndex < this.pages.length - 1) {
-                    this.currentIndex++;
-                    this.resetZoom();
-                    this.updateTrack();
+                const screenWidth = window.innerWidth;
+                const clickX = event.clientX;
+
+                const leftZoneBound = screenWidth * 0.3;
+                const rightZoneBound = screenWidth * 0.7;
+
+                if (clickX > rightZoneBound) {
+                    if (this.currentIndex < this.pages.length - 1) {
+                        this.currentIndex++;
+                        this.resetZoom();
+                        this.updateTrack();
+                    }
+                } else if (clickX < leftZoneBound) {
+                    if (this.currentIndex > 0) {
+                        this.currentIndex--;
+                        this.resetZoom();
+                        this.updateTrack();
+                    }
                 }
-            } else if (clickX < leftZoneBound) {
-                if (this.currentIndex > 0) {
-                    this.currentIndex--;
-                    this.resetZoom();
-                    this.updateTrack();
-                }
-            }
+            }, 250);
         });
+    },
+
+    // ИСПРАВЛЕНИЕ ПРОБЛЕМЫ 1: Увеличиваем ровно ту область, куда нажал пользователь
+    toggleZoom(event) {
+        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+        if (!container) return;
+
+        if (this.scale && this.scale > 1) {
+            this.resetZoom();
+        } else {
+            this.scale = 2.5; // Сила приближения
+
+            const rect = container.getBoundingClientRect();
+            // Находим координаты клика относительно самого контейнера изображения
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // Сдвигаем центр трансформации в точку нажатия
+            container.style.transformOrigin = `${x}px ${y}px`;
+            container.style.transform = `translate3d(0px, 0px, 0px) scale(${this.scale})`;
+        }
     },
 
     updateTrack() {
@@ -241,7 +271,6 @@ const reader = {
         const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
         if (container) {
             container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
-            container.style.transformOrigin = 'center center';
         }
     },
 
@@ -249,158 +278,32 @@ const reader = {
         const track = document.getElementById('readerTrack');
         let touchStartX = 0;
         let touchEndX = 0;
-        let touchStartY = 0;
-        let isSwiping = false;
-        
-        // Переменные для пинч-зума
-        let initialPinchDistance = 0;
-        let initialScale = 1;
-        let initialX = 0;
-        let initialY = 0;
-        let pinchCenterX = 0;
-        let pinchCenterY = 0;
-        let isPinching = false;
 
         track.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                touchStartX = touch.clientX;
-                touchStartY = touch.clientY;
-                isSwiping = true;
-                
-                // Проверка на двойной тап
-                const now = Date.now();
-                const timeSinceLastTap = now - this.lastTapTime;
-                
-                if (timeSinceLastTap < 300) {
-                    // Это двойной тап!
-                    this.isZooming = true;
-                    this.handleDoubleTap(touch.clientX, touch.clientY);
-                }
-                
-                this.lastTapTime = now;
-                this.lastTapX = touch.clientX;
-                this.lastTapY = touch.clientY;
-                
-            } else if (e.touches.length === 2) {
-                // Начало пинча
-                isPinching = true;
-                isSwiping = false;
-                const touch1 = e.touches[0];
-                const touch2 = e.touches[1];
-                initialPinchDistance = this.getDistance(touch1, touch2);
-                pinchCenterX = (touch1.clientX + touch2.clientX) / 2;
-                pinchCenterY = (touch1.clientY + touch2.clientY) / 2;
-                
-                const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
-                if (container) {
-                    const rect = container.getBoundingClientRect();
-                    const xPercent = ((pinchCenterX - rect.left) / rect.width) * 100;
-                    const yPercent = ((pinchCenterY - rect.top) / rect.height) * 100;
-                    container.style.transformOrigin = `${xPercent}% ${yPercent}%`;
-                }
-                
-                initialScale = this.scale;
-                initialX = this.currentX;
-                initialY = this.currentY;
+                touchStartX = e.touches[0].clientX;
             }
         }, { passive: true });
 
-        track.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 1 && isSwiping) {
-                // Свайп для перелистывания только если зум = 1
-                if (this.scale === 1) {
-                    const touch = e.touches[0];
-                    const diffX = touchStartX - touch.clientX;
-                    
-                    // Если смещение больше порога - считаем свайпом
-                    if (Math.abs(diffX) > 20) {
-                        isSwiping = false;
-                    }
-                }
-            } else if (e.touches.length === 2 && isPinching) {
-                // Пинч-зум
-                e.preventDefault();
-                const touch1 = e.touches[0];
-                const touch2 = e.touches[1];
-                const currentDistance = this.getDistance(touch1, touch2);
-                const scaleFactor = currentDistance / initialPinchDistance;
-                
-                let newScale = initialScale * scaleFactor;
-                newScale = Math.min(Math.max(newScale, this.minScale), this.maxScale);
-                
-                // Обновляем трансформацию
-                const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
-                if (container) {
-                    container.style.transform = `translate3d(0px, 0px, 0px) scale(${newScale})`;
-                }
-                this.scale = newScale;
-            }
-        }, { passive: false });
-
         track.addEventListener('touchend', (e) => {
-            // Если это был свайп и зум = 1
-            if (isSwiping && this.scale === 1) {
+            if (e.changedTouches.length === 1) {
+                touchEndX = e.changedTouches[0].clientX;
                 const diffX = touchStartX - touchEndX;
-                
-                if (diffX > 50 && this.currentIndex < this.pages.length - 1) {
+
+                if (this.scale && this.scale > 1) return;
+
+                if (diffX > 60 && this.currentIndex < this.pages.length - 1) {
                     this.currentIndex++;
                     this.resetZoom();
                     this.updateTrack();
                 }
-                else if (diffX < -50 && this.currentIndex > 0) {
+                else if (diffX < -60 && this.currentIndex > 0) {
                     this.currentIndex--;
                     this.resetZoom();
                     this.updateTrack();
                 }
             }
-            
-            isSwiping = false;
-            isPinching = false;
-            
-            // Сбрасываем флаг зума после небольшой задержки
-            setTimeout(() => {
-                this.isZooming = false;
-            }, 100);
         }, { passive: true });
-        
-        // Сохраняем touchEndX в touchend
-        track.addEventListener('touchend', (e) => {
-            if (e.changedTouches.length === 1) {
-                touchEndX = e.changedTouches[0].clientX;
-            }
-        }, { passive: true });
-    },
-    
-    // Вспомогательная функция для расчета расстояния между двумя точками
-    getDistance(touch1, touch2) {
-        const dx = touch1.clientX - touch2.clientX;
-        const dy = touch1.clientY - touch2.clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-    },
-    
-    // Обработка двойного тапа для зума к месту касания
-    handleDoubleTap(x, y) {
-        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
-        if (!container) return;
-        
-        const rect = container.getBoundingClientRect();
-        
-        // Вычисляем процентное положение тапа относительно контейнера
-        const xPercent = ((x - rect.left) / rect.width) * 100;
-        const yPercent = ((y - rect.top) / rect.height) * 100;
-        
-        // Устанавливаем точку трансформации в место тапа
-        container.style.transformOrigin = `${xPercent}% ${yPercent}%`;
-        
-        if (this.scale === 1) {
-            // Увеличиваем
-            this.scale = 2.5;
-            container.style.transform = `translate3d(0px, 0px, 0px) scale(${this.scale})`;
-        } else {
-            // Сбрасываем зум
-            this.resetZoom();
-        }
     },
 
     toggleComments(show) {
@@ -415,37 +318,32 @@ const reader = {
             panel.classList.remove('open');
         }
     },
-    
-    // Загрузка комментариев для текущей страницы
+
+    // ИСПРАВЛЕНИЕ ПРОБЛЕМЫ 3: Добавлены реальные методы для работы с комментариями страниц
+
+    // 3.1. Загрузка и рендеринг комментариев текущей страницы
     async loadCommentsForCurrentPage() {
         const container = document.getElementById('pageCommentsScroll');
         if (!container) return;
-        
-        container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>Загрузка комментариев...</p>";
+        container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>Загрузка комментариев страницы...</p>";
         
         try {
+            // Вызываем рабочий метод из api.js
             const comments = await api.fetchPageComments(this.mangaId, this.currentIndex);
-            
+
             if (!comments || comments.length === 0) {
-                container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>Нет комментариев к этой странице</p>";
+                container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center;'>К этой странице пока нет комментариев.</p>";
                 return;
             }
-            
+
             container.innerHTML = "";
             comments.forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'comment-item';
                 const isMyComment = Number(c.user_id) === Number(app.userId);
                 const delBtnHtml = isMyComment ? `<button class="comment-del-btn" onclick="reader.deletePageComment('${c.id}')">🗑 Удалить</button>` : '';
-                
-                // Форматирование времени
-                let timeString = "";
-                if (c.created_at) {
-                    const d = new Date(c.created_at);
-                    const pad = (n) => String(n).padStart(2, '0');
-                    timeString = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-                }
-                
+                const timeString = typeof app.formatCommentTime === 'function' ? app.formatCommentTime(c.created_at) : '';
+
                 item.innerHTML = `
                     <div class="comment-top-line">
                         <span class="comment-user">${c.user_name}</span>
@@ -457,46 +355,84 @@ const reader = {
                 container.appendChild(item);
             });
         } catch (e) {
+            console.error("Ошибка загрузки комментариев страницы:", e);
             container.innerHTML = "<span style='color:#ff3b30;'>Не удалось загрузить комментарии.</span>";
         }
     },
-    
-    // Отправка комментария к странице
+
+    // 3.2. Отправка комментария к странице
     async sendPageComment() {
         const input = document.getElementById('pageCommentInputField');
         if (!input) return;
         const text = input.value.trim();
         if (!text) return;
-        
+
         try {
             if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
                 window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
             }
-            
-            await api.addComment(
-                this.mangaId,
-                this.currentIndex,
-                app.userId,
-                app.userName,
-                text
-            );
-            
+
+            // Добавляем запись в таблицу Supabase через api.js
+            await api.addComment(this.mangaId, this.currentIndex, app.userId, app.userName, text);
             input.value = "";
+
+            // Синхронизируем и увеличиваем общий счетчик тайтла в объекте app
+            if (app.currentManga) {
+                if (app.currentManga.comments_count !== undefined) {
+                    app.currentManga.comments_count++;
+                } else {
+                    app.currentManga.comments_count = 1;
+                }
+                
+                // Обновляем текст счетчика на экране превью тайтла
+                const previewComments = document.getElementById('previewComments');
+                if (previewComments) {
+                    previewComments.textContent = `💬 ${app.currentManga.comments_count}`;
+                }
+
+                // Перерисовываем карточки каталога, чтобы цифры обновились и на главном экране
+                if (typeof app.renderCatalogGrid === 'function') {
+                    app.renderCatalogGrid(app.allManga);
+                }
+            }
+
+            // Обновляем список комментариев на панели чтения
             await this.loadCommentsForCurrentPage();
-        } catch(e) {
+        } catch (e) {
+            console.error("Ошибка при отправке комментария страницы:", e);
             alert("Не удалось отправить комментарий.");
-            console.error(e);
         }
     },
-    
-    // Удаление комментария к странице
+
+    // 3.3. Удаление комментария к странице
     async deletePageComment(commentId) {
-        if (confirm("Удалить ваш комментарий?")) {
-            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
-                window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+        if (confirm("Удалить ваш комментарий к странице?")) {
+            try {
+                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+                    window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+                }
+
+                // Удаляем из Supabase
+                await api.deleteComment(commentId, app.userId);
+                
+                // Уменьшаем счетчики
+                if (app.currentManga && app.currentManga.comments_count > 0) {
+                    app.currentManga.comments_count--;
+                    const previewComments = document.getElementById('previewComments');
+                    if (previewComments) {
+                        previewComments.textContent = `💬 ${app.currentManga.comments_count}`;
+                    }
+                    if (typeof app.renderCatalogGrid === 'function') {
+                        app.renderCatalogGrid(app.allManga);
+                    }
+                }
+                
+                // Перезагружаем список
+                await this.loadCommentsForCurrentPage();
+            } catch (e) {
+                console.error("Ошибка при удалении комментария:", e);
+                alert("Не удалось удалить комментарий.");
             }
-            await api.deleteComment(commentId, app.userId);
-            await this.loadCommentsForCurrentPage();
         }
     }
 };
