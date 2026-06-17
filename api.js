@@ -18,6 +18,12 @@ const api = {
         }));
     },
 
+    async getUserLikesList(userId) {
+        if (!userId) return [];
+        const { data } = await _supabase.from('likes').select('manga_id').eq('user_id', userId);
+        return data ? data.map(item => item.manga_id) : [];
+    },
+
     async checkUserLike(userId, mangaId) {
         if (!userId) return false;
         const { data } = await _supabase.from('likes').select('id').eq('user_id', userId).eq('manga_id', mangaId);
@@ -33,7 +39,6 @@ const api = {
         }
     },
 
-    // Получить постраничные комментарии
     async fetchPageComments(mangaId, pageIndex) {
         const { data, error } = await _supabase
             .from('comments')
@@ -45,8 +50,8 @@ const api = {
         return data;
     },
 
-    // Сохранить постраничный комментарий
     async addPageComment(mangaId, pageIndex, userId, userName, text) {
+        // Добавлен .select() в конец, чтобы v2 Supabase возвращал созданную строку и не падал скрипт
         const { data, error } = await _supabase
             .from('comments')
             .insert({
@@ -55,18 +60,18 @@ const api = {
                 user_id: userId,
                 user_name: userName || "Читатель",
                 text: text
-            });
+            })
+            .select();
         if (error) throw error;
         return data;
     },
 
-    // Удалить СВОЙ комментарий
     async deleteComment(commentId, userId) {
         const { error } = await _supabase
             .from('comments')
             .delete()
             .eq('id', commentId)
-            .eq('user_id', userId); // Защита: удалится только если совпали id создателя
+            .eq('user_id', userId);
         if (error) throw error;
     }
 };
