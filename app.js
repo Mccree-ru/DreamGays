@@ -2,7 +2,7 @@ const tg = window.Telegram.WebApp;
 
 const app = {
     userId: null,
-    userName: null,
+    userName: null, // Здесь будет храниться безопасное имя для комментариев
     allManga: [],
     currentManga: null,
     isCurrentLiked: false,
@@ -14,12 +14,20 @@ const app = {
             try { tg.expand(); } catch(e){}
             
             this.userId = tg.initDataUnsafe.user.id;
-            this.userName = tg.initDataUnsafe.user.first_name || tg.initDataUnsafe.user.username;
+            
+            // БЕЗОПАСНОСТЬ: Используем ТОЛЬКО имя профиля (first_name).
+            // Никаких логинов (@username), чтобы защитить аккаунты от спама.
+            const user = tg.initDataUnsafe.user;
+            if (user.first_name) {
+                this.userName = user.first_name.trim();
+            } else {
+                this.userName = "Читатель"; // Заглушка, если имя не заполнено
+            }
             
             // Если всё отлично, запускаем загрузку каталога
             await this.loadCatalog();
         } else {
-            // Если ID не получен (запущено на ПК в обычном браузере), блокируем читалку
+            // Если зашли с ПК или обычного браузера — блокируем интерфейс
             this.handleAuthError();
         }
     },
@@ -28,7 +36,6 @@ const app = {
     handleAuthError() {
         console.error("Ошибка: Приложение запущено вне Telegram или не удалось получить User ID.");
         
-        // Красиво переписываем каталог сообщением об ошибке
         const grid = document.getElementById('catalogGrid');
         if (grid) {
             grid.style.display = "block";
@@ -62,8 +69,14 @@ const app = {
                 grid.appendChild(card);
             });
         } catch (err) {
-            console.error(err);
-            document.getElementById('catalogGrid').innerText = "Ошибка загрузки данных.";
+            console.error("Детальная ошибка загрузки:", err);
+            // Выводим детальный текст ошибки прямо на экран мобильного, чтобы сразу видеть косяки базы
+            document.getElementById('catalogGrid').innerHTML = `
+                <div style="padding: 15px; color: #ff3b30; font-size: 13px; text-align: left; background: #222; border-radius: 6px;">
+                    <b>Ошибка загрузки данных:</b><br>
+                    ${err.message || err.details || JSON.stringify(err)}
+                </div>
+            `;
         }
     },
 
