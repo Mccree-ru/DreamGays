@@ -1,12 +1,11 @@
 const SUPABASE_URL = 'https://rigyzgsisqlcnucysamu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJpZ3l6Z3Npc3FsY251Y3lzYW11Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MzE1MzMsImV4cCI6MjA5NzIwNzUzM30.VuZ2oYCazE74yx0Aof92SaWaF0Z-jgKgUBEjEzE2gT4';
 
-// Твоя оригинальная инициализация
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const api = {
     async fetchCatalog() {
-        // Запрашиваем данные, считаем лайки и СОРТИРУЕМ по internal_id (новые будут первыми)
+        // Запрос манги с подсчетом лайков через связь, сортировка по internal_id
         const { data, error } = await _supabase
             .from('manga')
             .select(`*, likes(count)`)
@@ -14,22 +13,16 @@ const api = {
             
         if (error) throw error;
 
-        // Отдельно тянем id комментов, чтобы сосчитать их без сбоев из-за связей
-        let commentCounts = {};
-        try {
-            const { data: cData } = await _supabase.from('comments').select('manga_id');
-            if (cData) {
-                cData.forEach(c => {
-                    if (c.manga_id) {
-                        commentCounts[c.manga_id] = (commentCounts[c.manga_id] || 0) + 1;
-                    }
-                });
-            }
-        } catch (e) {
-            console.error("Ошибка подсчета комментов:", e);
+        // Запрос списка всех комментариев для подсчета
+        const { data: cData } = await _supabase.from('comments').select('manga_id');
+        
+        const commentCounts = {};
+        if (cData) {
+            cData.forEach(c => {
+                commentCounts[c.manga_id] = (commentCounts[c.manga_id] || 0) + 1;
+            });
         }
 
-        // Возвращаем данные строго в твоем оригинальном формате, добавляя comments_count
         return data.map(m => ({
             id: String(m.id),
             title: m.title,
@@ -38,7 +31,7 @@ const api = {
             tags: Array.isArray(m.tags) ? m.tags : [],
             pages: Array.isArray(m.pages) ? m.pages : JSON.parse(m.pages || '[]'),
             likes: m.likes[0]?.count || 0,
-            comments_count: commentCounts[String(m.id)] || 0 // Передаем количество комментов на плитку
+            comments_count: commentCounts[String(m.id)] || 0
         }));
     },
 
@@ -57,7 +50,6 @@ const api = {
         }
     },
 
-    // Получение комментариев для СТРАНИЦЫ (где page_index равен числу)
     async fetchPageComments(mangaId, pageIndex) {
         const { data, error } = await _supabase
             .from('comments')
@@ -69,25 +61,24 @@ const api = {
         return data || [];
     },
 
-    // Получение комментариев для ГЛАВНОГО МЕНЮ ПРЕВЬЮ (где page_index равен NULL)
     async fetchMainComments(mangaId) {
         const { data, error } = await _supabase
             .from('comments')
             .select('*')
             .eq('manga_id', String(mangaId))
-            .is('page_index', null) 
+            .is('page_index', null)
             .order('created_at', { ascending: true });
         if (error) throw error;
         return data || [];
     },
 
-    // Добавление комментария
     async addComment(mangaId, pageIndex, userId, userName, text) {
         const insertData = {
             manga_id: String(mangaId),
             user_id: Number(userId),
             user_name: userName || "Читатель",
-            text: String(text)
+            text: String(text),
+            created_at: new Date().toISOString() // Явно указываем время
         };
         
         if (pageIndex !== null) {
