@@ -25,7 +25,7 @@
             -webkit-user-select: none; user-select: none;
         }
 
-        /* 4. Полное отключение синего/серого выделения при кликах на мобильных устройствах */
+        /* Полное отключение синего/серого выделения при тапах на мобильных */
         button, .genre-tab, .sort-btn, .reset-btn, .manga-card, select, .open-comments-trigger-btn {
             -webkit-tap-highlight-color: transparent;
             outline: none;
@@ -101,7 +101,6 @@
             min-height: 32px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
         }
         
-        /* 1. ИСПРАВЛЕНО: Добавлены отступы gap и высота строки, чтобы плашки авторов больше никогда не наезжали */
         .card-author-zone { min-height: 18px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px; line-height: 1.4; }
         .card-tags-zone { min-height: 18px; margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 6px; line-height: 1.4; }
         
@@ -110,7 +109,7 @@
         .tag-bara { font-size: 9px; background-color: #7a2828; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
         .tag-furry { font-size: 9px; background-color: #4c3585; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
         
-        /* 3. ИСПРАВЛЕНО: Стили для отображения лайков и комментариев на плитках */
+        /* Стили для лайков и комментариев на самих плитках */
         .card-stats { 
             font-size: 11px; color: var(--hint-color); margin-top: auto; font-weight: bold; padding-top: 4px;
             display: flex; gap: 10px; align-items: center;
