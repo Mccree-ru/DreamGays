@@ -107,19 +107,14 @@ const app = {
 
             card.className = 'manga-card' + genreClass;
 
-            const tagsHtml = manga.tags.map(t => {
-                const lower = t.toLowerCase();
-                if (lower === 'bara') return `<span class="tag-bara">Bara</span>`;
-                if (lower === 'furry') return `<span class="tag-furry">Furry</span>`;
-                return `<span class="tag">${t}</span>`;
-            }).join('');
-            
-            const authorTagsHtml = manga.author !== "Не указан" ? manga.author.split(',').map(a => `<span class="tag-author">${a.trim()}</span>`).join('') : '';
+            // Генерируем автора с кликом
+            const authorTagsHtml = manga.author !== "Не указан" ? manga.author.split(',').map(a => {
+                const authorName = a.trim();
+                return `<span class="tag-author" onclick="event.stopPropagation(); app.filterByAuthor('${authorName}'); document.getElementById('authorSelect').value = '${authorName}';">${authorName}</span>`;
+            }).join('') : '';
 
             const isLiked = this.userLikedIds.includes(String(manga.id));
             const heartBadgeHtml = isLiked ? `<div class="card-like-badge">🤍</div>` : '';
-
-            // Вытаскиваем comments_count, собранный в api.js
             const commentsCount = manga.comments_count || 0;
 
             card.innerHTML = `
@@ -130,7 +125,6 @@ const app = {
                 <div class="card-info">
                     <h3 class="card-title">${manga.title}</h3>
                     <div class="card-author-zone">${authorTagsHtml}</div>
-                    <div class="card-tags-zone">${tagsHtml}</div>
                     <div class="card-stats">
                         <span class="stat-item">❤️ ${manga.likes}</span>
                         <span class="stat-item">💬 ${commentsCount}</span>
