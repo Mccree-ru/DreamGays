@@ -26,18 +26,18 @@
         }
         
         /* Базовый класс анимации для всех скелетонов */
-		.skeleton-blink {
-			animation: skeleton-blink 1.5s infinite;
-			background: linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%);
-			background-size: 200% 100%;
-			height: 100%;
-			width: 100%;
-		}
-		
-		@keyframes skeleton-blink {
-			0% { background-position: 200% 0; }
-			100% { background-position: -200% 0; }
-		}
+        .skeleton-blink {
+            animation: skeleton-blink 1.5s infinite;
+            background: linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%);
+            background-size: 200% 100%;
+            height: 100%;
+            width: 100%;
+        }
+        
+        @keyframes skeleton-blink {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
 
         .skeleton-blink::after {
             position: absolute;
@@ -46,12 +46,12 @@
             bottom: 0;
             left: 0;
             transform: translateX(-100%);
-			background-image: linear-gradient(
-					90deg,
-					rgba(255, 255, 255, 0) 0%,
-					rgba(255, 255, 255, 0.08) 50%,
-					rgba(255, 255, 255, 0) 100%
-				);
+            background-image: linear-gradient(
+                    90deg,
+                    rgba(255, 255, 255, 0) 0%,
+                    rgba(255, 255, 255, 0.08) 50%,
+                    rgba(255, 255, 255, 0) 100%
+                );
             animation: shimmer 1.6s infinite;
             content: '';
         }
@@ -63,21 +63,21 @@
         }
 
         /* Скелетон для карточки в каталоге */
-		.skeleton-card {
-			display: flex;
-			flex-direction: column;
-			gap: 8px;
-			padding: 10px;
-		}
+        .skeleton-card {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+        }
 
-		.skeleton-cover {
-			width: 100%;
-			aspect-ratio: 2/3; /* Или ваш фиксированный размер */
-			border-radius: 8px;
-		}
+        .skeleton-cover {
+            width: 100%;
+            aspect-ratio: 2/3;
+            border-radius: 8px;
+        }
 
-		.skeleton-title { height: 16px; width: 80%; border-radius: 4px; }
-		.skeleton-author { height: 12px; width: 50%; border-radius: 4px; }
+        .skeleton-title { height: 16px; width: 80%; border-radius: 4px; }
+        .skeleton-author { height: 12px; width: 50%; border-radius: 4px; }
 
         /* АДАПТИВНЫЙ СКЕЛЕТОН ДЛЯ ЧИТАЛКИ */
         .reader-skeleton {
@@ -150,22 +150,21 @@
             color: #ffffff;
         }
 
+        /* ГАРАНТИРОВАННОЕ СКРЫТИЕ НЕАКТИВНЫХ ЭКРАНОВ ИЗ ПОТОКА */
         .screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             overflow-y: auto; opacity: 0; pointer-events: none;
+            display: none; /* Исправлено: неактивный экран полностью исчезает */
             transition: opacity 0.15s ease-out;
             box-sizing: border-box;
         }
-        .screen.active { opacity: 1; pointer-events: auto; }
+        .screen.active { 
+            opacity: 1; 
+            pointer-events: auto; 
+            display: block; /* Исправлено: активный экран отображается */
+        }
 
         .main-container { padding: 15px; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
-
-        .top-coffee-banner {
-            width: 100%; background: var(--coffee-gradient); color: #fff;
-            border: none; padding: 14px; border-radius: 12px; font-size: 15px;
-            font-weight: bold; cursor: pointer; text-align: center;
-            margin-bottom: 15px; box-shadow: 0 4px 12px rgba(255, 94, 0, 0.2);
-        }
 
         .genre-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
         .genre-tab {
@@ -195,12 +194,12 @@
             background-color: var(--card-bg); border-radius: 12px; overflow: hidden; 
             display: flex; flex-direction: column; cursor: pointer; position: relative; 
             border: 1px solid rgba(255, 255, 255, 0.08); 
-			transition: transform 0.1s ease-out;
+            transition: transform 0.1s ease-out;
         }
-		
-		.manga-card:active {
-			transform: scale(0.98); /* Легкое уменьшение при тапе */
-		}
+        
+        .manga-card:active {
+            transform: scale(0.98);
+        }
         
         .manga-card.manga-bara { background-color: #172173; }
         .manga-card.manga-furry { background-color: #a20a0a; }
@@ -220,13 +219,13 @@
             width: 100%; 
             height: 100%; 
             object-fit: cover; 
-			opacity: 0;
-			transition: opacity 0.4s ease-in-out;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
         }
-		
-		.card-cover.loaded {
-			opacity: 1;
-		}
+        
+        .card-cover.loaded {
+            opacity: 1;
+        }
         
         .card-pages-badge {
             position: absolute;
@@ -277,18 +276,17 @@
             letter-spacing: 1px;
             line-height: 1;
             display: inline-block;
-            transform: none;
         }
 
-		.card-right-stats {
-			position: absolute;
-			bottom: 10px;
-			right: 10px;
-			display: flex;
-			flex-direction: column; /* Изменяет направление на вертикальное */
-			gap: 6px;               /* Расстояние между элементами останется прежним */
-			z-index: 2;
-		}
+        .card-right-stats {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;               
+            z-index: 2;
+        }
 
         .card-stat-badge {
             background: rgba(20, 20, 20, 0.8); 
@@ -321,9 +319,7 @@
         }
         
         .card-author-zone { min-height: 18px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 6px; line-height: 1.4; }
-        .card-tags-zone { min-height: 18px; margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 6px; line-height: 1.4; }
         
-        .tag { font-size: 9px; background-color: rgba(0, 235, 135, 0.1); color: var(--link-color); padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
         .tag-author { 
             font-size: 9px; 
             background-color: #ff7b00; 
@@ -343,10 +339,6 @@
             transform: translateY(2px);
             border-bottom: none;
         }
-        .tag-bara { font-size: 9px; background-color: #7a2828; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
-        .tag-furry { font-size: 9px; background-color: #4c3585; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
-        
-        .stat-item { display: flex; align-items: center; gap: 3px; }
 
         /* Экран Превью */
         #previewScreen {
@@ -357,7 +349,6 @@
         .preview-nav-row { display: flex; gap: 10px; margin-bottom: 15px; }
         .btn-half { flex: 1; margin: 0; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; border: none; font-size: 14px; }
         
-        /* Стили для хедера на экране превью */
         .screen-header {
             display: flex;
             align-items: center;
@@ -385,7 +376,6 @@
         .preview-title { font-size: 20px; font-weight: bold; text-align: center; margin: 0 0 5px 0; }
         .preview-author { font-size: 14px; color: var(--hint-color); text-align: center; margin: 0 0 15px 0; }
         
-        /* Блок со статистикой на превью */
         .manga-stats {
             display: flex;
             justify-content: center;
@@ -395,7 +385,6 @@
             font-weight: bold;
         }
 
-        /* Контейнер для динамического размытого фона */
         .preview-dynamic-bg {
             position: absolute;
             top: 0;
@@ -412,7 +401,6 @@
             transition: background-image 0.4s ease-in-out;
         }
 
-        /* Обертка контента, чтобы он оставался интерактивным и был выше фона */
         .preview-content-wrapper {
             position: relative;
             z-index: 1;
@@ -441,6 +429,10 @@
         /* СТРУКТУРА ЧИТАЛКИ */
         .reader-screen { background-color: #000; overflow: hidden; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; }
         
+        /* Исправление селекторов экранов для предотвращения конфликтов */
+        #readerScreen.screen.active { display: block; }
+        #readerScreen.screen { display: none; }
+
         .reader-header {
             position: fixed; top: 0; left: 0; width: 100%; height: 60px; z-index: 100;
             display: flex; align-items: center; justify-content: space-between;
@@ -520,7 +512,6 @@
         .page-comments-panel .comments-scroll { flex-grow: 1; max-height: none; padding: 15px; }
         .page-comments-panel .comment-input-block { padding: 10px 15px; background: #141414; border-top: 1px solid #222; margin: 0; }
 
-        /* Стили для текстового поля ввода JSON в админке */
         .admin-textarea {
             width: 100%; height: 60vh; background-color: #1a1a1a; color: #fff;
             border: 1px solid #444; border-radius: 8px; padding: 12px; font-family: monospace;
@@ -594,10 +585,10 @@
                     <span id="previewComments">💬 0</span>
                 </div>
 
-				<div style="display:flex; gap:10px; margin-bottom:20px;">
-					<button id="likeBtn" class="btn secondary-btn" style="flex:1;">🤍 В любимое</button>
-					<button id="readBtn" class="btn" style="flex:2;">Читать</button>
-				</div>
+                <div style="display:flex; gap:10px; margin-bottom:20px;">
+                    <button id="likeBtn" class="btn secondary-btn" style="flex:1;">🤍 В любимое</button>
+                    <button id="readBtn" class="btn" style="flex:2;">Читать</button>
+                </div>
 
                 <div class="comments-section-title">Обсуждение тайтла</div>
                 <div id="mainCommentsScroll" class="comments-scroll"></div>
@@ -609,26 +600,26 @@
         </div>
     </div>
 
-	<div id="readerScreen" class="screen reader-screen">
-		<div id="readerHeader" class="reader-header">
-			<button class="sort-btn" style="color:#fff;" onclick="app.closeMangaReader()">✕ Выйти</button>
-			<div class="page-counter" id="pageCounter">0 / 0</div>
-			<button class="reader-donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
-		</div>
-		<div id="readerTrack" class="reader-track"></div>
-		<button id="openCommentsBtn" class="open-comments-trigger-btn" onclick="reader.toggleComments(true)">💬</button>
-		<div id="commentsPanel" class="page-comments-panel">
-			<div class="comments-header">
-				<span id="commentsTitle" style="font-weight:bold; font-size:14px; color:#fff;">Комментарии</span>
-				<button class="sort-btn" style="padding:4px 12px; font-size:12px;" onclick="reader.toggleComments(false)">▼ Скрыть</button>
-			</div>
-			<div id="pageCommentsScroll" class="comments-scroll"></div>
-			<div class="comment-input-block">
-				<input type="text" id="pageCommentInputField" class="comment-input" placeholder="Написать комментарий к странице...">
-				<button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="reader.sendPageComment()">Отправить</button>
-			</div>
-		</div>
-	</div>
+    <div id="readerScreen" class="screen reader-screen">
+        <div id="readerHeader" class="reader-header">
+            <button class="sort-btn" style="color:#fff;" onclick="app.closeMangaReader()">✕ Выйти</button>
+            <div class="page-counter" id="pageCounter">0 / 0</div>
+            <button class="reader-donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
+        </div>
+        <div id="readerTrack" class="reader-track"></div>
+        <button id="openCommentsBtn" class="open-comments-trigger-btn" onclick="reader.toggleComments(true)">💬</button>
+        <div id="commentsPanel" class="page-comments-panel">
+            <div class="comments-header">
+                <span id="commentsTitle" style="font-weight:bold; font-size:14px; color:#fff;">Комментарии</span>
+                <button class="sort-btn" style="padding:4px 12px; font-size:12px;" onclick="reader.toggleComments(false)">▼ Скрыть</button>
+            </div>
+            <div id="pageCommentsScroll" class="comments-scroll"></div>
+            <div class="comment-input-block">
+                <input type="text" id="pageCommentInputField" class="comment-input" placeholder="Написать комментарий к странице...">
+                <button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="reader.sendPageComment()">Отправить</button>
+            </div>
+        </div>
+    </div>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
