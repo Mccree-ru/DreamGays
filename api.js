@@ -33,29 +33,44 @@ const api = {
         }
     },
 
-    // Теперь получаем комментарии К конкретной странице (или -1 для главного меню)
+    // Получение комментариев для СТРАНИЦЫ (где page_index равен числу)
     async fetchPageComments(mangaId, pageIndex) {
         const { data, error } = await _supabase
             .from('comments')
             .select('*')
             .eq('manga_id', String(mangaId))
             .eq('page_index', parseInt(pageIndex))
-            .order('created_at', { ascending: true }); // сразу сортируем по времени от старых к новым
+            .order('created_at', { ascending: true });
         if (error) throw error;
         return data || [];
     },
 
-    // Передаем page_index как полноценное число в базу
-    async addPageComment(mangaId, pageIndex, userId, userName, text) {
-        const { error } = await _supabase
+    // Получение комментариев для ГЛАВНОГО МЕНЮ ПРЕВЬЮ (где page_index равен NULL)
+    async fetchMainComments(mangaId) {
+        const { data, error } = await _supabase
             .from('comments')
-            .insert([{
-                manga_id: String(mangaId),
-                page_index: parseInt(pageIndex),
-                user_id: Number(userId),
-                user_name: userName || "Читатель",
-                text: String(text)
-            }]);
+            .select('*')
+            .eq('manga_id', String(mangaId))
+            .is('page_index', null) // Корректный поиск пустых значений в int8
+            .order('created_at', { ascending: true });
+        if (error) throw error;
+        return data || [];
+    },
+
+    // Добавление комментария (если pageIndex равен null — запишется коммент к тайтлу)
+    async addComment(mangaId, pageIndex, userId, userName, text) {
+        const insertData = {
+            manga_id: String(mangaId),
+            user_id: Number(userId),
+            user_name: userName || "Читатель",
+            text: String(text)
+        };
+        
+        if (pageIndex !== null) {
+            insertData.page_index = parseInt(pageIndex);
+        }
+
+        const { error } = await _supabase.from('comments').insert([insertData]);
         if (error) throw error;
         return true;
     },
