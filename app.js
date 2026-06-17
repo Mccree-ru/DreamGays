@@ -2,18 +2,18 @@ const tg = window.Telegram.WebApp;
 
 const app = {
     userId: 12345, 
-    userName: \"Читатель\",
-    allManga: [], // Здесь теперь хранятся все НАКОПЛЕННЫЕ подгруженные тайтлы
+    userName: "Читатель",
+    allManga: [], // Накапливаемые подгруженные тайтлы
     userLikedIds: [], 
     currentManga: null,
     isCurrentLiked: false,
     
-    // Параметры фильтрации для отправки на сервер
+    // Параметры фильтрации на бэкенде
     selectedGenreTab: null,
-    selectedAuthor: \"\",
+    selectedAuthor: "",
     sortPopularActive: false,
     
-    // Стейт пагинации
+    // Параметры пагинации
     currentPage: 0,
     isLoading: false,
     hasMore: true,
@@ -23,20 +23,21 @@ const app = {
             tg.ready();
             try { tg.expand(); } catch(e){}
             this.userId = Number(tg.initDataUnsafe.user.id);
-            this.userName = tg.initDataUnsafe.user.first_name || \"Читатель\";
+            this.userName = tg.initDataUnsafe.user.first_name || "Читатель";
         }
 
         this.userLikedIds = await api.getUserLikesList(this.userId);
         
-        // Загружаем авторов один раз для селекта
+        // Загружаем авторов один раз для выпадающего списка
         await this.loadAuthors();
         
-        // Первая загрузка каталога
+        // Стартовая загрузка первой страницы каталога
         await this.resetAndLoadCatalog();
 
-        // Настройка бесконечного скролла
+        // Активация бесконечной прокрутки вниз
         this.initInfiniteScroll();
 
+        // Поддержка Deep Links (переход по прямой ссылке на превью)
         if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
             const startId = String(tg.initDataUnsafe.start_param);
             this.openMangaPreview(startId);
@@ -47,7 +48,7 @@ const app = {
         try {
             const authors = await api.fetchAllAuthors();
             const select = document.getElementById('authorSelect');
-            select.innerHTML = '<option value=\"\">Все авторы</option>';
+            select.innerHTML = '<option value="">Все авторы</option>';
             authors.forEach(author => {
                 const opt = document.createElement('option');
                 opt.value = author;
@@ -55,7 +56,7 @@ const app = {
                 select.appendChild(opt);
             });
         } catch(e) {
-            console.error(\"Не удалось загрузить список авторов\", e);
+            console.error("Не удалось загрузить авторов", e);
         }
     },
 
@@ -63,7 +64,7 @@ const app = {
         this.currentPage = 0;
         this.allManga = [];
         this.hasMore = true;
-        document.getElementById('catalogGrid').innerHTML = \"<div class='loading-placeholder'>Загрузка...</div>\";
+        document.getElementById('catalogGrid').innerHTML = "<div class='loading-placeholder'>Загрузка релизов...</div>";
         await this.loadNextPage();
     },
 
@@ -80,19 +81,20 @@ const app = {
             });
 
             if (this.currentPage === 0) {
-                document.getElementById('catalogGrid').innerHTML = \"\";
+                document.getElementById('catalogGrid').innerHTML = "";
             }
 
             if (newItems.length < 6) {
-                this.hasMore = false; // Если пришло меньше лимита, значит дальше пусто
+                this.hasMore = false; 
             }
 
             this.allManga = [...this.allManga, ...newItems];
             this.renderCatalogGrid(newItems);
             this.currentPage++;
         } catch (err) {
+            console.error("Ошибка загрузки страницы каталога:", err);
             if (this.currentPage === 0) {
-                document.getElementById('catalogGrid').innerText = \"Ошибка соединения.\";
+                document.getElementById('catalogGrid').innerHTML = "<div class='loading-placeholder' style='color:#ff3b30;'>Не удалось загрузить данные.</div>";
             }
         } finally {
             this.isLoading = false;
@@ -103,7 +105,7 @@ const app = {
         const grid = document.getElementById('catalogGrid');
         
         if (this.allManga.length === 0) {
-            grid.innerHTML = \"<div class='loading-placeholder'>Ничего не найдено</div>\";
+            grid.innerHTML = "<div class='loading-placeholder'>Ничего не найдено</div>";
             return;
         }
 
@@ -113,11 +115,11 @@ const app = {
             card.onclick = () => this.openMangaPreview(m.id);
 
             card.innerHTML = `
-                <img class=\"manga-cover\" src=\"${m.cover}\" loading=\"lazy\">
-                <div class=\"manga-info\">
-                    <div class=\"manga-title\">${m.title}</div>
-                    <div class=\"manga-author\" onclick=\"event.stopPropagation(); app.selectAuthorFromCard('${m.author}');\">${m.author}</div>
-                    <div class=\"manga-stats\">
+                <img class="manga-cover" src="${m.cover}" loading="lazy">
+                <div class="manga-info">
+                    <div class="manga-title">${m.title}</div>
+                    <div class="manga-author" onclick="event.stopPropagation(); app.selectAuthorFromCard('${m.author}');">${m.author}</div>
+                    <div class="manga-stats">
                         <span>🔥 ${m.likes}</span>
                         <span>💬 ${m.comments_count}</span>
                     </div>
@@ -136,7 +138,6 @@ const app = {
         });
     },
 
-    // Переключение вкладок-жанров
     selectGenre(tabElement, genreName) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         tabElement.classList.add('active');
@@ -144,42 +145,39 @@ const app = {
         this.resetAndLoadCatalog();
     },
 
-    // Изменение селекта автора вручную
     onAuthorSelectChange(value) {
         this.selectedAuthor = value;
         this.resetAndLoadCatalog();
     },
 
-    // Клик по автору прямо на карточке
     selectAuthorFromCard(authorName) {
         const select = document.getElementById('authorSelect');
-        select.value = authorName;
+        if (select) select.value = authorName;
         this.selectedAuthor = authorName;
         this.resetAndLoadCatalog();
     },
 
-    // Кнопка сортировки по популярности
     toggleSortPopular() {
         this.sortPopularActive = !this.sortPopularActive;
         const btn = document.getElementById('sortPopularBtn');
         if (this.sortPopularActive) {
             btn.classList.add('active');
-            btn.innerText = \"🔥 Популярные\";
+            btn.innerText = "🔥 Популярные";
         } else {
             btn.classList.remove('active');
-            btn.innerText = \"⏳ Последние\";
+            btn.innerText = "⏳ Последние";
         }
         this.resetAndLoadCatalog();
     },
 
     async openMangaPreview(mangaId) {
-        // Если тайтла нет в кэше (например, зашли по deeplink), подгрузим его точечно
         let manga = this.allManga.find(m => m.id === mangaId);
+        
+        // Если зашли по прямой ссылке и тайтла нет в списке, подгрузим точечно
         if (!manga) {
             try {
-                const single = await api.fetchCatalog({ page: 0, limit: 1 });
-                // Упрощенный фоллбэк для прямой ссылки:
-                manga = this.allManga.find(m => m.id === mangaId) || single[0]; 
+                const single = await api.fetchCatalog({ page: 0, limit: 1, author: '', genre: null });
+                manga = single.find(m => m.id === mangaId) || single[0]; 
             } catch(e){}
         }
         if(!manga) return;
@@ -196,7 +194,7 @@ const app = {
         this.showScreen('previewScreen');
         await this.loadMainComments();
 
-        // Исправлен баг: Корректно передаем состояние до клика
+        // Исправлен баг инверсии лайков: сохраняем состояние ДО клика
         document.getElementById('likeBtn').onclick = async () => {
             const wasLiked = this.isCurrentLiked; 
             this.isCurrentLiked = !this.isCurrentLiked;
@@ -223,13 +221,13 @@ const app = {
     updateLikeButtonUI() {
         const btn = document.getElementById('likeBtn');
         if (this.isCurrentLiked) {
-            btn.innerText = \"❤️ В любимом\";
-            btn.style.background = \"#ff3b30\";
-            btn.style.color = \"#fff\";
+            btn.innerText = "❤️ В любимом";
+            btn.style.background = "#ff3b30";
+            btn.style.color = "#fff";
         } else {
-            btn.innerText = \"🤍 В любимое\";
-            btn.style.background = \"var(--card-bg)\";
-            btn.style.color = \"var(--text-color)\";
+            btn.innerText = "🤍 В любимое";
+            btn.style.background = "var(--card-bg)";
+            btn.style.color = "var(--text-color)";
         }
     },
 
@@ -238,17 +236,17 @@ const app = {
             const normalized = dateStr.endsWith('Z') ? dateStr : dateStr + 'Z';
             const d = new Date(normalized);
             return d.toLocaleDateString('ru-RU', {hour:'2-digit', minute:'2-digit'});
-        } catch(e) { return \"\"; }
+        } catch(e) { return ""; }
     },
 
     async loadMainComments() {
         const container = document.getElementById('mainCommentsScroll');
-        container.innerHTML = \"Загрузка отзывов...\";
+        container.innerHTML = "Загрузка отзывов...";
         try {
             const list = await api.fetchMainComments(this.currentManga.id);
-            container.innerHTML = \"\";
+            container.innerHTML = "";
             if(list.length === 0) {
-                container.innerHTML = \"<div style='color:var(--hint-color); text-align:center; padding:20px;'>Здесь пока нет комментариев. Станьте первым!</div>\";
+                container.innerHTML = "<div style='color:var(--hint-color); text-align:center; padding:20px;'>Здесь пока нет комментариев.</div>";
                 return;
             }
             list.forEach(c => {
@@ -256,20 +254,20 @@ const app = {
                 item.className = 'comment-item';
                 let deleteBtn = '';
                 if (Number(c.user_id) === Number(this.userId)) {
-                    deleteBtn = `<span class=\"delete-comment-btn\" onclick=\"app.deleteMainComment('${c.id}')\">Удалить</span>`;
+                    deleteBtn = `<span class="delete-comment-btn" onclick=\"app.deleteMainComment('${c.id}')\">Удалить</span>`;
                 }
                 item.innerHTML = `
-                    <div class=\"comment-meta\">
-                        <span class=\"comment-author\">${c.user_name}</span>
-                        <span class=\"comment-time\">${this.formatCommentTime(c.created_at)}</span>
+                    <div class="comment-meta">
+                        <span class="comment-author">${c.user_name}</span>
+                        <span class="comment-time">${this.formatCommentTime(c.created_at)}</span>
                     </div>
-                    <div class=\"comment-text\">${c.text}</div>
+                    <div class="comment-text">${c.text}</div>
                     ${deleteBtn}
                 `;
                 container.appendChild(item);
             });
         } catch(e) {
-            container.innerHTML = \"<span style='color:#ff3b30;'>Не удалось загрузить обсуждение.</span>\";
+            container.innerHTML = "<span style='color:#ff3b30;'>Не удалось загрузить обсуждение.</span>";
         }
     },
 
@@ -280,21 +278,17 @@ const app = {
 
         try {
             await api.addComment(this.currentManga.id, null, this.userId, this.userName, text);
-            input.value = \"\";
+            input.value = "";
             
-            if (this.currentManga.comments_count !== undefined) {
-                this.currentManga.comments_count++;
-            } else {
-                this.currentManga.comments_count = 1;
-            }
+            this.currentManga.comments_count = (this.currentManga.comments_count || 0) + 1;
             await this.loadMainComments();
         } catch(e) {
-            alert(\"Не удалось отправить комментарий.\");
+            alert("Не удалось отправить комментарий.");
         }
     },
 
     async deleteMainComment(commentId) {
-        if(confirm(\"Удалить ваш комментарий к тайтлу?\")) {
+        if(confirm("Удалить ваш комментарий к тайтлу?")) {
             await api.deleteComment(commentId, app.userId);
             if (this.currentManga.comments_count > 0) this.currentManga.comments_count--;
             this.loadMainComments();
@@ -309,6 +303,5 @@ const app = {
     showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(screenId).classList.add('active');
-        // При явном возврате на главный экран мы НЕ сбрасываем пагинацию, а просто перерисовываем, если нужно.
     }
 };
