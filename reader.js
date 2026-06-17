@@ -161,16 +161,18 @@ const reader = {
         }
     },
 
-    initTouchGestures() {
+	initTouchGestures() {
         const screen = document.getElementById('readerScreen');
+        const commentsPanel = document.getElementById('commentsPanel');
         let startX = 0, startY = 0;
         let lastTapTime = 0;
         let tapTimeout = null;
 
         screen.addEventListener('touchstart', (e) => {
-            if (e.target.closest('#commentsPanel') || e.target.closest('#openCommentsBtn') || e.target.closest('#readerHeader')) {
-                return;
-            }
+            // Если открыт чат — игнорируем любые жесты перелистывания
+            if (commentsPanel.classList.contains('open')) return;
+
+            if (e.target.closest('#openCommentsBtn') || e.target.closest('#readerHeader')) return;
 
             if (e.touches.length === 1) {
                 startX = e.touches[0].clientX;
@@ -189,7 +191,8 @@ const reader = {
         }, { passive: true });
 
         screen.addEventListener('touchmove', (e) => {
-            if (e.target.closest('#commentsPanel') || e.target.closest('#openCommentsBtn')) return;
+            // Блокируем скролл/свайп, если чат открыт
+            if (commentsPanel.classList.contains('open')) return;
 
             if (this.scale > 1 && this.isDragging && e.touches.length === 1) {
                 this.posX = e.touches[0].clientX - this.lastPosX;
@@ -203,41 +206,42 @@ const reader = {
         }, { passive: true });
 
         screen.addEventListener('touchend', (e) => {
-            if (e.target.closest('#commentsPanel') || e.target.closest('#openCommentsBtn') || e.target.closest('#readerHeader')) {
-                return;
+            // Если был открыт чат, просто закрываем его и НИЧЕГО больше не делаем
+            if (commentsPanel.classList.contains('open')) {
+                this.toggleComments(false);
+                return; 
             }
+
+            if (e.target.closest('#openCommentsBtn') || e.target.closest('#readerHeader')) return;
 
             this.isDragging = false;
             if (e.changedTouches.length > 0) {
                 const diffX = e.changedTouches[0].clientX - startX;
                 const diffY = e.changedTouches[0].clientY - startY;
 
+                // Перелистывание только если масштаб 1
                 if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30 && this.scale === 1) {
                     if (diffX > 0 && this.currentIndex > 0) { this.currentIndex--; this.updateTrack(); }
                     else if (diffX < 0 && this.currentIndex < this.pages.length - 1) { this.currentIndex++; this.updateTrack(); }
                     return;
                 }
 
+                // Логика тапов
                 if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
                     const now = Date.now();
                     if (now - lastTapTime < 300) {
                         clearTimeout(tapTimeout);
-                        
-                        // ИСПРАВЛЕННЫЙ НА ТЕХНИЧЕСКОМ УРОВНЕ ДАБЛ-ТАП В ТОЧКУ НАЖАТИЯ С ГАРАНТИРОВАННЫМ СКРЫТИЕМ UI
-                        if (this.scale > 1) { 
-                            this.resetZoom(); 
-                        } else { 
+                        if (this.scale > 1) this.resetZoom();
+                        else {
+                            // Зум по двойному тапу
                             const screenWidth = window.innerWidth;
                             const screenHeight = window.innerHeight;
                             const clickX = e.changedTouches[0].clientX;
                             const clickY = e.changedTouches[0].clientY;
-
                             this.scale = 2.5;
-                            // Рассчитываем смещение относительно центра
                             this.posX = (screenWidth / 2 - clickX) * (this.scale - 1);
                             this.posY = (screenHeight / 2 - clickY) * (this.scale - 1);
-                            
-                            this.applyZoomTransform(); 
+                            this.applyZoomTransform();
                         }
                         lastTapTime = 0;
                     } else {
@@ -246,12 +250,8 @@ const reader = {
                             if (this.scale === 1) {
                                 const screenWidth = window.innerWidth;
                                 const tapX = e.changedTouches[0].clientX;
-                                
-                                if (tapX < screenWidth * 0.25) {
-                                    if (this.currentIndex > 0) { this.currentIndex--; this.updateTrack(); }
-                                } else if (tapX > screenWidth * 0.75) {
-                                    if (this.currentIndex < this.pages.length - 1) { this.currentIndex++; this.updateTrack(); }
-                                }
+                                if (tapX < screenWidth * 0.25) { if (this.currentIndex > 0) { this.currentIndex--; this.updateTrack(); } }
+                                else if (tapX > screenWidth * 0.75) { if (this.currentIndex < this.pages.length - 1) { this.currentIndex++; this.updateTrack(); } }
                             }
                         }, 200);
                     }
