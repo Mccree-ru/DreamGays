@@ -13,6 +13,7 @@
             --card-bg: var(--tg-theme-secondary-bg-color, #202020);
             --button-color: var(--tg-theme-button-color, #00eb87);
             --button-text: var(--tg-theme-button-text-color, #000000);
+            --coffee-gradient: linear-gradient(135deg, #ff9500, #ff5e00);
         }
 
         body { 
@@ -23,13 +24,14 @@
             overflow: hidden;
         }
 
+        /* Убрали transform scale, чтобы экраны не моргали при переключении */
         .screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             overflow-y: auto; opacity: 0; pointer-events: none;
-            transform: scale(0.98); transition: opacity 0.3s, transform 0.3s;
+            transition: opacity 0.15s ease-out;
             box-sizing: border-box;
         }
-        .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+        .screen.active { opacity: 1; pointer-events: auto; }
 
         .main-container { padding: 15px; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
 
@@ -42,11 +44,11 @@
         .genre-tab.active { background-color: var(--button-color); color: var(--button-text); }
          
         .filter-panel { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .filter-row { display: flex; align-items: center; gap: 10px; }
+        .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
          
         select.author-select {
             background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--hint-color);
-            padding: 8px 12px; border-radius: 8px; font-size: 14px; outline: none; flex-grow: 1;
+            padding: 8px 12px; border-radius: 8px; font-size: 14px; outline: none; flex: 1; min-width: 120px;
         }
         .sort-btn {
             background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--hint-color);
@@ -54,9 +56,20 @@
         }
         .sort-btn.active { border-color: var(--button-color); color: var(--button-color); }
         .reset-btn { background-color: #ff3b30; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none; }
+        
+        /* Кнопка на кофе для главного меню */
+        .main-coffee-btn {
+            background: var(--coffee-gradient); color: #fff; border: none; 
+            padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer;
+        }
 
         .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        .manga-card { background-color: var(--card-bg); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; position: relative; }
+        
+        /* СТИЛИ ПЛАШЕК И КАРТОЧЕК (Bara и Furry кастомные цвета фонов) */
+        .manga-card { background-color: var(--card-bg); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; position: relative; transition: background-color 0.2s; }
+        .manga-card.manga-bara { background-color: #2a1414; border: 1px solid #4a1f1f; }
+        .manga-card.manga-furry { background-color: #1c142a; border: 1px solid #361f4a; }
+
         .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #222; }
         .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
         
@@ -72,7 +85,6 @@
         .card-title { font-size: 13px; font-weight: 600; margin: 0 0 6px 0; line-height: 1.25; }
         .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
         
-        /* СТИЛИ ПЛАШЕК ЖАНРОВ */
         .tag { font-size: 9px; background-color: rgba(0, 235, 135, 0.1); color: var(--link-color); padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
         .tag-author { font-size: 9px; background-color: #ff7b00; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; }
         .tag-bara { font-size: 9px; background-color: #8b0000; color: #ffffff; padding: 2px 6px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
@@ -110,7 +122,7 @@
         .comment-input-block { display: flex; gap: 8px; margin-top: 10px; }
         .comment-input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 8px; font-size: 13px; }
 
-        /* Читалка */
+        /* Читалка (Ускорили переход страниц до 0.15s) */
         .reader-screen { background-color: #000; overflow: hidden; touch-action: none; }
         .reader-header {
             position: fixed; top: 0; left: 0; width: 100%; height: 60px; z-index: 100;
@@ -120,7 +132,13 @@
         }
         .page-counter { color: #fff; font-size: 14px; font-weight: bold; }
         
-        .reader-track { display: flex; height: 100%; width: 100%; transition: transform 0.25s ease-out; will-change: transform; }
+        /* Исправлен и зафиксирован стиль кнопки кофе в читалке */
+        .reader-donate-btn {
+            background: var(--coffee-gradient); color: #fff; border: none;
+            padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer;
+        }
+
+        .reader-track { display: flex; height: 100%; width: 100%; transition: transform 0.15s ease-out; will-change: transform; }
         .reader-slide { flex: 0 0 100vw; width: 100vw; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         
         .zoom-container { 
@@ -141,7 +159,7 @@
             position: absolute; bottom: 0; left: 0; width: 100%; height: 65vh;
             background: rgba(20, 20, 20, 0.98); backdrop-filter: blur(15px);
             z-index: 150; border-top: 1px solid #333; box-sizing: border-box;
-            transform: translateY(100%); transition: transform 0.25s ease-out;
+            transform: translateY(100%); transition: transform 0.15s ease-out;
             display: flex; flex-direction: column;
         }
         .page-comments-panel.open { transform: translateY(0); }
@@ -153,6 +171,7 @@
 </head>
 <body>
 
+    <!-- ЭКРАН 1: ГЛАВНЫЙ КАТАЛОГ -->
     <div id="mainScreen" class="screen active">
         <div class="main-container">
             <div class="genre-tabs">
@@ -168,6 +187,7 @@
                     </select>
                     <button id="sortBtn" class="sort-btn" onclick="app.toggleSortPopular()">🔥 Популярные</button>
                     <button id="resetBtn" class="reset-btn" onclick="app.resetFilters()">Сбросить</button>
+                    <button class="main-coffee-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
                 </div>
             </div>
 
@@ -175,11 +195,12 @@
         </div>
     </div>
 
+    <!-- ЭКРАН 2: ПРЕВЬЮ ТАЙТЛА -->
     <div id="previewScreen" class="screen">
         <div class="main-container">
             <div class="preview-nav-row">
                 <button class="btn-half" style="background:#333; color:#fff;" onclick="app.showScreen('mainScreen')">← В каталог</button>
-                <button class="btn-half" style="background: linear-gradient(135deg, #ff9500, #ff5e00); color:#fff;" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
+                <button class="btn-half" style="background: var(--coffee-gradient); color:#fff;" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
             </div>
             
             <div class="preview-header">
@@ -207,6 +228,7 @@
         </div>
     </div>
 
+    <!-- ЭКРАН 3: ГОРИЗОНТАЛЬНАЯ ЧИТАЛКА -->
     <div id="readerScreen" class="screen reader-screen">
         <div id="readerHeader" class="reader-header">
             <button class="sort-btn" style="color:#fff;" onclick="app.closeMangaReader()">✕ Выйти</button>
