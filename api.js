@@ -24,12 +24,6 @@ const api = {
         return data ? data.map(item => String(item.manga_id)) : [];
     },
 
-    async checkUserLike(userId, mangaId) {
-        if (!userId) return false;
-        const { data } = await _supabase.from('likes').select('id').eq('user_id', Number(userId)).eq('manga_id', String(mangaId));
-        return data && data.length > 0;
-    },
-
     async toggleLike(userId, mangaId, isAlreadyLiked) {
         if (!userId) return;
         if (isAlreadyLiked) {
@@ -39,19 +33,20 @@ const api = {
         }
     },
 
+    // Теперь получаем комментарии К конкретной странице (или -1 для главного меню)
     async fetchPageComments(mangaId, pageIndex) {
         const { data, error } = await _supabase
             .from('comments')
             .select('*')
             .eq('manga_id', String(mangaId))
             .eq('page_index', parseInt(pageIndex))
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: true }); // сразу сортируем по времени от старых к новым
         if (error) throw error;
         return data || [];
     },
 
+    // Передаем page_index как полноценное число в базу
     async addPageComment(mangaId, pageIndex, userId, userName, text) {
-        // Изменено: Отправляем без удержания и возврата ответа данных, чтобы избежать ошибок парсинга Supabase v2
         const { error } = await _supabase
             .from('comments')
             .insert([{
