@@ -5,13 +5,11 @@ const reader = {
     isGesturesInitialized: false,
     isPCControlsInitialized: false,
     
-    // Переменные зума
-    scale: 1,
-    currentX: 0,
-    currentY: 0,
-    
+    // Очередь для хранения фоновых объектов картинок (защита от Garbage Collector)
     preloadQueue: [], 
+    // Набор URL, которые уже были поставлены на загрузку (защита от дублирования запросов)
     preloadedUrls: new Set(),
+    // Флаг активного фонового процесса последовательной догрузки
     isBackgroundLoading: false,
 
     renderPages(mangaId, pagesArray) {
@@ -24,9 +22,11 @@ const reader = {
         if (!track) return;
         track.innerHTML = "";
 
+        // Рендерим слайды для каждой страницы
         this.pages.forEach((pageUrl, index) => {
             const slide = document.createElement('div');
             slide.className = 'reader-slide';
+            
             slide.innerHTML = `
                 <div class="zoom-container" id="zoomContainer-${index}">
                     <div class="reader-skeleton" id="skeleton-${index}">
@@ -40,252 +40,39 @@ const reader = {
         });
 
         this.updateTrack();
+        
+        // Сбрасываем кэш прелоадера под новый тайтл/главу
         this.preloadQueue = [];
         this.preloadedUrls = new Set();
         this.isBackgroundLoading = false;
 
-        if (this.pages[0]) this.preloadedUrls.add(this.pages[0]);
+        // Отмечаем первую страницу как уже загружаемую (её качает сам браузер через тег img)
+        if (this.pages[0]) {
+            this.preloadedUrls.add(this.pages[0]);
+        }
+
+        // Запускаем умный расчет приоритетов прелоада
         this.managePreload();
 
+        // Инициализация мобильных жестов (однократно)
         if (!this.isGesturesInitialized) {
-            this.initGestures();
+            this.initTouchGestures();
             this.isGesturesInitialized = true;
         }
 
+        // Инициализация управления на ПК (однократно)
         if (!this.isPCControlsInitialized) {
             this.initKeyboardControls();
+            this.initClickZones();
             this.isPCControlsInitialized = true;
         }
     },
-    
-    applyZoom(scale, x = 0, y = 0) {
-        this.scale = Math.max(1, Math.min(scale, 3));
-        this.currentX = x;
-        this.currentY = y;
-        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
-        if (container) {
-            container.style.transition = 'transform 0.15s';
-            // Применяем зум с учетом смещения
-            container.style.transform = `scale(${this.scale}) translate(${this.currentX}px, ${this.currentY}px)`;
-            
-            // Скрываем UI при зуме
-            const uiElements = document.querySelectorAll('.reader-header, .open-comments-trigger-btn');
-            uiElements.forEach(el => {
-                if (el) {
-                    el.style.opacity = this.scale > 1 ? '0' : '1';
-                    el.style.pointerEvents = this.scale > 1 ? 'none' : 'auto';
-                }
-            });
-        }
-    },
 
-    resetZoom() {
-        this.scale = 1;
-        this.currentX = 0;
-        this.currentY = 0;
-        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
-        if (container) {
-            container.style.transition = 'transform 0.2s';
-            container.style.transform = 'scale(1) translate(0px, 0px)';
-        }
-        const uiElements = document.querySelectorAll('.reader-header, .open-comments-trigger-btn');
-        uiElements.forEach(el => {
-            if (el) {
-                el.style.opacity = '1';
-                el.style.pointerEvents = 'auto';
-            }
-        });
-    },
-
-    // Функция для расчета позиции зума относительно центра изображения
-    calculateZoomPosition(touchX, touchY) {
-        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
-        if (!container) return { x: 0, y: 0 };
-        
-        const rect = container.getBoundingClientRect();
-        
-        // Координаты касания относительно контейнера (в процентах)
-        const percentX = (touchX - rect.left) / rect.width;
-        const percentY = (touchY - rect.top) / rect.height;
-        
-        // При зуме 2x, смещение должно быть таким, чтобы точка касания осталась на месте
-        // Формула: смещение = (1 - scale) * позиция_в_процентах * размер_контейнера
-        const offsetX = (1 - 2) * percentX * rect.width;
-        const offsetY = (1 - 2) * percentY * rect.height;
-        
-        return { x: offsetX, y: offsetY };
-    },
-
-    initGestures() {
-        const track = document.getElementById('readerTrack');
-        if (!track) return;
-
-        let startX = 0;
-        let startY = 0;
-        let lastTapTime = 0;
-        let lastTapX = 0;
-        let lastTapY = 0;
-        let touchMoved = false;
-        let isDoubleTap = false;
-
-        // Обработка touch событий
-        track.addEventListener('touchstart', function(e) {
-            if (e.touches.length === 1) {
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
-                touchMoved = false;
-                isDoubleTap = false;
-            }
-        }, { passive: true });
-
-        track.addEventListener('touchmove', function(e) {
-            if (e.touches.length === 1) {
-                const diffX = e.touches[0].clientX - startX;
-                const diffY = e.touches[0].clientY - startY;
-                if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
-                    touchMoved = true;
-                }
-            }
-        }, { passive: true });
-
-        track.addEventListener('touchend', function(e) {
-            const touch = e.changedTouches[0];
-            const now = Date.now();
-            const timeDiff = now - lastTapTime;
-            
-            // Проверка на двойной тап
-            if (!touchMoved && timeDiff < 300) {
-                // Это двойной тап - отменяем перелистывание
-                isDoubleTap = true;
-                e.preventDefault();
-                
-                // Рассчитываем позицию для зума
-                const pos = reader.calculateZoomPosition(touch.clientX, touch.clientY);
-                
-                if (reader.scale > 1) {
-                    reader.resetZoom();
-                } else {
-                    reader.applyZoom(2, pos.x, pos.y);
-                }
-                lastTapTime = 0;
-                return;
-            }
-            
-            // Если это был двойной тап, не делаем свайп
-            if (isDoubleTap) {
-                isDoubleTap = false;
-                return;
-            }
-            
-            lastTapTime = now;
-            lastTapX = touch.clientX;
-            lastTapY = touch.clientY;
-
-            // Свайп для перелистывания (только при масштабе 1)
-            if (reader.scale === 1 && touchMoved) {
-                const diffX = startX - touch.clientX;
-                if (Math.abs(diffX) > 50) {
-                    if (diffX > 0 && reader.currentIndex < reader.pages.length - 1) {
-                        reader.currentIndex++;
-                        reader.updateTrack();
-                    } else if (diffX < 0 && reader.currentIndex > 0) {
-                        reader.currentIndex--;
-                        reader.updateTrack();
-                    }
-                }
-            }
-        }, { passive: true });
-
-        // Клики для ПК с двойным кликом
-        let lastClickTime = 0;
-        let lastClickX = 0;
-        let lastClickY = 0;
-        let clickTimeout = null;
-
-        track.addEventListener('click', function(e) {
-            const panel = document.getElementById('commentsPanel');
-            if (panel && panel.classList.contains('open')) {
-                reader.toggleComments(false);
-                return;
-            }
-
-            if (e.target.closest('button')) return;
-
-            const now = Date.now();
-            const timeDiff = now - lastClickTime;
-
-            // Проверка на двойной клик (для ПК)
-            if (timeDiff < 300) {
-                // Двойной клик
-                if (clickTimeout) {
-                    clearTimeout(clickTimeout);
-                    clickTimeout = null;
-                }
-                
-                const pos = reader.calculateZoomPosition(e.clientX, e.clientY);
-                
-                if (reader.scale > 1) {
-                    reader.resetZoom();
-                } else {
-                    reader.applyZoom(2, pos.x, pos.y);
-                }
-                lastClickTime = 0;
-                return;
-            }
-
-            lastClickTime = now;
-            lastClickX = e.clientX;
-            lastClickY = e.clientY;
-
-            // Откладываем обработку одиночного клика
-            if (clickTimeout) {
-                clearTimeout(clickTimeout);
-            }
-            
-            clickTimeout = setTimeout(() => {
-                clickTimeout = null;
-                
-                // Если картинка приближена — игнорируем клики для листания
-                if (reader.scale > 1) return;
-
-                const screenWidth = window.innerWidth;
-                const clickX = e.clientX;
-
-                if (clickX > screenWidth * 0.7 && reader.currentIndex < reader.pages.length - 1) {
-                    reader.currentIndex++;
-                    reader.updateTrack();
-                } else if (clickX < screenWidth * 0.3 && reader.currentIndex > 0) {
-                    reader.currentIndex--;
-                    reader.updateTrack();
-                }
-            }, 300);
-        });
-    },
-
-    updateTrack() {
-        this.resetZoom();
-        const track = document.getElementById('readerTrack');
-        if (!track) return;
-        track.style.transform = `translate3d(-${this.currentIndex * 100}vw, 0px, 0px)`;
-        
-        const counter = document.getElementById('pageCounter');
-        if (counter) counter.textContent = `${this.currentIndex + 1} / ${this.pages.length}`;
-        
-        if (window.Telegram?.WebApp?.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-        }
-
-        const commentsPanel = document.getElementById('commentsPanel');
-        if (commentsPanel?.classList.contains('open')) {
-            document.getElementById('commentsTitle').textContent = `Комментарии (стр. ${this.currentIndex + 1})`;
-            this.loadCommentsForCurrentPage?.();
-        }
-        this.managePreload();
-    },
-    
+    // Умное управление приоритетами загрузки фреймов
     managePreload() {
         if (!this.pages || this.pages.length === 0) return;
 
+        // ПРИОРИТЕТ 1: Горячая зона — 3 страницы строго перед глазами пользователя
         const nextPagesCount = 3; 
         const priorityIndices = [];
 
@@ -296,13 +83,16 @@ const reader = {
             }
         }
 
+        // Параллельно запускаем скачивание приоритетных страниц
         priorityIndices.forEach(index => {
             this.preloadSingleUrl(this.pages[index], true);
         });
 
+        // ПРИОРИТЕТ 2: Фоновый догруз всего остального тайтла (строго по очереди)
         this.preloadRemainingSequentially();
     },
 
+    // Асинхронное скачивание одного изображения
     preloadSingleUrl(url, isPriority = false) {
         if (this.preloadedUrls.has(url)) return Promise.resolve();
 
@@ -311,9 +101,13 @@ const reader = {
             const img = new Image();
             
             img.onload = () => {
+                if (isPriority) {
+                    console.log(`[Preloader] Приоритетная страница загружена: ${url.substring(url.lastIndexOf('/'))}`);
+                }
                 resolve();
             };
             img.onerror = () => {
+                // Если произошла сетевая ошибка — даем шанс скачать картинку заново при листании
                 this.preloadedUrls.delete(url); 
                 resolve();
             };
@@ -323,6 +117,7 @@ const reader = {
         });
     },
 
+    // Последовательный догруз оставшейся части главы без забивания канала связи
     async preloadRemainingSequentially() {
         if (this.isBackgroundLoading) return;
         this.isBackgroundLoading = true;
@@ -330,6 +125,7 @@ const reader = {
         for (let i = 0; i < this.pages.length; i++) {
             const url = this.pages[i];
             
+            // Если до страницы еще не дошла очередь — скачиваем её и дожидаемся (await)
             if (!this.preloadedUrls.has(url)) {
                 await this.preloadSingleUrl(url, false);
             }
@@ -339,14 +135,11 @@ const reader = {
     },
 
     initKeyboardControls() {
-        if (this._keydownHandler) {
-            window.removeEventListener('keydown', this._keydownHandler);
-        }
-
-        this._keydownHandler = (event) => {
+        window.addEventListener('keydown', (event) => {
             const readerScreen = document.getElementById('readerScreen');
             if (!readerScreen || !readerScreen.classList.contains('active')) return;
 
+            // Если фокус в инпуте комментариев — стрелочки не должны переключать страницы
             if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
                 return;
             }
@@ -364,9 +157,104 @@ const reader = {
                     this.updateTrack();
                 }
             }
-        };
+        });
+    },
 
-        window.addEventListener('keydown', this._keydownHandler);
+    initClickZones() {
+        const track = document.getElementById('readerTrack');
+        if (!track) return;
+
+        track.addEventListener('click', (event) => {
+            // Игнорируем клики, если они пришлись на кнопки или панель комментариев
+            if (event.target.closest('button') || event.target.closest('.page-comments-panel')) return;
+
+            const screenWidth = window.innerWidth;
+            const clickX = event.clientX;
+
+            const leftZoneBound = screenWidth * 0.3;
+            const rightZoneBound = screenWidth * 0.7;
+
+            if (clickX > rightZoneBound) {
+                if (this.currentIndex < this.pages.length - 1) {
+                    this.currentIndex++;
+                    this.resetZoom();
+                    this.updateTrack();
+                }
+            } else if (clickX < leftZoneBound) {
+                if (this.currentIndex > 0) {
+                    this.currentIndex--;
+                    this.resetZoom();
+                    this.updateTrack();
+                }
+            }
+        });
+    },
+
+    updateTrack() {
+        const track = document.getElementById('readerTrack');
+        if (!track) return;
+        track.style.transform = `translate3d(-${this.currentIndex * 100}vw, 0px, 0px)`;
+        
+        const counter = document.getElementById('pageCounter');
+        if (counter) {
+            counter.textContent = `${this.currentIndex + 1} / ${this.pages.length}`;
+        }
+        
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+        }
+
+        const commentsPanel = document.getElementById('commentsPanel');
+        if (commentsPanel && commentsPanel.classList.contains('open')) {
+            const commentsTitle = document.getElementById('commentsTitle');
+            if (commentsTitle) commentsTitle.textContent = `Комментарии к странице ${this.currentIndex + 1}`;
+            if (typeof this.loadCommentsForCurrentPage === 'function') {
+                this.loadCommentsForCurrentPage();
+            }
+        }
+
+        // ПЕРЕРАСЧЕТ: Каждый раз при смене кадра обновляем приоритеты загрузки
+        this.managePreload();
+    },
+
+    resetZoom() {
+        this.scale = 1;
+        this.currentX = 0;
+        this.currentY = 0;
+        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+        if (container) {
+            container.style.transform = `translate3d(0px, 0px, 0px) scale(1)`;
+        }
+    },
+
+    initTouchGestures() {
+        const track = document.getElementById('readerTrack');
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        track.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+            }
+        }, { passive: true });
+
+        track.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length === 1) {
+                touchEndX = e.changedTouches[0].clientX;
+                const diffX = touchStartX - touchEndX;
+
+                if (diffX > 60 && this.currentIndex < this.pages.length - 1) {
+                    this.currentIndex++;
+                    this.resetZoom();
+                    this.updateTrack();
+                }
+                else if (diffX < -60 && this.currentIndex > 0) {
+                    this.currentIndex--;
+                    this.resetZoom();
+                    this.updateTrack();
+                }
+            }
+        }, { passive: true });
     },
 
     toggleComments(show) {
@@ -374,10 +262,13 @@ const reader = {
         if (!panel) return;
         if (show) {
             panel.classList.add('open');
-            document.getElementById('commentsTitle').textContent = `Комментарии к странице ${this.currentIndex + 1}`;
-            this.loadCommentsForCurrentPage?.();
+            const commentsTitle = document.getElementById('commentsTitle');
+            if (commentsTitle) commentsTitle.textContent = `Комментарии к странице ${this.currentIndex + 1}`;
+            if (typeof this.loadCommentsForCurrentPage === 'function') {
+                this.loadCommentsForCurrentPage();
+            }
         } else {
             panel.classList.remove('open');
         }
-    },
+    }
 };
