@@ -41,7 +41,6 @@ const reader = {
         track.style.transform = `translate3d(-${this.currentIndex * 100}vw, 0px, 0px)`;
         document.getElementById('pageCounter').textContent = `${this.currentIndex + 1} / ${this.pages.length}`;
         
-        // Автоматически обновляем контент внутри шторки под текущую страницу
         if (document.getElementById('commentsPanel').classList.contains('open')) {
             document.getElementById('commentsTitle').textContent = `Комментарии к странице ${this.currentIndex + 1}`;
             this.loadCommentsForCurrentPage();
@@ -69,12 +68,12 @@ const reader = {
         const triggerBtn = document.getElementById('openCommentsBtn');
         if (show) {
             panel.classList.add('open');
-            triggerBtn.style.display = 'none'; // прячем круглую кнопку, когда шторка открыта
+            triggerBtn.style.display = 'none';
             document.getElementById('commentsTitle').textContent = `Комментарии к странице ${this.currentIndex + 1}`;
             this.loadCommentsForCurrentPage();
         } else {
             panel.classList.remove('open');
-            triggerBtn.style.display = 'flex'; // возвращаем кнопку
+            triggerBtn.style.display = 'flex';
         }
     },
 
@@ -114,6 +113,7 @@ const reader = {
         try {
             await api.addPageComment(this.mangaId, this.currentIndex, app.userId, app.userName, text);
             input.value = "";
+            // Сразу же принудительно перерисовываем
             await this.loadCommentsForCurrentPage();
         } catch(e) {
             alert("Не удалось отправить сообщение.");
@@ -131,17 +131,10 @@ const reader = {
         const screen = document.getElementById('readerScreen');
         let startX = 0, startY = 0;
         let lastTapTime = 0;
+        let tapTimeout = null;
 
         screen.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
-                const now = Date.now();
-                if (now - lastTapTime < 300) {
-                    if (this.scale > 1) { this.resetZoom(); } 
-                    else { this.scale = 2.5; this.applyZoomTransform(); }
-                    lastTapTime = 0; return;
-                }
-                lastTapTime = now;
-
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
                 
@@ -171,13 +164,45 @@ const reader = {
 
         screen.addEventListener('touchend', (e) => {
             this.isDragging = false;
-            if (this.scale === 1 && e.changedTouches.length > 0) {
+            
+            if (e.changedTouches.length > 0) {
                 const diffX = e.changedTouches[0].clientX - startX;
                 const diffY = e.changedTouches[0].clientY - startY;
 
-                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                // Если это был свайп (перелистывание жестом)
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50 && this.scale === 1) {
                     if (diffX > 0 && this.currentIndex > 0) { this.currentIndex--; this.updateTrack(); }
                     else if (diffX < 0 && this.currentIndex < this.pages.length - 1) { this.currentIndex++; this.updateTrack(); }
+                    return;
+                }
+
+                // Логика одиночных / двойных тапов по краям экрана
+                if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
+                    const now = Date.now();
+                    if (now - lastTapTime < 300) {
+                        // Обработка Двойного тапа (Зум)
+                        clearTimeout(tapTimeout);
+                        if (this.scale > 1) { this.resetZoom(); } 
+                        else { this.scale = 2.5; this.applyZoomTransform(); }
+                        lastTapTime = 0;
+                    } else {
+                        // Обработка Одиночного тапа по зонам (25% слева / 25% справа)
+                        lastTapTime = now;
+                        tapTimeout = setTimeout(() => {
+                            if (this.scale === 1) {
+                                const screenWidth = window.innerWidth;
+                                const tapX = e.changedTouches[0].clientX;
+                                
+                                if (tapX < screenWidth * 0.25) {
+                                    // Клик слева -> Назад
+                                    if (this.currentIndex > 0) { this.currentIndex--; this.updateTrack(); }
+                                } else if (tapX > screenWidth * 0.75) {
+                                    // Клик справа -> Вперед
+                                    if (this.currentIndex < this.pages.length - 1) { this.currentIndex++; this.updateTrack(); }
+                                }
+                            }
+                        }, 250);
+                    }
                 }
             }
         }, { passive: true });
