@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>McCree Ru Manga</title>
+    <title>McCree Ru Translations</title>
     <style>
         :root {
             --bg-color: var(--tg-theme-bg-color, #141414);
@@ -71,13 +71,22 @@
         .manga-card { background-color: var(--card-bg); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; position: relative; }
         .card-cover-wrap { width: 100%; padding-top: 140%; position: relative; background-color: #222; }
         .card-cover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+        
+        /* Иконка лайка ПРЯМО НА ОБЛОЖКЕ */
+        .card-like-badge {
+            position: absolute; top: 8px; right: 8px; background: rgba(255, 59, 48, 0.9);
+            color: white; border-radius: 50%; width: 26px; height: 26px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+
         .card-info { padding: 8px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .card-title { font-size: 13px; font-weight: 600; margin: 0 0 6px 0; line-height: 1.25; }
         
         .card-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
         .tag { font-size: 9px; background-color: rgba(0, 235, 135, 0.1); color: var(--link-color); padding: 2px 5px; border-radius: 5px; font-weight: bold; text-transform: uppercase; }
         .tag-author { font-size: 9px; background-color: #ff7b00; color: #ffffff; padding: 2px 5px; border-radius: 5px; font-weight: bold; }
-        .tag-liked { font-size: 9px; background-color: #ff3b30; color: #ffffff; padding: 2px 5px; border-radius: 5px; font-weight: bold; }
         .card-stats { font-size: 11px; color: var(--hint-color); margin-top: 5px; font-weight: bold; }
 
         /* Превью */
@@ -87,7 +96,7 @@
         .btn-like { background: #333; color: #fff; }
         .btn-like.liked { background: #ff3b30; }
 
-        /* Общие стили блоков комментариев */
+        /* Комментарии */
         .comments-section-title { font-size: 16px; font-weight: bold; margin: 25px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px; }
         .comments-scroll { overflow-y: auto; max-height: 400px; padding: 5px 0; }
         .comment-item { background: #1c1c1c; padding: 10px; border-radius: 8px; margin-bottom: 8px; position: relative; }
@@ -110,32 +119,38 @@
         .reader-track { display: flex; height: 100%; width: 100%; transition: transform 0.25s ease-out; will-change: transform; }
         .reader-slide { flex: 0 0 100vw; width: 100vw; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         
-        /* Контейнер для симуляции нативного зума */
         .zoom-container { 
             width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; 
             transition: transform 0.1s ease-out; transform-origin: center center;
         }
         .reader-img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 
+        /* Кнопка открытия комментариев снизу справа в читалке */
+        .open-comments-trigger-btn {
+            position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px;
+            background: var(--button-color); color: var(--button-text); border: none;
+            border-radius: 50%; font-size: 20px; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 120; cursor: pointer; font-weight: bold;
+        }
+
         /* Постраничные комментарии (Bottom Sheet) */
         .page-comments-panel {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 60vh;
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 65vh;
             background: rgba(20, 20, 20, 0.98); backdrop-filter: blur(15px);
             z-index: 150; border-top: 1px solid #333; box-sizing: border-box;
-            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+            transform: translateY(100%); transition: transform 0.25s ease-out;
             display: flex; flex-direction: column;
         }
         .page-comments-panel.open { transform: translateY(0); }
         .comments-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #222; }
         
-        /* Внутри шторки свой независимый контейнер */
         .page-comments-panel .comments-scroll { flex-grow: 1; max-height: none; padding: 15px; }
         .page-comments-panel .comment-input-block { padding: 10px 15px; background: #141414; border-top: 1px solid #222; margin: 0; }
     </style>
 </head>
 <body>
 
-    <!-- ЭКРАН 1: ГЛАВНЫЙ КАТАЛОГ -->
     <div id="mainScreen" class="screen active">
         <div class="main-container">
             <button class="donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
@@ -160,7 +175,6 @@
         </div>
     </div>
 
-    <!-- ЭКРАН 2: ПРЕВЬЮ ТАЙТЛА + КОММЕНТАРИИ К ТАЙТЛУ -->
     <div id="previewScreen" class="screen">
         <div class="main-container">
             <button class="btn btn-like" onclick="app.showScreen('mainScreen')">← В каталог</button>
@@ -176,9 +190,8 @@
             <button id="startReadBtn" class="btn">Читать перевод</button>
             <button id="likeBtn" class="btn btn-like">🤍 В список понравившегося</button>
 
-            <!-- Комментарии к главной странице тайтла -->
             <div class="comments-section-title">Обсуждение тайтла</div>
-            <div id="mainCommentsScroll" class="comments-scroll">Загрузка комментариев...</div>
+            <div id="mainCommentsScroll" class="comments-scroll">Синхронизация сообщений...</div>
             <div class="comment-input-block">
                 <input type="text" id="mainCommentInputField" class="comment-input" placeholder="Написать комментарий к тайтлу...">
                 <button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="app.sendMainComment()">Отправить</button>
@@ -186,7 +199,6 @@
         </div>
     </div>
 
-    <!-- ЭКРАН 3: ГОРИЗОНТАЛЬНАЯ ЧИТАЛКА -->
     <div id="readerScreen" class="screen reader-screen">
         <div id="readerHeader" class="reader-header">
             <button class="sort-btn" style="color:#fff;" onclick="app.closeMangaReader()">✕ Выйти</button>
@@ -194,13 +206,14 @@
             <button class="reader-donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
         </div>
         
-        <div id="readerTrack" class="reader-track"></div>
+        <div id="readerTrack" class="reader-track" onclick="if(document.getElementById('commentsPanel').classList.contains('open')) reader.toggleComments(false);"></div>
 
-        <!-- Постраничная шторка комментариев (вызывается свайпом вверх) -->
+        <button id="openCommentsBtn" class="open-comments-trigger-btn" onclick="reader.toggleComments(true)">💬</button>
+
         <div id="commentsPanel" class="page-comments-panel">
             <div class="comments-header">
                 <span id="commentsTitle" style="font-weight:bold; font-size:14px; color:#fff;">Комментарии</span>
-                <span style="font-size:11px; color:#888;">Свайпните вниз, чтобы закрыть</span>
+                <button class="sort-btn" style="padding:4px 12px; font-size:12px;" onclick="reader.toggleComments(false)">▼ Скрыть</button>
             </div>
             <div id="pageCommentsScroll" class="comments-scroll"></div>
             <div class="comment-input-block">
