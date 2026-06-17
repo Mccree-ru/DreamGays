@@ -5,6 +5,7 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const api = {
     async fetchCatalog() {
+        // Запрос манги с подсчетом лайков через связь, сортировка по internal_id
         const { data, error } = await _supabase
             .from('manga')
             .select(`*, likes(count)`)
@@ -12,7 +13,9 @@ const api = {
             
         if (error) throw error;
 
+        // Запрос списка всех комментариев для подсчета
         const { data: cData } = await _supabase.from('comments').select('manga_id');
+        
         const commentCounts = {};
         if (cData) {
             cData.forEach(c => {
@@ -75,9 +78,13 @@ const api = {
             user_id: Number(userId),
             user_name: userName || "Читатель",
             text: String(text),
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString() // Явно указываем время
         };
-        if (pageIndex !== null) insertData.page_index = parseInt(pageIndex);
+        
+        if (pageIndex !== null) {
+            insertData.page_index = parseInt(pageIndex);
+        }
+
         const { error } = await _supabase.from('comments').insert([insertData]);
         if (error) throw error;
         return true;
