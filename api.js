@@ -5,12 +5,17 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const api = {
     // Получение каталога с поддержкой серверных вычислений лайков и комментариев
-    async fetchCatalog({ genre = null, author = '', sortByPopular = false } = {}) {
+async fetchCatalog({ genre = null, author = '', sortByPopular = false } = {}) {
+        // ИСПРАВЛЕНО: Правильный синтаксис обращения к вычисляемым функциям таблицы в Supabase
         let query = _supabase
             .from('manga')
-            .select(`*, likes_count:manga_likes_count(), comments_count:manga_comments_count()`);
+            .select(`
+                *, 
+                likes_count:manga_likes_count, 
+                comments_count:manga_comments_count
+            `);
 
-        // Фильтрация по жанрам (для bara/furry внутри массива tags)
+        // Фильтрация по жанрам (внутри массива tags)
         if (genre) {
             query = query.contains('tags', [genre]);
         }
@@ -22,6 +27,7 @@ const api = {
 
         // Сортировка на стороне СУБД
         if (sortByPopular) {
+            // Сортируем по имени функции, PostgreSQL это подхватит
             query = query.order('manga_likes_count', { ascending: false });
         } else {
             query = query.order('internal_id', { ascending: false });
