@@ -5,14 +5,17 @@ const reader = {
     isGesturesInitialized: false,
     isPCControlsInitialized: false,
     
-    // Очередь для хранения фоновых объектов картинок (защита от Garbage Collector)
+    // Переменные зума
+    scale: 1,
+    lastScale: 1,
+    currentX: 0,
+    currentY: 0,
+    
     preloadQueue: [], 
-    // Набор URL, которые уже были поставлены на загрузку (защита от дублирования запросов)
     preloadedUrls: new Set(),
-    // Флаг активного фонового процесса последовательной догрузки
     isBackgroundLoading: false,
 
-    renderPages(mangaId, pagesArray) {
+renderPages(mangaId, pagesArray) {
         this.mangaId = mangaId;
         this.pages = pagesArray;
         this.currentIndex = 0;
@@ -22,11 +25,9 @@ const reader = {
         if (!track) return;
         track.innerHTML = "";
 
-        // Рендерим слайды для каждой страницы
         this.pages.forEach((pageUrl, index) => {
             const slide = document.createElement('div');
             slide.className = 'reader-slide';
-            
             slide.innerHTML = `
                 <div class="zoom-container" id="zoomContainer-${index}">
                     <div class="reader-skeleton" id="skeleton-${index}">
@@ -40,34 +41,145 @@ const reader = {
         });
 
         this.updateTrack();
-        
-        // Сбрасываем кэш прелоадера под новый тайтл/главу
         this.preloadQueue = [];
         this.preloadedUrls = new Set();
         this.isBackgroundLoading = false;
 
-        // Отмечаем первую страницу как уже загружаемую (её качает сам браузер через тег img)
-        if (this.pages[0]) {
-            this.preloadedUrls.add(this.pages[0]);
-        }
-
-        // Запускаем умный расчет приоритетов прелоада
+        if (this.pages[0]) this.preloadedUrls.add(this.pages[0]);
         this.managePreload();
 
-        // Инициализация мобильных жестов (однократно)
         if (!this.isGesturesInitialized) {
             this.initTouchGestures();
             this.isGesturesInitialized = true;
         }
 
-        // Инициализация управления на ПК (однократно)
         if (!this.isPCControlsInitialized) {
             this.initKeyboardControls();
             this.initClickZones();
             this.isPCControlsInitialized = true;
         }
     },
+	
+applyZoom(scale, x = 0, y = 0) {
+        this.scale = Math.max(1, Math.min(scale, 3));
+        this.currentX = x;
+        this.currentY = y;
+        const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
+        if (container) {
+            container.style.transition = this.scale === 1 ? 'transform 0.2s' : 'none';
+            container.style.transform = `scale(${this.scale}) translate(${this.currentX}px, ${this.currentY}px)`;
+            
+            // Скрытие элементов интерфейса при приближении
+            const uiElements = document.querySelectorAll('.reader-ui, .open-comments-trigger-btn');
+            uiElements.forEach(el => el.style.opacity = this.scale > 1 ? '0' : '1');
+        }
+    },
 
+    resetZoom() {
+        this.scale = 1;
+        this.applyZoom(1, 0, 0);
+    },
+
+    initTouchGestures() {
+        const track = document.getElementById('readerTrack');
+        let initialPinchDist = 0;
+        let touchStartX = 0;
+
+        track.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            } else if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+            }
+        }, { passive: false });
+
+        track.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && this.scale > 1) {
+                e.preventDefault();
+                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                this.applyZoom(this.lastScale * (dist / initialPinchDist));
+            }
+        }, { passive: false });
+
+        track.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) this.lastScale = this.scale;
+            
+            // Перелистывание только если масштаб 1:1
+            if (this.scale === 1 && e.changedTouches.length === 1) {
+                const diffX = touchStartX - e.changedTouches[0].clientX;
+                if (Math.abs(diffX) > 60) {
+                    if (diffX > 0 && this.currentIndex < this.pages.length - 1) {
+                        this.currentIndex++;
+                        this.updateTrack();
+                    } else if (diffX < 0 && this.currentIndex > 0) {
+                        this.currentIndex--;
+                        this.updateTrack();
+                    }
+                }
+            }
+        });
+
+        // Двойной тап для зума
+        let lastTap = 0;
+        track.addEventListener('click', (e) => {
+            const now = new Date().getTime();
+            if (now - lastTap < 300) {
+                this.scale > 1 ? this.resetZoom() : this.applyZoom(2);
+            }
+            lastTap = now;
+        });
+    },
+
+    initClickZones() {
+        const track = document.getElementById('readerTrack');
+        if (!track) return;
+
+        track.addEventListener('click', (event) => {
+            // Если открыты комментарии — только закрываем их и не перелистываем страницу
+            const panel = document.getElementById('commentsPanel');
+            if (panel && panel.classList.contains('open')) {
+                this.toggleComments(false);
+                return;
+            }
+
+            // Если картинка приближена — игнорируем клики для листания
+            if (this.scale > 1) return;
+            if (event.target.closest('button')) return;
+
+            const screenWidth = window.innerWidth;
+            const clickX = event.clientX;
+
+            if (clickX > screenWidth * 0.7 && this.currentIndex < this.pages.length - 1) {
+                this.currentIndex++;
+                this.updateTrack();
+            } else if (clickX < screenWidth * 0.3 && this.currentIndex > 0) {
+                this.currentIndex--;
+                this.updateTrack();
+            }
+        });
+    },
+
+    updateTrack() {
+        this.resetZoom();
+        const track = document.getElementById('readerTrack');
+        if (!track) return;
+        track.style.transform = `translate3d(-${this.currentIndex * 100}vw, 0px, 0px)`;
+        
+        const counter = document.getElementById('pageCounter');
+        if (counter) counter.textContent = `${this.currentIndex + 1} / ${this.pages.length}`;
+        
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+        }
+
+        const commentsPanel = document.getElementById('commentsPanel');
+        if (commentsPanel?.classList.contains('open')) {
+            document.getElementById('commentsTitle').textContent = `Комментарии (стр. ${this.currentIndex + 1})`;
+            this.loadCommentsForCurrentPage?.();
+        }
+        this.managePreload();
+    },
+	
     // Умное управление приоритетами загрузки фреймов
     managePreload() {
         if (!this.pages || this.pages.length === 0) return;
@@ -257,16 +369,13 @@ const reader = {
         }, { passive: true });
     },
 
-    toggleComments(show) {
+	toggleComments(show) {
         const panel = document.getElementById('commentsPanel');
         if (!panel) return;
         if (show) {
             panel.classList.add('open');
-            const commentsTitle = document.getElementById('commentsTitle');
-            if (commentsTitle) commentsTitle.textContent = `Комментарии к странице ${this.currentIndex + 1}`;
-            if (typeof this.loadCommentsForCurrentPage === 'function') {
-                this.loadCommentsForCurrentPage();
-            }
+            document.getElementById('commentsTitle').textContent = `Комментарии к странице ${this.currentIndex + 1}`;
+            this.loadCommentsForCurrentPage?.();
         } else {
             panel.classList.remove('open');
         }
