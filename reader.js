@@ -20,13 +20,16 @@ const reader = {
         this.resetZoom();
 
         const track = document.getElementById('readerTrack');
-        track.innerHTML = \"\";
+        track.innerHTML = "";
 
         this.pages.forEach((pageUrl, index) => {
             const slide = document.createElement('div');
             slide.className = 'reader-slide';
             slide.innerHTML = `
-                <div class=\"zoom-container\" id=\"zoomContainer-${index}\">\n                    <img class=\"reader-img\" src=\"${pageUrl}\" draggable=\"false\">\n                </div>\n            `;
+                <div class="zoom-container" id="zoomContainer-${index}">
+                    <img class="reader-img" src="${pageUrl}" draggable="false">
+                </div>
+            `;
             track.appendChild(slide);
         });
 
@@ -99,12 +102,12 @@ const reader = {
 
     async loadCommentsForCurrentPage() {
         const container = document.getElementById('pageCommentsScroll');
-        container.innerHTML = \"Загрузка...\";
+        container.innerHTML = "Загрузка...";
         try {
             const list = await api.fetchPageComments(this.mangaId, this.currentIndex);
-            container.innerHTML = \"\";
+            container.innerHTML = "";
             if (list.length === 0) {
-                container.innerHTML = \"<div style='color:#888; text-align:center; padding:15px; font-size:13px;'>К этой странице пока нет комментов.</div>\";
+                container.innerHTML = "<div style='color:#888; text-align:center; padding:15px; font-size:13px;'>К этой странице пока нет комментов.</div>";
                 return;
             }
             list.forEach(c => {
@@ -112,20 +115,20 @@ const reader = {
                 item.className = 'comment-item';
                 let deleteBtn = '';
                 if (Number(c.user_id) === Number(app.userId)) {
-                    deleteBtn = `<span class=\"delete-comment-btn\" onclick=\"reader.deletePageComment('${c.id}')\">Удалить</span>`;
+                    deleteBtn = `<span class="delete-comment-btn" onclick="reader.deletePageComment('${c.id}')">Удалить</span>`;
                 }
                 item.innerHTML = `
-                    <div class=\"comment-meta\">
-                        <span class=\"comment-author\">${c.user_name}</span>
-                        <span class=\"comment-time\">${app.formatCommentTime(c.created_at)}</span>
+                    <div class="comment-meta">
+                        <span class="comment-author">${c.user_name}</span>
+                        <span class="comment-time">${app.formatCommentTime(c.created_at)}</span>
                     </div>
-                    <div class=\"comment-text\">${c.text}</div>
+                    <div class="comment-text">${c.text}</div>
                     ${deleteBtn}
                 `;
                 container.appendChild(item);
             });
         } catch(e) {
-            container.innerHTML = \"<span style='color:#ff3b30;'>Ошибка загрузки.</span>\";
+            container.innerHTML = "<span style='color:#ff3b30;'>Ошибка загрузки.</span>";
         }
     },
 
@@ -136,15 +139,15 @@ const reader = {
 
         try {
             await api.addComment(this.mangaId, this.currentIndex, app.userId, app.userName, text);
-            input.value = \"\";
+            input.value = "";
             await this.loadCommentsForCurrentPage();
         } catch(e) {
-            alert(\"Не удалось отправить комментарий.\");
+            alert("Не удалось отправить комментарий.");
         }
     },
 
     async deletePageComment(commentId) {
-        if (confirm(\"Удалить ваш комментарий к странице?\")) {
+        if (confirm("Удалить ваш комментарий к странице?")) {
             await api.deleteComment(commentId, app.userId);
             this.loadCommentsForCurrentPage();
         }
@@ -158,12 +161,12 @@ const reader = {
         let tapTimeout = null;
 
         screen.addEventListener('touchstart', (e) => {
-            // ИСПРАВЛЕНО: Полностью изолируем тачи внутри панели комментов
+            // ИСПРАВЛЕНО: Предотвращаем закрытие при скролле внутри чата
             if (commentsPanel.classList.contains('open')) {
                 if (!e.target.closest('#commentsPanel')) {
-                    // Разрешаем дальнейшую логику (клик мимо закроет окно)
+                    // Клик мимо чата
                 } else {
-                    return; // Игнорируем жесты читалки внутри чата
+                    return; // Внутри чата тачи читалки полностью блокируются
                 }
             }
 
@@ -200,7 +203,7 @@ const reader = {
         }, { passive: true });
 
         screen.addEventListener('touchend', (e) => {
-            // ИСПРАВЛЕНО: Закрываем чат только при тапе МИМО панели
+            // ИСПРАВЛЕНО: Мягкое закрытие чата только при касании мимо него
             if (commentsPanel.classList.contains('open')) {
                 if (!e.target.closest('#commentsPanel')) {
                     this.toggleComments(false);
