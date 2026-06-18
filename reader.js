@@ -6,111 +6,132 @@ const reader = {
     isPCControlsInitialized: false,
     
     // Переменные для зума и панорамирования
-    scale: 1,
-    currentX: 0,
-    currentY: 0,
-    startX: 0,
-    startY: 0,
-    initialDistance: 0,
-    initialScale: 1,
-    isDragging: false,
-    wasPinchOrZoomActive: false, 
+	scale: 1,
+	currentX: 0,
+	currentY: 0,
+	startX: 0,
+	startY: 0,
+	initialDistance: 0,
+	initialScale: 1,
+	isDragging: false,
+	wasPinchOrZoomActive: false, 
 
-    preloadQueue: [], 
-    preloadedUrls: new Set(),
-    isBackgroundLoading: false,
+	preloadedUrls: new Set(),
+	isBackgroundLoading: false,
 
-    renderPages(mangaId, pagesArray) {
-        this.mangaId = mangaId;
-        this.pages = pagesArray;
-        this.currentIndex = 0;
-        this.scale = 1;
-        this.currentX = 0;
-        this.currentY = 0;
-        this.wasPinchOrZoomActive = false;
-        this.resetZoom();
+	renderPages(mangaId, pagesArray) {
+		this.mangaId = mangaId;
+		this.pages = pagesArray;
+		this.currentIndex = 0;
+		this.scale = 1;
+		this.currentX = 0;
+		this.currentY = 0;
+		this.wasPinchOrZoomActive = false;
+		this.resetZoom();
 
-        const track = document.getElementById('readerTrack');
-        if (!track) return;
-        track.innerHTML = "";
+		const track = document.getElementById('readerTrack');
+		if (!track) return;
+		track.innerHTML = "";
 
-        this.pages.forEach((pageUrl, index) => {
-            const slide = document.createElement('div');
-            slide.className = 'reader-slide';
-            
-            slide.innerHTML = `
-                <div class="zoom-container" id="zoomContainer-${index}" style="transform-origin: 50% 50%;">
-                    <div class="reader-skeleton" id="skeleton-${index}">
-                        <div class="reader-skeleton-inner skeleton-blink"></div>
-                    </div>
-                    <img class="reader-img" src="${pageUrl}" draggable="false" 
-                         onload="const sk = document.getElementById('skeleton-${index}'); if(sk) sk.classList.add('skeleton-hidden');">
-                </div>
-            `;
-            track.appendChild(slide);
-        });
+		this.pages.forEach((pageUrl, index) => {
+			const slide = document.createElement('div');
+			slide.className = 'reader-slide';
+			
+			slide.innerHTML = `
+				<div class="zoom-container" id="zoomContainer-${index}" style="transform-origin: 50% 50%;">
+					<div class="reader-skeleton" id="skeleton-${index}">
+						<div class="reader-skeleton-inner skeleton-blink"></div>
+					</div>
+					<img class="reader-img" src="${pageUrl}" draggable="false" 
+						 onload="const sk = document.getElementById('skeleton-${index}'); if(sk) sk.classList.add('skeleton-hidden');">
+				</div>
+			`;
+			track.appendChild(slide);
+		});
 
-        this.updateTrack();
-        
-        this.preloadQueue = [];
-        this.preloadedUrls = new Set();
-        this.isBackgroundLoading = false;
+		this.updateTrack();
+		
+		// Сбрасываем только Set-коллекцию урлов при открытии новой главы
+		this.preloadedUrls = new Set();
+		this.isBackgroundLoading = false;
 
-        if (this.pages[0]) {
-            this.preloadedUrls.add(this.pages[0]);
-        }
+		if (this.pages[0]) {
+			this.preloadedUrls.add(this.pages[0]);
+		}
 
-        this.managePreload();
+		this.managePreload();
 
-        if (!this.isGesturesInitialized) {
-            this.initTouchGestures();
-            this.isGesturesInitialized = true;
-        }
+		if (!this.isGesturesInitialized) {
+			this.initTouchGestures();
+			this.isGesturesInitialized = true;
+		}
 
-        if (!this.isPCControlsInitialized) {
-            this.initKeyboardControls();
-            this.initClickZones();
-            this.isPCControlsInitialized = true;
-        }
-    },
-
+		if (!this.isPCControlsInitialized) {
+			this.initKeyboardControls();
+			this.initClickZones();
+			this.isPCControlsInitialized = true;
+		}
+	},
+	
     managePreload() {
-        if (!this.pages || this.pages.length === 0) return;
-        const nextPagesCount = 3; 
-        const priorityIndices = [];
-        for (let i = 1; i <= nextPagesCount; i++) {
-            const nextIndex = this.currentIndex + i;
-            if (nextIndex < this.pages.length) priorityIndices.push(nextIndex);
-        }
-        priorityIndices.forEach(index => {
-            this.preloadSingleUrl(this.pages[index], true);
-        });
-        this.preloadRemainingSequentially();
-    },
+		if (!this.pages || this.pages.length === 0) return;
+		const nextPagesCount = 3; 
+		const priorityIndices = [];
+		
+		for (let i = 1; i <= nextPagesCount; i++) {
+			const nextIndex = this.currentIndex + i;
+			if (nextIndex < this.pages.length) priorityIndices.push(nextIndex);
+		}
+		
+		priorityIndices.forEach(index => {
+			this.preloadSingleUrl(this.pages[index], true);
+		});
+		
+		this.preloadRemainingSequentially();
+	},
 
     preloadSingleUrl(url, isPriority = false) {
-        if (this.preloadedUrls.has(url)) return Promise.resolve();
-        return new Promise((resolve) => {
-            this.preloadedUrls.add(url);
-            const img = new Image();
-            img.onload = () => resolve();
-            img.onerror = () => { this.preloadedUrls.delete(url); resolve(); };
-            img.src = url;
-            this.preloadQueue.push(img);
-        });
-    },
+		if (this.preloadedUrls.has(url)) return Promise.resolve();
+		
+		return new Promise((resolve) => {
+			this.preloadedUrls.add(url);
+			
+			// Создаем объект строго внутри Promise, изолируя его область видимости
+			let img = new Image();
+			
+			img.onload = () => {
+				// Очищаем обработчики и зануляем ссылку, давая сигнал Garbage Collector
+				img.onload = null;
+				img.onerror = null;
+				img = null;
+				resolve();
+			};
+			
+			img.onerror = () => {
+				// Если ошибка сети — удаляем из загруженных, чтобы попробовать позже
+				this.preloadedUrls.delete(url);
+				img.onload = null;
+				img.onerror = null;
+				img = null;
+				resolve();
+			};
+			
+			img.src = url;
+		});
+	},
 
-    async preloadRemainingSequentially() {
-        if (this.isBackgroundLoading) return;
-        this.isBackgroundLoading = true;
-        for (let i = 0; i < this.pages.length; i++) {
-            const url = this.pages[i];
-            if (!this.preloadedUrls.has(url)) {
-                await this.preloadSingleUrl(url, false);
-            }
-        }
-        this.isBackgroundLoading = false;
-    },
+	async preloadRemainingSequentially() {
+		if (this.isBackgroundLoading) return;
+		this.isBackgroundLoading = true;
+		
+		for (let i = 0; i < this.pages.length; i++) {
+			const url = this.pages[i];
+			if (!this.preloadedUrls.has(url)) {
+				await this.preloadSingleUrl(url, false);
+			}
+		}
+		this.isBackgroundLoading = false;
+	},
 
     initKeyboardControls() {
         window.addEventListener('keydown', (event) => {
@@ -134,63 +155,66 @@ const reader = {
         });
     },
 
-    initClickZones() {
-        const track = document.getElementById('readerTrack');
-        if (!track) return;
+	initClickZones() {
+		const track = document.getElementById('readerTrack');
+		if (!track) return;
 
-        let clickTimeout = null;
-        let lastClickTime = 0;
+		let clickTimeout = null;
+		let lastClickTime = 0;
 
-        track.addEventListener('click', (event) => {
-            if (event.target.closest('button') || event.target.closest('.page-comments-panel') || event.target.closest('.comment-input-block')) return;
+		track.addEventListener('click', (event) => {
+			if (event.target.closest('button') || event.target.closest('.page-comments-panel') || event.target.closest('.comment-input-block')) return;
 
-            const commentsPanel = document.getElementById('commentsPanel');
-            if (commentsPanel && commentsPanel.classList.contains('open')) {
-                this.toggleComments(false);
-                if (clickTimeout) clearTimeout(clickTimeout);
-                return; 
-            }
+			const commentsPanel = document.getElementById('commentsPanel');
+			if (commentsPanel && commentsPanel.classList.contains('open')) {
+				this.toggleComments(false);
+				if (clickTimeout) {
+					clearTimeout(clickTimeout);
+					clickTimeout = null;
+				}
+				return; 
+			}
 
-            const currentTime = new Date().getTime();
-            const clickDelay = currentTime - lastClickTime;
+			const currentTime = new Date().getTime();
+			const clickDelay = currentTime - lastClickTime;
 
-            if (clickDelay < 300) {
-                if (clickTimeout) {
-                    clearTimeout(clickTimeout);
-                    clickTimeout = null;
-                }
-                this.toggleZoom(event);
-                lastClickTime = 0; 
-                return;
-            }
-            
-            lastClickTime = currentTime;
+			if (clickDelay < 300) {
+				if (clickTimeout) {
+					clearTimeout(clickTimeout);
+					clickTimeout = null;
+				}
+				this.toggleZoom(event);
+				lastClickTime = 0; 
+				return;
+			}
+			
+			lastClickTime = currentTime;
 
-            clickTimeout = setTimeout(() => {
-                clickTimeout = null;
-                if (this.scale && this.scale > 1) return;
+			clickTimeout = setTimeout(() => {
+				clickTimeout = null; // Очищаем ссылку на таймер внутри замыкания
+				if (this.scale && this.scale > 1) return;
 
-                const screenWidth = window.innerWidth;
-                const clickX = event.clientX;
-                const leftZoneBound = screenWidth * 0.3;
-                const rightZoneBound = screenWidth * 0.7;
+				const screenWidth = window.innerWidth;
+				const clickX = event.clientX;
+				const leftZoneBound = screenWidth * 0.3;
+				const rightZoneBound = screenWidth * 0.7;
 
-                if (clickX > rightZoneBound) {
-                    if (this.currentIndex < this.pages.length - 1) {
-                        this.currentIndex++;
-                        this.resetZoom();
-                        this.updateTrack();
-                    }
-                } else if (clickX < leftZoneBound) {
-                    if (this.currentIndex > 0) {
-                        this.currentIndex--;
-                        this.resetZoom();
-                        this.updateTrack();
-                    }
-                }
-            }, 250);
-        });
-    },
+				if (clickX > rightZoneBound) {
+					if (this.currentIndex < this.pages.length - 1) {
+						this.currentIndex++;
+						this.resetZoom();
+						this.updateTrack();
+					}
+				} else if (clickX < leftZoneBound) {
+					if (this.currentIndex > 0) {
+						this.currentIndex--;
+						this.resetZoom();
+						this.updateTrack();
+					}
+				}
+			}, 250);
+		});
+	},
 
     toggleZoom(event) {
         const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
