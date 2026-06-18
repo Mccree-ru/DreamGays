@@ -146,10 +146,10 @@
 
 		/* Дополнительно глушим вызов контекстного меню от картинок обложек */
 		.manga-card img {
-			-webkit-touch-callout: none;
-			-webkit-user-select: none;
-			user-select: none;
-			pointer-events: none; /* Запрещает перетаскивание картинки и долгий тап по ней */
+		    -webkit-touch-callout: none !important;
+		    -webkit-user-select: none !important;
+		    user-select: none !important;
+		    -webkit-user-drag: none !important;
 		}
 		
         .manga-card:active { transform: scale(0.98); }
