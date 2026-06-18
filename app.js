@@ -45,12 +45,16 @@ const app = {
             return;
         }
 
+        // Переменная-флаг для отслеживания перехода по прямой ссылке
+        let hasDeepLink = false;
+
         // ИСПРАВЛЕНО: Безопасный переход по deep-link (start_param), если тайтла нет в первой пачке пагинации
         if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
             const startId = String(tg.initDataUnsafe.start_param);
             const localManga = this.allManga.find(m => String(m.id) === startId);
             
             if (localManga) {
+                hasDeepLink = true;
                 this.openMangaPreview(startId);
             } else {
                 // Если в кэше первой страницы нет, запрашиваем точечно через API, чтобы не ломать UX
@@ -59,6 +63,7 @@ const app = {
                         const targetManga = await api.fetchSingleManga(startId);
                         if (targetManga) {
                             this.allManga.push(targetManga);
+                            hasDeepLink = true;
                             this.openMangaPreview(startId);
                         }
                     }
@@ -86,7 +91,7 @@ const app = {
 
             // Если до дна осталось меньше 300px — подгружаем следующую страницу
             if (scrollHeight - scrollTop - clientHeight <= 300) {
-                app.loadNextPage(); // ИСПРАВЛЕНО: Жесткая привязка к контексту app
+                app.loadNextPage(); // Жесткая привязка к контексту app
             }
         };
 
@@ -99,8 +104,10 @@ const app = {
             mainScreenEl.addEventListener('scroll', () => checkScroll(mainScreenEl));
         }
 
-        // Инициализируем начальный экран
-        this.showScreen('mainScreen');
+        // ИСПРАВЛЕНО: Включаем главный экран только в том случае, если не было перехода по диплинку
+        if (!hasDeepLink) {
+            this.showScreen('mainScreen');
+        }
     },
     
     async submitMangaJson() {
@@ -142,7 +149,7 @@ const app = {
 
             if (error) {
                 console.error('Ошибка базы данных Supabase:', error);
-                alert('Не удалось сохранить в БД: ' + error.message);
+                alert('Не удалось保存 в БД: ' + error.message);
             } else {
                 alert('🎉 Релиз «' + cleanMangaData.title + '» успешно добавлен в базу!');
                 jsonField.value = ''; 
@@ -271,7 +278,7 @@ const app = {
 
         mangaArray.forEach(manga => {
             const card = document.createElement('div');
-            card.setAttribute('data-manga-id', manga.id); // Важно для работы менеджера контекстного меню
+            card.setAttribute('data-manga-id', manga.id);
             
             let genreClass = '';
             const hasBara = manga.tags && manga.tags.some(t => t.toLowerCase() === 'bara');
@@ -332,7 +339,6 @@ const app = {
             grid.appendChild(card);
         });
 
-        // ИСПРАВЛЕНО: Автоматическая инициализация/обновление контекстного меню для новых элементов сетки
         if (typeof contextMenuManager !== 'undefined' && typeof contextMenuManager.init === 'function') {
             contextMenuManager.init();
         }
