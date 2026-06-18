@@ -350,19 +350,24 @@
         }
     }, { capture: true });
 
-    document.getElementById('contextCopyLinkBtn').addEventListener('click', function() {
-        if (!currentMangaId) return;
-        const botLink = `https://t.me/share/url?url=https://t.me/YOUR_BOT_USERNAME?start=${currentMangaId}`;
-        
-        navigator.clipboard.writeText(botLink).then(() => {
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.showPopup({ message: "Ссылка скопирована!" });
-            } else {
-                alert("Ссылка скопирована!");
-            }
-        }).catch(err => console.error(err));
-        closeContextMenu();
-    });
+	document.getElementById('contextCopyLinkBtn').addEventListener('click', function() {
+		if (!currentMangaId) return;
+		
+		// Формируем прямую ссылку на запуск конкретного тайтла в вашем WebApp
+		const directLink = `https://t.me/DreamContent_Bot/manga?startapp=${currentMangaId}`;
+		
+		navigator.clipboard.writeText(directLink).then(() => {
+			if (window.Telegram && window.Telegram.WebApp) {
+				window.Telegram.WebApp.showPopup({ 
+					title: "Успешно",
+					message: "Ссылка на тайтл скопирована в буфер обмена!" 
+				});
+			} else {
+				alert("Ссылка скопирована!");
+			}
+		}).catch(err => console.error(err));
+		closeContextMenu();
+	});
 
     document.addEventListener('click', function(e) {
         if (!e.target.closest('#customContextMenu')) {
