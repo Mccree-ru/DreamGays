@@ -1,7 +1,7 @@
 const tg = window.Telegram.WebApp;
 
 const app = {
-    userId: 1878167600, 
+    userId: 0, // ИСПРАВЛЕНО: убрали дефолтный ID, чтобы избежать ложных срабатываний
     userName: "Читатель",
     allManga: [],
     userLikedIds: [], 
@@ -20,6 +20,7 @@ const app = {
     isLoading: false,
 
     async init() {
+        // ИСПРАВЛЕНО: Сначала получаем реальные данные пользователя из Telegram SDK
         if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
             tg.ready();
             try { tg.expand(); } catch(e){}
@@ -27,11 +28,13 @@ const app = {
             this.userName = tg.initDataUnsafe.user.first_name || "Читатель";
         }
 
-        // Отображение кнопки администратора по ID
-        if (this.userId === 1878167621 || this.userId === 1878167600) {
-            const adminBtn = document.getElementById('adminBtn');
-            if (adminBtn) {
+        // ИСПРАВЛЕНО: Перенесли проверку вниз и оставили строго один ID админа
+        const adminBtn = document.getElementById('adminBtn');
+        if (adminBtn) {
+            if (this.userId === 1878167621) {
                 adminBtn.style.display = "block";
+            } else {
+                adminBtn.style.display = "none"; // На всякий случай скрываем для остальных
             }
         }
 
@@ -48,7 +51,7 @@ const app = {
         // Переменная-флаг для отслеживания перехода по прямой ссылке
         let hasDeepLink = false;
 
-        // ИСПРАВЛЕНО: Безопасный переход по deep-link (start_param), если тайтла нет в первой пачке пагинации
+        // Безопасный переход по deep-link (start_param), если тайтла нет в первой пачке пагинации
         if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
             const startId = String(tg.initDataUnsafe.start_param);
             const localManga = this.allManga.find(m => String(m.id) === startId);
@@ -91,7 +94,7 @@ const app = {
 
             // Если до дна осталось меньше 300px — подгружаем следующую страницу
             if (scrollHeight - scrollTop - clientHeight <= 300) {
-                app.loadNextPage(); // Жесткая привязка к контексту app
+                app.loadNextPage(); 
             }
         };
 
@@ -104,7 +107,7 @@ const app = {
             mainScreenEl.addEventListener('scroll', () => checkScroll(mainScreenEl));
         }
 
-        // ИСПРАВЛЕНО: Включаем главный экран только в том случае, если не было перехода по диплинку
+        // Включаем главный экран только в том случае, если не было перехода по диплинку
         if (!hasDeepLink) {
             this.showScreen('mainScreen');
         }
@@ -149,7 +152,7 @@ const app = {
 
             if (error) {
                 console.error('Ошибка базы данных Supabase:', error);
-                alert('Не удалось保存 в БД: ' + error.message);
+                alert('Не удалось сохранить в БД: ' + error.message);
             } else {
                 alert('🎉 Релиз «' + cleanMangaData.title + '» успешно добавлен в базу!');
                 jsonField.value = ''; 
