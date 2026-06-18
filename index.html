@@ -99,24 +99,29 @@
         .reset-btn { background-color: #ff3b30; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; display: none; }
 
         /* --- КАТАЛОГ И КАРТОЧКИ --- */
-        .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+		.catalog-grid {
+		    -webkit-overflow-scrolling: touch; /* Делает скролл на iPhone и Android плавным, с инерцией */
+		}
 		
 		.manga-card { 
-			background-color: var(--card-bg); 
-			border-radius: 12px; 
-			overflow: hidden; 
-			display: flex; 
-			flex-direction: column; 
-			cursor: pointer; 
-			position: relative; 
-			border: 1px solid rgba(255, 255, 255, 0.08); 
-			transition: transform 0.1s ease-out;
-
-			-webkit-touch-callout: none;
-			-webkit-user-select: none;
-			-moz-user-select: none; 
-			-ms-user-select: none;
-			user-select: none;           
+		    background-color: var(--card-bg); 
+		    border-radius: 12px; 
+		    overflow: hidden; 
+		    display: flex; 
+		    flex-direction: column; 
+		    cursor: pointer; 
+		    position: relative; 
+		    border: 1px solid rgba(255, 255, 255, 0.08); 
+		    transition: transform 0.1s ease-out;
+		
+		    /* Защита от контекстного меню */
+		    -webkit-touch-callout: none;
+		    -webkit-user-select: none;
+		    user-select: none;
+		
+		    /* ОПТИМИЗАЦИЯ СКРОЛЛА И ПЛАВНОСТИ */
+		    will-change: transform; /* Подготавливает видеокарту смартфона к анимациям */
+		    transform: translateZ(0); /* Включает принудительное 3D-ускорение (GPU) для карточки */
 		}
 		
 		img, .card-cover, .reader-container img, .manga-page img, img[src] {
