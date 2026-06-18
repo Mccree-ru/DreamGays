@@ -119,14 +119,18 @@
 			user-select: none;           
 		}
 		
-		img {
-			-webkit-touch-callout: none !important;
-			-webkit-user-select: none !important; 
+		img, .card-cover, .reader-container img, .manga-page img, img[src] {
+			-webkit-touch-callout: none !important; /* Отключает всплывающее меню на iOS */
+			-webkit-user-select: none !important;   /* Отключает выделение */
 			-moz-user-select: none !important;
 			-ms-user-select: none !important;
 			user-select: none !important;
-			-webkit-user-drag: none !important;
+			
+			-webkit-user-drag: none !important;     /* Запрещает перетаскивание картинки на ПК */
 			user-drag: none !important;
+			
+			/* Хак для Android: запрещает "подсвечивание" и вызов меню при долгом тапе */
+			-webkit-tap-highlight-color: rgba(0,0,0,0) !important;
 		}
 
 		.reader-container img, 
@@ -490,6 +494,22 @@
 			<span>🔗 Скопировать ссылку</span>
 		</button>
 	</div>
+	
+<script>
+		document.addEventListener('contextmenu', function(e) {
+		if (e.target.tagName === 'IMG' || e.target.closest('img')) {
+			e.preventDefault();
+			e.stopPropagation();
+			return false;
+		}
+	}, { capture: true });
+
+	document.addEventListener('touchstart', function(e) {
+		if (e.target.tagName === 'IMG' || e.target.closest('img')) {
+			e.target.style.webkitTouchCallout = 'none';
+		}
+	}, { passive: true });
+</script>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
