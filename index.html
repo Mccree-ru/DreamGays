@@ -112,12 +112,27 @@
 			border: 1px solid rgba(255, 255, 255, 0.08); 
 			transition: transform 0.1s ease-out;
 
-			/* НАМЕРТВО БЛОКИРУЕТ ВСТРОЕННОЕ МЕНЮ СМАРТФОНА */
-			-webkit-touch-callout: none; /* Выключает системное меню в iOS/Safari/Telegram */
-			-webkit-user-select: none;   /* Запрещает выделение текста на iOS */
-			-moz-user-select: none;      /* Запрещает выделение на Firefox */
-			-ms-user-select: none;       /* Запрещает выделение на старых IE */
-			user-select: none;           /* Стандартное свойство запрета выделения */
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			-moz-user-select: none; 
+			-ms-user-select: none;
+			user-select: none;           
+		}
+		
+		img {
+			-webkit-touch-callout: none !important;
+			-webkit-user-select: none !important; 
+			-moz-user-select: none !important;
+			-ms-user-select: none !important;
+			user-select: none !important;
+			-webkit-user-drag: none !important;
+			user-drag: none !important;
+		}
+
+		.reader-container img, 
+		.manga-page img,
+		.title-cover img {
+		pointer-events: none !important;
 		}
 
 		/* Дополнительно глушим вызов контекстного меню от картинок обложек */
