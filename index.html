@@ -100,58 +100,58 @@
 
         /* --- КАТАЛОГ И КАРТОЧКИ --- */
 		.catalog-grid {
-		    -webkit-overflow-scrolling: touch; /* Делает скролл на iPhone и Android плавным, с инерцией */
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 12px;                             
+			padding: 5px 0;
+			-webkit-overflow-scrolling: touch;
 		}
-		
-		.manga-card { 
-		    background-color: var(--card-bg); 
-		    border-radius: 12px; 
-		    overflow: hidden; 
-		    display: flex; 
-		    flex-direction: column; 
-		    cursor: pointer; 
-		    position: relative; 
-		    border: 1px solid rgba(255, 255, 255, 0.08); 
-		    transition: transform 0.1s ease-out;
-		
-		    /* Защита от контекстного меню */
-		    -webkit-touch-callout: none;
-		    -webkit-user-select: none;
-		    user-select: none;
-		
-		    /* ОПТИМИЗАЦИЯ СКРОЛЛА И ПЛАВНОСТИ */
-		    will-change: transform; /* Подготавливает видеокарту смартфона к анимациям */
-		    transform: translateZ(0); /* Включает принудительное 3D-ускорение (GPU) для карточки */
-		}
-		
-		img, .card-cover, .reader-container img, .manga-page img, img[src] {
-			-webkit-touch-callout: none !important; /* Отключает всплывающее меню на iOS */
-			-webkit-user-select: none !important;   /* Отключает выделение */
-			-moz-user-select: none !important;
-			-ms-user-select: none !important;
-			user-select: none !important;
-			
-			-webkit-user-drag: none !important;     /* Запрещает перетаскивание картинки на ПК */
-			user-drag: none !important;
-			
-			/* Хак для Android: запрещает "подсвечивание" и вызов меню при долгом тапе */
-			-webkit-tap-highlight-color: rgba(0,0,0,0) !important;
-		}
+        
+        .manga-card { 
+            background-color: var(--card-bg); 
+            border-radius: 12px; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            cursor: pointer; 
+            position: relative; 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            transition: transform 0.1s ease-out;
+        
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        
+            will-change: transform; 
+            transform: translateZ(0); 
+        }
+        
+        img, .card-cover, .reader-container img, .manga-page img, img[src] {
+            -webkit-touch-callout: none !important; 
+            -webkit-user-select: none !important;   
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            
+            -webkit-user-drag: none !important;     
+            user-drag: none !important;
+            
+            -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+        }
 
-		.reader-container img, 
-		.manga-page img,
-		.title-cover img {
-		pointer-events: none !important;
-		}
+        /* pointer-events: none убран, чтобы карточки в каталоге реагировали на клики мыши */
+        .reader-container img, 
+        .manga-page img {
+            pointer-events: none !important;
+        }
 
-		/* Дополнительно глушим вызов контекстного меню от картинок обложек */
-		.manga-card img {
-		    -webkit-touch-callout: none !important;
-		    -webkit-user-select: none !important;
-		    user-select: none !important;
-		    -webkit-user-drag: none !important;
-		}
-		
+        .manga-card img {
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            -webkit-user-drag: none !important;
+        }
+        
         .manga-card:active { transform: scale(0.98); }
         .manga-card.manga-bara { background-color: #172173; }
         .manga-card.manga-furry { background-color: #a20a0a; }
@@ -298,98 +298,96 @@
         .reader-skeleton-inner { width: 100%; height: 100%; border-radius: 8px; }
         .skeleton-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
-        /* --- АДМИНКА И КАСОМНОЕ МЕНЮ --- */
+        /* --- КАСОМНОЕ МЕНЮ --- */
         .admin-textarea {
             width: 100%; height: 60vh; background-color: #1a1a1a; color: #fff;
             border: 1px solid #444; border-radius: 8px; padding: 12px; font-family: monospace;
             font-size: 13px; resize: none; box-sizing: border-box; margin-top: 15px;
             -webkit-user-select: text; user-select: text;
         }
-		.custom-context-menu {
-			position: fixed;
-			z-index: 99999;
-			background: #1c1c1e; /* Насыщенный темный цвет из iOS/Telegram */
-			border: 1px solid #2c2c2e;
-			border-radius: 12px;
-			padding: 6px 0;
-			min-width: 220px;
-			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-			transition: opacity 0.2s ease, transform 0.2s ease;
-		}
-		
-		.context-menu-item {
-			width: 100%;
-			background: none;
-			border: none;
-			color: #ffffff;
-			padding: 12px 16px;
-			text-align: left;
-			font-size: 15px;
-			cursor: pointer;
-			display: flex;
-			align-items: center;
-			gap: 10px;
-			transition: background 0.2s ease;
-		}
-		
-		.context-menu-item:hover {
-			background: #2c2c2e;
-		}
+        .custom-context-menu {
+            position: fixed;
+            z-index: 99999;
+            background: #1c1c1e;
+            border: 1px solid #2c2c2e;
+            border-radius: 12px;
+            padding: 6px 0;
+            min-width: 220px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            display: none; /* Изначально скрыто */
+        }
+        
+        .context-menu-item {
+            width: 100%;
+            background: none;
+            border: none;
+            color: #ffffff;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s ease;
+        }
+        
+        .context-menu-item:hover {
+            background: #2c2c2e;
+        }
 
-	@media (max-width: 768px) {
-		.custom-context-menu {
-			left: 0 !important;
-			bottom: 0 !important;
-			top: auto !important; /* Игнорируем Y координату пальца */
-			width: 100% !important;
-			max-width: 100%;
-			border-radius: 20px 20px 0 0; /* Скругляем только верхние углы */
-			border: none;
-			border-top: 1px solid #2c2c2e;
-			padding-bottom: max(20px, env(safe-area-inset-bottom)); /* Учитываем нижнюю полоску на iPhone */
-			box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.6);
-			
-			/* Анимация появления снизу вверх */
-			transform: translateY(100%);
-			animation: slideUp 0.25s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
-		}
+        @media (max-width: 768px) {
+            .custom-context-menu {
+                left: 0 !important;
+                bottom: 0 !important;
+                top: auto !important;
+                width: 100% !important;
+                max-width: 100%;
+                border-radius: 20px 20px 0 0;
+                border: none;
+                border-top: 1px solid #2c2c2e;
+                padding-bottom: max(20px, env(safe-area-inset-bottom));
+                box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.6);
+                transform: translateY(100%);
+                display: none;
+            }
 
-		/* Визуальный "индикатор-полоска" сверху шторки, как в Telegram */
-		.custom-context-menu::before {
-			content: '';
-			display: block;
-			width: 40px;
-			height: 4px;
-			background: #48484a;
-			border-radius: 2px;
-			margin: 8px auto 12px auto;
-		}
+            .custom-context-menu.mobile-open {
+                display: block !important;
+                animation: slideUp 0.25s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
+            }
 
-		.context-menu-item {
-			padding: 16px 20px; /* Кнопки крупнее, чтобы по ним было удобно тапать */
-			font-size: 17px;
-			border-bottom: 1px solid #2c2c2e;
-		}
-		
-		.context-menu-item:last-child {
-			border-bottom: none;
-		}
+            .custom-context-menu::before {
+                content: '';
+                display: block;
+                width: 40px;
+                height: 4px;
+                background: #48484a;
+                border-radius: 2px;
+                margin: 8px auto 12px auto;
+            }
 
-		.context-menu-item:active {
-			background: #2c2c2e; /* Эффект нажатия пальцем */
-		}
-	}
+            .context-menu-item {
+                padding: 16px 20px;
+                font-size: 17px;
+                border-bottom: 1px solid #2c2c2e;
+            }
+            
+            .context-menu-item:last-child {
+                border-bottom: none;
+            }
 
-	@keyframes slideUp {
-		from { transform: translateY(100%); }
-		to { transform: translateY(0); }
-	}
+            .context-menu-item:active {
+                background: #2c2c2e;
+            }
+        }
 
-
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
 
         .context-menu-item:active { background: rgba(255, 255, 255, 0.1); }
-        @keyframes menuFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-
         @media (pointer: fine) { .reader-slide { cursor: pointer; } }
     </style>
 </head>
@@ -494,26 +492,102 @@
         </div>
     </div>
 
-	<div id="customContextMenu" class="custom-context-menu" style="display: none;">
-		<button class="context-menu-item" id="contextCopyLinkBtn">
-			<span>🔗 Скопировать ссылку</span>
-		</button>
-	</div>
-	
+    <div id="customContextMenu" class="custom-context-menu">
+        <button class="context-menu-item" id="contextCopyLinkBtn">
+            <span>🔗 Скопировать ссылку</span>
+        </button>
+    </div>
+    
 <script>
-		document.addEventListener('contextmenu', function(e) {
-		if (e.target.tagName === 'IMG' || e.target.closest('img')) {
-			e.preventDefault();
-			e.stopPropagation();
-			return false;
-		}
-	}, { capture: true });
+    const menuEl = document.getElementById('customContextMenu');
+    let currentMangaId = null;
 
-	document.addEventListener('touchstart', function(e) {
-		if (e.target.tagName === 'IMG' || e.target.closest('img')) {
-			e.target.style.webkitTouchCallout = 'none';
-		}
-	}, { passive: true });
+    // 1. Обработка вызова меню (ПКМ и Эмуляция тача для каталога)
+    document.addEventListener('contextmenu', function(e) {
+        const card = e.target.closest('.manga-card');
+        
+        if (card) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Получаем ID релиза из карточки (предполагаем, что app.js пишет его в data-id)
+            currentMangaId = card.getAttribute('data-id') || ''; 
+            
+            if (window.innerWidth > 768) {
+                // Логика отображения на ПК у курсора мыши
+                menuEl.style.display = 'block';
+                menuEl.style.left = e.clientX + 'px';
+                menuEl.style.top = e.clientY + 'px';
+                menuEl.classList.remove('mobile-open');
+            } else {
+                // Логика шторки для смартфонов
+                menuEl.style.display = 'block';
+                setTimeout(() => menuEl.classList.add('mobile-open'), 10);
+            }
+            return false;
+        }
+
+        // Блокировка вызова контекстного меню на изображениях во всех остальных местах (читалка, превью)
+        if (e.target.tagName === 'IMG' || e.target.closest('img') || e.target.classList.contains('reader-img')) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    }, { capture: true });
+
+    // Клик по кнопке «Скопировать ссылку» в меню
+    document.getElementById('contextCopyLinkBtn').addEventListener('click', function() {
+        if (!currentMangaId) return;
+        
+        // Формируем ссылку на бота с параметром старта тайтла
+        const botLink = `https://t.me/share/url?url=https://t.me/YOUR_BOT_USERNAME?start=${currentMangaId}`;
+        
+        navigator.clipboard.writeText(botLink).then(() => {
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.showPopup({ message: "Ссылка скопирована!" });
+            } else {
+                alert("Ссылка скопирована!");
+            }
+        }).catch(err => {
+            console.error('Не удалось скопировать:', err);
+        });
+        
+        closeContextMenu();
+    });
+
+    // Закрытие меню при клике в любое свободное место
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#customContextMenu')) {
+            closeContextMenu();
+        }
+    });
+
+    function closeContextMenu() {
+        if (window.innerWidth > 768) {
+            menuEl.style.display = 'none';
+        } else {
+            menuEl.classList.remove('mobile-open');
+            setTimeout(() => { menuEl.style.display = 'none'; }, 250);
+        }
+    }
+
+    // 2. Управление тач-событиями на iOS / Telegram WebView
+    document.addEventListener('touchstart', function(e) {
+        if (e.target.closest('.manga-card')) {
+            return; // Не трогаем карточки в каталоге, даем отработать contextmenu/longtap
+        }
+        if (e.target.tagName === 'IMG' || e.target.closest('img') || e.target.classList.contains('reader-img')) {
+            e.target.style.webkitTouchCallout = 'none';
+            e.target.style.webkitUserSelect = 'none';
+        }
+    }, { capture: true, passive: true });
+
+    // 3. Защита от зума жестами на Android WebViews
+    document.addEventListener('gesturestart', function(e) {
+        if (e.target.tagName === 'IMG') {
+            e.preventDefault();
+        }
+    }, { capture: true });
 </script>
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
