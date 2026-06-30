@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>McCree Ru Translations</title>
+    <style>
+        /* Глобальные настройки и CSS переменные */
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #141414);
+            --text-color: var(--tg-theme-text-color, #ffffff);
+            --hint-color: var(--tg-theme-hint-color, #888888);
+            --link-color: var(--tg-theme-link-color, #00eb87);
+            --card-bg: var(--tg-theme-secondary-bg-color, #202020);
+            --button-color: var(--tg-theme-button-color, #00eb87);
+            --button-text: var(--tg-theme-button-text-color, #000000);
+            --coffee-gradient: linear-gradient(135deg, #ff9500, #ff5e00);
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        /* Базовый сброс и оптимизация */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            margin: 0; 
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            -webkit-user-select: none; 
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* GPU-ускорение для экранов */
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease-out;
+            box-sizing: border-box;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            will-change: opacity;
+            padding-bottom: var(--safe-area-bottom);
+            display: none;
+        }
+
+        .screen.active { 
+            opacity: 1; 
+            pointer-events: auto; 
+            z-index: 10;
+            display: block;
+        }
+
+        /* Особые правила для читалки (фиксация на весь экран) */
+        .screen.reader-screen { 
+            background-color: #000; 
+            overflow: hidden; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            z-index: 9999; 
+        }
+        #readerScreen.screen:not(.active) { display: none !important; }
+        #readerScreen.screen.active { display: block !important; }
+
+        /* Скелетоны с GPU-ускорением */
+        .skeleton-blink {
+            animation: skeleton-blink 1.5s ease-in-out infinite;
+            background: linear-gradient(90deg, #2a2a2a 25%, #383838 50%, #2a2a2a 75%);
+            background-size: 200% 100%;
+            height: 100%;
+            width: 100%;
+            will-change: background-position;
+            contain: layout style paint;
+        }
+
+        @keyframes skeleton-blink {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-card {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 10px;
+            contain: layout style paint;
+        }
+
+        .skeleton-cover {
+            width: 100%;
+            aspect-ratio: 2/3;
+            border-radius: 8px;
+            background: #2a2a2a;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .skeleton-title { 
+            height: 16px; 
+            width: 80%; 
+            border-radius: 4px; 
+            background: #2a2a2a;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .skeleton-author { 
+            height: 12px; 
+            width: 50%; 
+            border-radius: 4px; 
+            background: #2a2a2a;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Скелетон для читалки */
+        .reader-skeleton {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            background-color: #121212;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            visibility: visible;
+        }
+
+        .reader-skeleton-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        .skeleton-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* Кнопки и интерактивные элементы */
+        button, 
+        .genre-tab, 
+        .sort-btn, 
+        .reset-btn, 
+        .manga-card, 
+        select, 
+        .open-comments-trigger-btn,
+        .back-btn,
+        .top-nav-btn {
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            touch-action: manipulation;
+        }
+
+        /* Шапка */
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .top-nav-btn {
+            flex: 1;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            touch-action: manipulation;
+            transition: transform 0.1s ease, opacity 0.2s ease;
+            will-change: transform;
+        }
+
+        .top-nav-btn:active {
+            transform: scale(0.96);
+        }
+
+        .dreamgays-btn {
+            background-color: #2481cc;
+            color: #ffffff;
+        }
+
+        .coffee-btn {
+            background: var(--coffee-gradient);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(255, 94, 0, 0.2);
+        }
+
+        .admin-btn {
+            background-color: #673ab7;
+            color: #ffffff;
+        }
+
+        /* Основной контейнер */
+        .main-container { 
+            padding: 15px; 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            box-sizing: border-box;
+            padding-bottom: calc(15px + var(--safe-area-bottom));
+        }
+
+        /* Жанровые табы */
+        .genre-tabs { 
+            display: flex; 
+            gap: 8px; 
+            margin-bottom: 15px;
+        }
+
+        .genre-tab {
+            flex: 1; 
+            padding: 10px; 
+            border: none; 
+            border-radius: 10px;
+            background-color: var(--card-bg); 
+            color: var(--text-color);
+            font-size: 13px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            text-align: center;
+            touch-action: manipulation;
+            transition: background-color 0.2s ease, transform 0.1s ease, color 0.2s ease;
+            will-change: transform;
+        }
+
+        .genre-tab:active {
+            transform: scale(0.96);
+        }
+
+        .genre-tab.active { 
+            background-color: var(--button-color); 
+            color: var(--button-text); 
+        }
+
+        /* Фильтры */
+        .filter-panel { 
+            margin-bottom: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+        }
+
+        .filter-row { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            flex-wrap: wrap;
+        }
+
+        select.author-select {
+            background-color: var(--card-bg); 
+            color: var(--text-color); 
+            border: 1px solid var(--hint-color);
+            padding: 8px 12px; 
+            border-radius: 8px; 
+            font-size: 14px; 
+            outline: none; 
+            flex: 1;
+            min-width: 120px;
+            -webkit-appearance: none;
+            appearance: none;
+            touch-action: manipulation;
+        }
+
+        .sort-btn {
+            background-color: var(--card-bg); 
+            color: var(--text-color); 
+            border: 1px solid var(--hint-color);
+            padding: 8px 12px; 
+            border-radius: 8px; 
+            font-size: 14px; 
+            font-weight: bold; 
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: all 0.2s ease;
+            will-change: transform;
+            white-space: nowrap;
+        }
+
+        .sort-btn:active {
+            transform: scale(0.95);
+        }
+
+        .sort-btn.active { 
+            border-color: var(--button-color); 
+            color: var(--button-color); 
+        }
+
+        .reset-btn { 
+            background-color: #ff3b30; 
+            color: #fff; 
+            border: none; 
+            padding: 8px 14px; 
+            border-radius: 8px; 
+            font-size: 14px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            display: none;
+            touch-action: manipulation;
+            transition: transform 0.1s ease;
+            will-change: transform;
+        }
+
+        .reset-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Каталог */
+        .catalog-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 12px; 
+        }
+
+        @media (min-width: 480px) { 
+            .catalog-grid { grid-template-columns: repeat(3, 1fr); } 
+        }
+        @media (min-width: 768px) { 
+            .catalog-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } 
+        }
+        @media (min-width: 1024px) { 
+            .catalog-grid { grid-template-columns: repeat(5, 1fr); } 
+        }
+        @media (min-width: 1400px) { 
+            .catalog-grid { grid-template-columns: repeat(6, 1fr); } 
+        }
+
+        /* Карточки манги */
+        .manga-card { 
+            background-color: var(--card-bg); 
+            border-radius: 12px; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+            cursor: pointer; 
+            position: relative; 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+            contain: layout style paint;
+            touch-action: manipulation;
+            
+            /* Защита от контекстного меню */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .manga-card:active {
+            transform: scale(0.97);
+        }
+
+        .manga-card.manga-bara { 
+            background-color: #172173; 
+        }
+
+        .manga-card.manga-furry { 
+            background-color: #a20a0a; 
+        }
+
+        .card-cover-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            overflow: hidden;
+            background-color: #202020;
+            contain: layout style paint;
+        }
+
+        .card-cover { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+            will-change: opacity;
+            
+            /* Защита от контекстного меню */
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            -webkit-user-drag: none !important;
+            user-drag: none !important;
+            -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+        }
+
+        .card-cover.loaded {
+            opacity: 1;
+        }
+
+        .card-pages-badge {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(20, 20, 20, 0.85); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            pointer-events: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            z-index: 2;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-like-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 75px;
+            height: 22px;
+            background: rgba(0, 235, 135, 0.95); 
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(45deg) translate(17px, -18px);
+            transform-origin: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            z-index: 10;
+            pointer-events: none;
+            border-radius: 4px;
+        }
+
+        .card-like-badge span {
+            color: #000000;
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            line-height: 1;
+            display: inline-block;
+            transform: none;
+        }
+
+        .card-right-stats {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 2;
+        }
+
+        .card-stat-badge {
+            background: rgba(20, 20, 20, 0.85); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 6px 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            pointer-events: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 30px;
+        }
+
+        .card-info { 
+            padding: 10px; 
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 4px;
+        }
+
+        .card-title { 
+            font-size: 13px; 
+            font-weight: 600; 
+            margin: 0; 
+            line-height: 1.25;
+            min-height: 32px; 
+            display: -webkit-box; 
+            -webkit-line-clamp: 2; 
+            -webkit-box-orient: vertical; 
+            overflow: hidden;
+            word-break: break-word;
+        }
+
+        .card-author-zone { 
+            min-height: 18px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 4px; 
+            line-height: 1.4; 
+        }
+
+        .tag-author { 
+            font-size: 9px; 
+            background-color: #ff7b00; 
+            color: #ffffff; 
+            padding: 2px 8px; 
+            border-radius: 5px; 
+            font-weight: bold; 
+            white-space: nowrap; 
+            cursor: pointer;
+            border-bottom: 2px solid rgba(0,0,0,0.2); 
+            transition: all 0.15s ease;
+            touch-action: manipulation;
+        }
+
+        .tag-author:active {
+            transform: scale(0.95);
+        }
+
+        .tag-author.active {
+            background-color: #c45e00;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+            transform: translateY(2px);
+            border-bottom: none;
+        }
+
+        /* Экран превью */
+        #previewScreen {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preview-nav-row { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 15px; 
+        }
+
+        .btn-half { 
+            flex: 1; 
+            margin: 0; 
+            padding: 12px; 
+            font-weight: bold; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            border: none; 
+            font-size: 14px;
+            touch-action: manipulation;
+            transition: transform 0.1s ease;
+            will-change: transform;
+        }
+
+        .btn-half:active {
+            transform: scale(0.97);
+        }
+
+        .screen-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            position: sticky;
+            top: 0;
+            background: var(--bg-color);
+            z-index: 5;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: var(--link-color);
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 5px 0;
+            touch-action: manipulation;
+            transition: opacity 0.2s ease;
+        }
+
+        .back-btn:active {
+            opacity: 0.6;
+        }
+
+        .screen-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .preview-container { 
+            padding: 15px; 
+            padding-bottom: calc(15px + var(--safe-area-bottom));
+        }
+
+        .preview-cover { 
+            width: 140px; 
+            border-radius: 8px; 
+            object-fit: cover; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4); 
+            display: block; 
+            margin: 0 auto 15px auto; 
+        }
+
+        .preview-title { 
+            font-size: 20px; 
+            font-weight: bold; 
+            text-align: center; 
+            margin: 0 0 5px 0; 
+            word-break: break-word;
+        }
+
+        .preview-author { 
+            font-size: 14px; 
+            color: var(--hint-color); 
+            text-align: center; 
+            margin: 0 0 15px 0; 
+        }
+
+        .manga-stats {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .preview-dynamic-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+            opacity: 0.15;
+            background-size: cover;
+            background-position: center;
+            filter: blur(50px) scale(1.15);
+            transition: background-image 0.4s ease-in-out;
+            will-change: transform, filter;
+        }
+
+        .preview-content-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+
+        .btn { 
+            background: var(--button-color); 
+            color: var(--button-text); 
+            border: none; 
+            padding: 12px; 
+            font-weight: bold; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            width: 100%; 
+            margin-top: 10px;
+            touch-action: manipulation;
+            transition: transform 0.1s ease, opacity 0.2s ease;
+            will-change: transform;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn.secondary-btn { 
+            background-color: var(--card-bg); 
+            color: var(--text-color); 
+            border: 1px solid var(--hint-color); 
+            margin-top: 10px; 
+        }
+
+        .btn.secondary-btn.active { 
+            border-color: #ff3b30; 
+            color: #ff3b30; 
+        }
+
+        /* Комментарии */
+        .comments-section-title { 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin: 25px 0 10px 0; 
+            border-bottom: 1px solid #333; 
+            padding-bottom: 5px; 
+        }
+
+        .comments-scroll { 
+            overflow-y: auto; 
+            max-height: 400px; 
+            padding: 5px 0;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .comment-item { 
+            background: #1c1c1c; 
+            padding: 10px; 
+            border-radius: 8px; 
+            margin-bottom: 8px; 
+            position: relative; 
+        }
+
+        .comment-top-line { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 4px; 
+        }
+
+        .comment-user { 
+            font-weight: bold; 
+            color: var(--button-color); 
+            font-size: 13px; 
+        }
+
+        .comment-time { 
+            color: var(--hint-color); 
+            font-size: 11px; 
+        }
+
+        .comment-text { 
+            margin: 0; 
+            font-size: 13px; 
+            color: #eee; 
+            word-break: break-word; 
+        }
+
+        .comment-del-btn { 
+            position: absolute; 
+            bottom: 8px; 
+            right: 8px; 
+            background: none; 
+            border: none; 
+            color: #ff3b30; 
+            cursor: pointer; 
+            font-size: 11px;
+            touch-action: manipulation;
+            padding: 4px 8px;
+        }
+
+        .comment-input-block { 
+            display: flex; 
+            gap: 8px; 
+            margin-top: 10px; 
+        }
+
+        .comment-input { 
+            flex: 1; 
+            background: #222; 
+            border: 1px solid #444; 
+            color: #fff; 
+            padding: 10px; 
+            border-radius: 8px; 
+            font-size: 13px; 
+            -webkit-user-select: text; 
+            user-select: text;
+            min-width: 0;
+            outline: none;
+        }
+
+        .comment-input:focus {
+            border-color: var(--button-color);
+        }
+
+        /* Читалка */
+        .reader-screen { 
+            background-color: #000; 
+            overflow: hidden; 
+            touch-action: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            z-index: 9999; 
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .reader-screen.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .reader-header {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 60px; 
+            z-index: 100;
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            background-color: rgba(0, 0, 0, 0.85); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 0 12px; 
+            box-sizing: border-box;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            will-change: transform, opacity;
+        }
+
+        .page-counter { 
+            color: #fff; 
+            font-size: 14px; 
+            font-weight: bold; 
+        }
+
+        .reader-donate-btn {
+            background: var(--coffee-gradient); 
+            color: #fff; 
+            border: none;
+            padding: 8px 14px; 
+            border-radius: 8px; 
+            font-size: 13px; 
+            font-weight: bold; 
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: transform 0.1s ease;
+            will-change: transform;
+        }
+
+        .reader-donate-btn:active {
+            transform: scale(0.95);
+        }
+
+        .reader-track { 
+            display: flex; 
+            flex-direction: row;
+            height: 100%; 
+            width: 100%; 
+            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); 
+            will-change: transform; 
+            touch-action: none;
+        }
+
+        .reader-slide {
+            width: 100vw !important;
+            height: 100vh !important;
+            flex-shrink: 0 !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            box-sizing: border-box;
+            contain: layout style paint;
+        }
+
+        .zoom-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            will-change: transform;
+            touch-action: none;
+        }
+
+        .reader-img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            user-select: none;
+            -webkit-user-drag: none;
+            will-change: transform;
+            
+            /* Защита от контекстного меню */
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            -webkit-user-drag: none !important;
+            user-drag: none !important;
+            -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+            pointer-events: none !important;
+        }
+
+        .open-comments-trigger-btn {
+            position: fixed; 
+            bottom: calc(25px + var(--safe-area-bottom)); 
+            right: 25px; 
+            min-width: 56px; 
+            min-height: 56px;
+            background: var(--button-color); 
+            color: var(--button-text); 
+            border: none;
+            border-radius: 50%; 
+            font-size: 24px; 
+            display: flex; 
+            align-items: center;
+            justify-content: center; 
+            box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+            z-index: 120; 
+            cursor: pointer; 
+            font-weight: bold;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            will-change: transform, opacity;
+            touch-action: manipulation;
+        }
+
+        .open-comments-trigger-btn:active {
+            transform: scale(0.92);
+        }
+
+        .ui-hidden { 
+            opacity: 0 !important; 
+            pointer-events: none !important; 
+        }
+
+        .page-comments-panel {
+            position: fixed;
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 65vh;
+            background: rgba(20, 20, 20, 0.98); 
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            z-index: 150; 
+            border-top: 1px solid #333; 
+            box-sizing: border-box;
+            transform: translateY(100%); 
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; 
+            flex-direction: column;
+            will-change: transform;
+            padding-bottom: var(--safe-area-bottom);
+        }
+
+        .page-comments-panel.open { 
+            transform: translateY(0); 
+        }
+
+        .comments-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 12px 15px; 
+            border-bottom: 1px solid #222; 
+            flex-shrink: 0;
+        }
+
+        .page-comments-panel .comments-scroll { 
+            flex-grow: 1; 
+            max-height: none; 
+            padding: 15px;
+            -webkit-overflow-scrolling: touch;
+            overflow-y: auto;
+        }
+
+        .page-comments-panel .comment-input-block { 
+            padding: 10px 15px; 
+            background: #141414; 
+            border-top: 1px solid #222; 
+            margin: 0;
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        .page-comments-panel .comment-input-block .comment-input {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Админка */
+        .admin-textarea {
+            width: 100%; 
+            height: 60vh; 
+            background-color: #1a1a1a; 
+            color: #fff;
+            border: 1px solid #444; 
+            border-radius: 8px; 
+            padding: 12px; 
+            font-family: monospace;
+            font-size: 13px; 
+            resize: none; 
+            box-sizing: border-box; 
+            margin-top: 15px;
+            -webkit-user-select: text; 
+            user-select: text;
+            outline: none;
+        }
+
+        .admin-textarea:focus {
+            border-color: var(--link-color);
+        }
+
+        /* Контекстное меню */
+        .custom-context-menu {
+            position: fixed;
+            z-index: 99999;
+            background: #1c1c1e;
+            border: 1px solid #2c2c2e;
+            border-radius: 12px;
+            padding: 6px 0;
+            min-width: 220px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .context-menu-item {
+            width: 100%;
+            background: none;
+            border: none;
+            color: #ffffff;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s ease;
+        }
+
+        .context-menu-item:hover {
+            background: #2c2c2e;
+        }
+
+        @media (max-width: 768px) {
+            .custom-context-menu {
+                left: 0 !important;
+                bottom: 0 !important;
+                top: auto !important;
+                width: 100% !important;
+                max-width: 100%;
+                border-radius: 20px 20px 0 0;
+                border: none;
+                border-top: 1px solid #2c2c2e;
+                padding-bottom: max(20px, env(safe-area-inset-bottom));
+                box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.6);
+                transform: translateY(100%);
+                animation: slideUp 0.25s cubic-bezier(0.1, 0.76, 0.55, 0.94) forwards;
+            }
+
+            .custom-context-menu::before {
+                content: '';
+                display: block;
+                width: 40px;
+                height: 4px;
+                background: #48484a;
+                border-radius: 2px;
+                margin: 8px auto 12px auto;
+            }
+
+            .context-menu-item {
+                padding: 16px 20px;
+                font-size: 17px;
+                border-bottom: 1px solid #2c2c2e;
+            }
+
+            .context-menu-item:last-child {
+                border-bottom: none;
+            }
+
+            .context-menu-item:active {
+                background: #2c2c2e;
+            }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .context-menu-item:active { 
+            background: rgba(255, 255, 255, 0.1); 
+        }
+
+        /* Адаптация для ПК */
+        @media (pointer: fine) {
+            .reader-slide { 
+                cursor: pointer; 
+            }
+            
+            .manga-card:hover {
+                transform: scale(1.02);
+                border-color: var(--link-color);
+            }
+
+            .manga-card:active {
+                transform: scale(0.97);
+            }
+
+            .genre-tab:hover {
+                opacity: 0.8;
+            }
+
+            .sort-btn:hover {
+                opacity: 0.8;
+            }
+
+            .top-nav-btn:hover {
+                opacity: 0.85;
+            }
+
+            .reset-btn:hover {
+                opacity: 0.85;
+            }
+
+            .btn:hover {
+                opacity: 0.85;
+            }
+
+            .btn-half:hover {
+                opacity: 0.85;
+            }
+
+            .back-btn:hover {
+                opacity: 0.7;
+            }
+
+            .tag-author:hover {
+                opacity: 0.8;
+            }
+        }
+
+        /* Оптимизация для маленьких экранов */
+        @media (max-width: 400px) {
+            .card-title {
+                font-size: 12px;
+                min-height: 28px;
+            }
+
+            .card-pages-badge,
+            .card-stat-badge {
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+
+            .card-stat-badge {
+                min-width: 24px;
+            }
+
+            .genre-tab {
+                font-size: 12px;
+                padding: 8px 6px;
+            }
+
+            .top-nav-btn {
+                font-size: 12px;
+                padding: 10px;
+            }
+
+            .preview-title {
+                font-size: 18px;
+            }
+
+            .preview-cover {
+                width: 120px;
+            }
+
+            .reader-header {
+                height: 50px;
+                padding: 0 10px;
+            }
+
+            .page-counter {
+                font-size: 12px;
+            }
+
+            .reader-donate-btn {
+                font-size: 11px;
+                padding: 6px 10px;
+            }
+        }
+
+        /* Отключение скроллбара для чистого вида */
+        .screen::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            background: transparent;
+        }
+
+        /* Стили для загрузчика в каталоге */
+        #scrollLoader {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 10px;
+            color: var(--hint-color);
+            font-size: 13px;
+            opacity: 0.6;
+        }
+
+        /* Улучшенные transitions для плавности */
+        .card-cover-wrap .skeleton-blink {
+            transition: opacity 0.3s ease;
+        }
+
+        /* Предотвращение скролла body при открытой читалке */
+        .reader-screen.active ~ .screen:not(.active) {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- ГЛАВНЫЙ ЭКРАН -->
+    <div id="mainScreen" class="screen active">
+        <div class="main-container">
+            <div class="header-buttons">
+                <button class="top-nav-btn dreamgays-btn" onclick="tg.openLink('https://t.me/+fXeAudGbRDAwZTli')">DreamGays</button>
+                <button class="top-nav-btn coffee-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На coffee</button>
+                <button id="adminBtn" class="top-nav-btn admin-btn" style="display: none;" onclick="app.showScreen('adminScreen')">⚙️ Админка</button>
+            </div>
+            <div class="genre-tabs">
+                <button id="tab-all" class="genre-tab active" onclick="app.switchGenreTab(null)">Все</button>
+                <button id="tab-bara" class="genre-tab" onclick="app.switchGenreTab('bara')">Bara</button>
+                <button id="tab-furry" class="genre-tab" onclick="app.switchGenreTab('furry')">Furry</button>
+            </div>
+            <div class="filter-panel">
+                <div class="filter-row">
+                    <select id="authorSelect" class="author-select" onchange="app.filterByAuthor(this.value)">
+                        <option value="">Все авторы</option>
+                    </select>
+                    <button id="sortBtn" class="sort-btn" onclick="app.toggleSortPopular()">🔥 Популярные</button>
+                    <button id="resetBtn" class="reset-btn" onclick="app.resetFilters()">Сбросить</button>
+                </div>
+            </div>
+            <div class="catalog-grid" id="catalogGrid">Загрузка релизов...</div>
+        </div>
+    </div>
+
+    <!-- АДМИН-ПАНЕЛЬ -->
+    <div id="adminScreen" class="screen">
+        <div class="main-container">
+            <div class="preview-nav-row">
+                <button class="btn-half" style="background:#333; color:#fff;" onclick="app.showScreen('mainScreen')">← В каталог</button>
+                <button class="btn-half" style="background:#555; color:#fff;" onclick="document.getElementById('jsonAdminInput').value=''">Очистить</button>
+            </div>
+            <h3 style="margin: 10px 0 5px 0;">Добавление новой манги (JSON)</h3>
+            <p style="color: var(--hint-color); font-size: 13px; margin: 0;">Вставьте готовый JSON-объект релиза со всеми страницами в поле ниже:</p>
+            
+            <textarea id="jsonAdminInput" class="admin-textarea" placeholder='{ "id": "идентификатор", "title": "Название", ... }'></textarea>
+            
+            <button class="btn" style="background-color: #673ab7; color: #fff; margin-top: 15px; padding: 15px;" onclick="app.submitMangaJson()">🚀 Опубликовать релиз в базу</button>
+        </div>
+    </div>
+
+    <!-- ЭКРАН ПРЕВЬЮ -->
+    <div id="previewScreen" class="screen">
+        <div id="previewDynamicBg" class="preview-dynamic-bg"></div>
+        
+        <div class="preview-content-wrapper">
+            <div class="screen-header">
+                <button class="back-btn" onclick="app.showScreen('mainScreen')">← Назад</button>
+                <span class="screen-title">О релизе</span>
+                <div style="width:50px;"></div>
+            </div>
+
+            <div class="preview-container">
+                <img id="previewCover" class="preview-cover" src="" alt="Обложка" loading="eager">
+                <h1 id="previewTitle" class="preview-title"></h1>
+                <p id="previewAuthor" class="preview-author"></p>
+                
+                <div class="manga-stats">
+                    <span id="previewLikes">❤️ 0</span>
+                    <span id="previewComments">💬 0</span>
+                </div>
+
+                <div style="display:flex; gap:10px; margin-bottom:20px;">
+                    <button id="likeBtn" class="btn secondary-btn" style="flex:1;">🤍 В любимое</button>
+                    <button id="readBtn" class="btn" style="flex:2;">Читать</button>
+                </div>
+
+                <div class="comments-section-title">Обсуждение тайтла</div>
+                <div id="mainCommentsScroll" class="comments-scroll"></div>
+                <div class="comment-input-block">
+                    <input type="text" id="mainCommentInputField" class="comment-input" placeholder="Написать комментарий..." autocomplete="off">
+                    <button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="app.sendMainComment()">Отправить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ЧИТАЛКА -->
+    <div id="readerScreen" class="screen reader-screen">
+        <div id="readerHeader" class="reader-header">
+            <button class="sort-btn" style="color:#fff; background:transparent; border:none; font-size:14px;" onclick="app.closeMangaReader()">✕ Выйти</button>
+            <div class="page-counter" id="pageCounter">0 / 0</div>
+            <button class="reader-donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На кофе</button>
+        </div>
+        <div id="readerTrack" class="reader-track"></div>
+        <button id="openCommentsBtn" class="open-comments-trigger-btn" onclick="reader.toggleComments(true)">💬</button>
+        <div id="commentsPanel" class="page-comments-panel">
+            <div class="comments-header">
+                <span id="commentsTitle" style="font-weight:bold; font-size:14px; color:#fff;">Комментарии</span>
+                <button class="sort-btn" style="padding:4px 12px; font-size:12px; background:transparent; color:var(--hint-color); border:1px solid var(--hint-color);" onclick="reader.toggleComments(false)">▼ Скрыть</button>
+            </div>
+            <div id="pageCommentsScroll" class="comments-scroll"></div>
+            <div class="comment-input-block">
+                <input type="text" id="pageCommentInputField" class="comment-input" placeholder="Написать комментарий к странице..." autocomplete="off">
+                <button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="reader.sendPageComment()">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- КОНТЕКСТНОЕ МЕНЮ -->
+    <div id="customContextMenu" class="custom-context-menu" style="display: none;">
+        <button class="context-menu-item" id="contextCopyLinkBtn">
+            <span>🔗 Скопировать ссылку</span>
+        </button>
+    </div>
+
+    <!-- ПОДКЛЮЧЕНИЕ СКРИПТОВ -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        tg.ready();
+
+        // 1. Блокировка контекстного меню на ПК и Android (с исключением для каталога)
+        document.addEventListener('contextmenu', function(e) {
+            if (e.target.closest('.manga-card')) {
+                return; 
+            }
+            if (e.target.tagName === 'IMG' || e.target.closest('img') || e.target.classList.contains('reader-img')) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }, { capture: true });
+
+        // 2. Жесткий перехват тача для iOS / Safari / Telegram WebView (глушим системное меню при удержании)
+        document.addEventListener('touchstart', function(e) {
+            if (e.target.tagName === 'IMG' || e.target.closest('img') || e.target.classList.contains('reader-img')) {
+                e.target.style.webkitTouchCallout = 'none';
+                e.target.style.webkitUserSelect = 'none';
+            }
+        }, { capture: true, passive: true });
+
+        // 3. Дополнительный предохранитель для Android WebViews
+        document.addEventListener('gesturestart', function(e) {
+            if (e.target.tagName === 'IMG') {
+                e.preventDefault();
+            }
+        }, { capture: true });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="api.js"></script>
+    <script src="reader.js"></script>
+    <script src="contextMenu.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const appScript = document.createElement('script');
+            appScript.src = "app.js";
+            document.body.appendChild(appScript);
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').catch(function(err) {
+                    console.error('Ошибка регистрации ServiceWorker:', err);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
