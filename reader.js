@@ -13,7 +13,7 @@ const reader = {
     // Управление предзагрузкой
     preloadedUrls: new Set(),
     _preloadTimer: null,
-    _preloadCount: 5,
+    _preloadCount: 3, // Уменьшено для iOS
 
     _touchStarted: false,
     _touchMoved: false,
@@ -25,47 +25,96 @@ const reader = {
     _touchStartY: 0,
     _touchEndX: 0,
     _touchEndY: 0,
+    
+    // iOS-специфичные флаги
+    _isNavigating: false,
+    _navigationTimeout: null,
+    _isIOS: false,
+    _isLoading: false,
+    _loadQueue: [],
+    _currentLoadPromise: null,
 
     renderPages(mangaId, pagesArray) {
         this.mangaId = mangaId;
         this.pages = pagesArray;
         this.currentIndex = 0;
         this.resetZoom();
+        this._isNavigating = false;
+        this._isLoading = false;
+        this._loadQueue = [];
+        this._currentLoadPromise = null;
         
-        // Очистка состояния предзагрузки
+        // Определяем iOS
+        this._isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        
+        // Очистка состояния
         this.preloadedUrls = new Set();
         if (this._preloadTimer) {
             clearTimeout(this._preloadTimer);
             this._preloadTimer = null;
         }
+        if (this._navigationTimeout) {
+            clearTimeout(this._navigationTimeout);
+            this._navigationTimeout = null;
+        }
 
         const track = document.getElementById('readerTrack');
         if (!track) return;
+        
+        // Очищаем трек
         track.innerHTML = "";
+        track.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
+        track.style.webkitTransition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
 
-        // Создаём слайды без атрибута loading="lazy"
+        // Создаём слайды с защитой от iOS
         const fragment = document.createDocumentFragment();
         this.pages.forEach((pageUrl, index) => {
             const slide = document.createElement('div');
             slide.className = 'reader-slide';
+            slide.dataset.index = index;
+            slide.dataset.loaded = 'false';
+            slide.style.position = 'relative';
+            slide.style.width = '100vw';
+            slide.style.height = '100vh';
+            slide.style.flexShrink = '0';
+            slide.style.display = 'flex';
+            slide.style.alignItems = 'center';
+            slide.style.justifyContent = 'center';
+            slide.style.overflow = 'hidden';
+            
+            // Для iOS - показываем индикатор загрузки
             slide.innerHTML = `
-                <div class="zoom-container" id="zoomContainer-${index}">
-                    <div class="reader-skeleton" id="skeleton-${index}">
-                        <div class="reader-skeleton-inner skeleton-blink"></div>
+                <div class="zoom-container" id="zoomContainer-${index}" 
+                     style="position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%;">
+                    <div class="reader-skeleton" id="skeleton-${index}" 
+                         style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;border-radius:8px;background-color:#121212;display:flex;align-items:center;justify-content:center;z-index:2;">
+                        <div class="reader-skeleton-inner skeleton-blink" 
+                             style="width:100%;height:100%;border-radius:8px;"></div>
                     </div>
                     <img class="reader-img" id="readerImg-${index}" 
                          draggable="false" 
-                         style="opacity:0; transition:opacity 0.3s ease;">
+                         style="opacity:0;transition:opacity 0.3s ease;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;"
+                         data-index="${index}"
+                         data-loaded="false">
                 </div>
             `;
             fragment.appendChild(slide);
         });
         track.appendChild(fragment);
 
-        // Обновляем трек (без вызова предзагрузки, чтобы не мешать)
+        // Обновляем трек без анимации
+        track.style.transition = 'none';
+        track.style.webkitTransition = 'none';
         this._updateTrackOnly();
+        
+        // Восстанавливаем анимацию
+        requestAnimationFrame(() => {
+            track.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
+            track.style.webkitTransition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
+        });
 
-        // Инициализация жестов и кликов (один раз)
+        // Инициализация жестов
         if (!this.isGesturesInitialized) {
             this.initTouchGestures();
             this.isGesturesInitialized = true;
@@ -77,88 +126,283 @@ const reader = {
             this.isPCControlsInitialized = true;
         }
 
-        // Загружаем первую страницу сразу и начинаем предзагрузку
-        this._loadPageImage(0);
-        this._preloadPages(1);
+        // Загружаем первую страницу с приоритетом
+        this._loadPageWithPriority(0);
+        
+        // Предзагружаем следующие страницы
+        setTimeout(() => {
+            this._preloadPages(1);
+        }, 300);
     },
 
-    // Только обновление трека без предзагрузки
     _updateTrackOnly() {
         const track = document.getElementById('readerTrack');
         if (!track) return;
-        track.style.transform = `translate3d(-${this.currentIndex * 100}vw, 0px, 0px)`;
+        
+        const transform = `translate3d(-${this.currentIndex * 100}vw, 0px, 0px)`;
+        track.style.transform = transform;
+        track.style.webkitTransform = transform;
         
         const counter = document.getElementById('pageCounter');
         if (counter) counter.textContent = `${this.currentIndex + 1} / ${this.pages.length}`;
     },
 
-    // Простая предзагрузка: загружаем страницы начиная с startIndex
-    _preloadPages(startIndex) {
-        if (!this.pages || this.pages.length === 0) return;
-        if (startIndex >= this.pages.length) return;
-        
-        // Определяем, сколько страниц загрузить (не больше, чем есть)
-        const count = Math.min(this._preloadCount, this.pages.length - startIndex);
-        if (count <= 0) return;
+    // Загрузка страницы с приоритетом и обработкой ошибок
+    _loadPageWithPriority(index) {
+        if (this._isLoading) {
+            // Если уже идет загрузка, добавляем в очередь
+            this._loadQueue.push(index);
+            return;
+        }
 
-        // Загружаем страницы с интервалом 150 мс
-        let index = startIndex;
-        const loadNext = () => {
-            if (index >= startIndex + count) {
-                // После загрузки первой партии, если есть ещё страницы – загружаем следующую порцию
-                const nextStart = startIndex + this._preloadCount;
-                if (nextStart < this.pages.length) {
-                    this._preloadTimer = setTimeout(() => {
-                        this._preloadPages(nextStart);
-                    }, 400);
-                }
-                return;
-            }
-
-            // Загружаем конкретную страницу
-            this._loadPageImage(index);
-            index++;
-            // Задержка между загрузками
-            this._preloadTimer = setTimeout(loadNext, 150);
-        };
-
-        loadNext();
-    },
-
-    // Загрузка одной страницы по индексу
-    _loadPageImage(index) {
         const img = document.getElementById(`readerImg-${index}`);
         if (!img) return;
 
         const url = this.pages[index];
         if (!url) return;
 
-        // Если уже загружено – показываем
-        if (this.preloadedUrls.has(url)) {
-            if (img.style.opacity === '0' || img.style.opacity === 0) {
-                img.style.opacity = '1';
-                const sk = document.getElementById(`skeleton-${index}`);
-                if (sk) sk.classList.add('skeleton-hidden');
-            }
+        // Проверяем, не загружена ли уже
+        if (this.preloadedUrls.has(url) && img.dataset.loaded === 'true') {
+            this._showLoadedImage(index);
             return;
         }
 
-        // Начинаем загрузку
-        this.preloadedUrls.add(url);
-        img.src = url;
-        
-        // Обработчик успешной загрузки
-        img.onload = () => {
-            img.style.opacity = '1';
+        this._isLoading = true;
+        this._currentLoadPromise = new Promise((resolve, reject) => {
+            // Показываем скелетон
             const sk = document.getElementById(`skeleton-${index}`);
-            if (sk) sk.classList.add('skeleton-hidden');
-        };
+            if (sk) {
+                sk.style.display = 'flex';
+                sk.style.opacity = '1';
+                sk.style.visibility = 'visible';
+            }
+            
+            // Очищаем предыдущий img
+            img.onload = null;
+            img.onerror = null;
+            img.src = '';
+            
+            // Устанавливаем новый src
+            img.src = url;
+            this.preloadedUrls.add(url);
+            
+            // Таймаут для защиты от зависаний (особенно для iOS)
+            const timeoutId = setTimeout(() => {
+                if (img.dataset.loaded !== 'true') {
+                    console.warn(`Timeout loading page ${index}`);
+                    this._isLoading = false;
+                    // Показываем ошибку
+                    if (sk) {
+                        sk.innerHTML = '<div style="color:#ff9500;font-size:14px;text-align:center;">⏳ Загрузка...</div>';
+                    }
+                    // Пробуем перезагрузить через секунду
+                    setTimeout(() => {
+                        this._loadPageWithPriority(index);
+                    }, 1000);
+                    resolve(false);
+                }
+            }, 8000);
+
+            img.onload = () => {
+                clearTimeout(timeoutId);
+                img.dataset.loaded = 'true';
+                this._showLoadedImage(index);
+                this._isLoading = false;
+                
+                // Обрабатываем очередь
+                this._processQueue();
+                resolve(true);
+            };
+            
+            img.onerror = () => {
+                clearTimeout(timeoutId);
+                this.preloadedUrls.delete(url);
+                this._isLoading = false;
+                
+                // Показываем ошибку
+                if (sk) {
+                    sk.innerHTML = '<div style="color:#ff3b30;font-size:14px;">⚠️ Ошибка загрузки</div>';
+                }
+                
+                // Пробуем перезагрузить через 2 секунды
+                setTimeout(() => {
+                    this._loadPageWithPriority(index);
+                }, 2000);
+                
+                this._processQueue();
+                resolve(false);
+            };
+        });
+    },
+
+    _showLoadedImage(index) {
+        const img = document.getElementById(`readerImg-${index}`);
+        const sk = document.getElementById(`skeleton-${index}`);
         
-        // Обработчик ошибки
-        img.onerror = () => {
-            this.preloadedUrls.delete(url);
-            // Показываем скелетон с ошибкой (можно оставить как есть)
+        if (img) {
+            img.style.opacity = '1';
+            img.dataset.loaded = 'true';
+        }
+        
+        if (sk) {
+            sk.style.display = 'none';
+            sk.style.opacity = '0';
+            sk.style.visibility = 'hidden';
+        }
+        
+        const slide = img?.closest('.reader-slide');
+        if (slide) slide.dataset.loaded = 'true';
+        
+        // Обновляем трек, если это текущая страница
+        if (index === this.currentIndex) {
+            const track = document.getElementById('readerTrack');
+            if (track && this._isIOS) {
+                // iOS-фикс: принудительно обновляем позицию
+                const transform = track.style.transform;
+                track.style.transition = 'none';
+                track.style.webkitTransition = 'none';
+                requestAnimationFrame(() => {
+                    track.style.transform = transform;
+                    track.style.webkitTransform = transform;
+                    requestAnimationFrame(() => {
+                        track.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
+                        track.style.webkitTransition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
+                    });
+                });
+            }
+        }
+    },
+
+    _processQueue() {
+        if (this._loadQueue.length > 0 && !this._isLoading) {
+            const nextIndex = this._loadQueue.shift();
+            this._loadPageWithPriority(nextIndex);
+        }
+    },
+
+    _preloadPages(startIndex) {
+        if (!this.pages || this.pages.length === 0) return;
+        if (startIndex >= this.pages.length) return;
+        
+        // Для iOS уменьшаем количество предзагружаемых страниц
+        const count = Math.min(this._preloadCount, this.pages.length - startIndex);
+        if (count <= 0) return;
+
+        let index = startIndex;
+        const loadNext = () => {
+            if (index >= startIndex + count) {
+                // Загружаем следующую партию с задержкой
+                const nextStart = startIndex + this._preloadCount;
+                if (nextStart < this.pages.length) {
+                    this._preloadTimer = setTimeout(() => {
+                        this._preloadPages(nextStart);
+                    }, 500);
+                }
+                return;
+            }
+
+            const img = document.getElementById(`readerImg-${index}`);
+            if (img && img.dataset.loaded !== 'true') {
+                // Для iOS загружаем только если не текущая страница
+                if (index !== this.currentIndex) {
+                    this._loadPageWithPriority(index);
+                }
+            }
+            index++;
+            this._preloadTimer = setTimeout(loadNext, 200);
         };
+
+        loadNext();
+    },
+
+    // Безопасная навигация с проверкой загрузки
+    navigateTo(index, direction) {
+        if (this._isNavigating) return;
+        if (index < 0 || index >= this.pages.length) return;
+        if (index === this.currentIndex) return;
+
+        // Проверяем, загружена ли целевая страница
+        const targetImg = document.getElementById(`readerImg-${index}`);
+        const isLoaded = targetImg && targetImg.dataset.loaded === 'true';
+
+        if (!isLoaded) {
+            // На iOS показываем индикатор загрузки без перехода
+            if (this._isIOS) {
+                const sk = document.getElementById(`skeleton-${index}`);
+                if (sk) {
+                    sk.style.display = 'flex';
+                    sk.style.opacity = '1';
+                    sk.style.visibility = 'visible';
+                }
+                // Загружаем страницу и после загрузки переходим
+                this._loadPageWithPriority(index).then(() => {
+                    if (index === this.currentIndex + 1 || index === this.currentIndex - 1) {
+                        this._performNavigation(index);
+                    }
+                });
+                return;
+            } else {
+                // Android: загружаем и переходим
+                this._loadPageWithPriority(index);
+                // Небольшая задержка для начала загрузки
+                setTimeout(() => {
+                    this._performNavigation(index);
+                }, 100);
+                return;
+            }
+        }
+
+        this._performNavigation(index);
+    },
+
+    _performNavigation(index) {
+        if (this._isNavigating) return;
+        
+        this._isNavigating = true;
+        this.currentIndex = index;
+        this.resetZoom();
+        
+        // Обновляем трек с анимацией
+        const track = document.getElementById('readerTrack');
+        if (track) {
+            const transform = `translate3d(-${index * 100}vw, 0px, 0px)`;
+            track.style.transform = transform;
+            track.style.webkitTransform = transform;
+        }
+        
+        const counter = document.getElementById('pageCounter');
+        if (counter) counter.textContent = `${index + 1} / ${this.pages.length}`;
+        
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+        }
+
+        // Загружаем текущую страницу, если не загружена
+        const currentImg = document.getElementById(`readerImg-${index}`);
+        if (currentImg && currentImg.dataset.loaded !== 'true') {
+            this._loadPageWithPriority(index);
+        }
+
+        // Предзагружаем соседние страницы
+        this._preloadPages(index + 1);
+        if (index > 0) {
+            this._loadPageWithPriority(index - 1);
+        }
+
+        // Обновляем комментарии
+        const commentsPanel = document.getElementById('commentsPanel');
+        if (commentsPanel?.classList.contains('open')) {
+            document.getElementById('commentsTitle').textContent = `Комментарии (стр. ${index + 1})`;
+            this.loadCommentsForCurrentPage?.();
+        }
+
+        // Разблокируем навигацию
+        if (this._navigationTimeout) {
+            clearTimeout(this._navigationTimeout);
+        }
+        this._navigationTimeout = setTimeout(() => {
+            this._isNavigating = false;
+        }, 400);
     },
 
     applyZoom(scale, x = 0, y = 0) {
@@ -170,6 +414,7 @@ const reader = {
             container.style.willChange = 'transform';
             container.style.transition = this.scale === 1 ? 'transform 0.2s' : 'none';
             container.style.transform = `scale(${this.scale}) translate(${this.currentX}px, ${this.currentY}px)`;
+            container.style.webkitTransform = `scale(${this.scale}) translate(${this.currentX}px, ${this.currentY}px)`;
             
             const uiElements = document.querySelectorAll('.reader-ui, .open-comments-trigger-btn, .reader-header');
             uiElements.forEach(el => {
@@ -190,6 +435,7 @@ const reader = {
         if (container) {
             container.style.transition = 'transform 0.2s';
             container.style.transform = 'scale(1) translate(0px, 0px)';
+            container.style.webkitTransform = 'scale(1) translate(0px, 0px)';
         }
         const uiElements = document.querySelectorAll('.reader-ui, .open-comments-trigger-btn, .reader-header');
         uiElements.forEach(el => {
@@ -285,18 +531,25 @@ const reader = {
             const diffX = this._touchStartX - this._touchEndX;
             const diffY = this._touchStartY - this._touchEndY;
             
-            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-                if (diffX > 0 && this.currentIndex < this.pages.length - 1) {
-                    this.currentIndex++;
-                    this.updateTrack();
-                } else if (diffX < 0 && this.currentIndex > 0) {
-                    this.currentIndex--;
-                    this.updateTrack();
+            const minSwipeDistance = this._isIOS ? 60 : 50;
+            
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > minSwipeDistance) {
+                e.preventDefault();
+                
+                const isForward = diffX > 0;
+                const targetIndex = isForward ? this.currentIndex + 1 : this.currentIndex - 1;
+                
+                if (targetIndex >= 0 && targetIndex < this.pages.length) {
+                    // Используем безопасную навигацию
+                    this.navigateTo(targetIndex, isForward ? 'forward' : 'back');
                 }
+                
                 this._touchMoved = false;
+                return;
             }
         }
         
+        // Двойной тап для зума
         if (!this._touchMoved && !this._isPinching) {
             const now = Date.now();
             if (now - this._lastTouchTime < 300) {
@@ -326,6 +579,8 @@ const reader = {
     },
 
     _onClick(e) {
+        if (this._isNavigating) return;
+        
         const panel = document.getElementById('commentsPanel');
         if (panel && panel.classList.contains('open')) {
             this.toggleComments(false);
@@ -340,43 +595,15 @@ const reader = {
         const clickX = e.clientX;
 
         if (clickX > screenWidth * 0.7 && this.currentIndex < this.pages.length - 1) {
-            this.currentIndex++;
-            this.updateTrack();
+            this.navigateTo(this.currentIndex + 1, 'forward');
         } else if (clickX < screenWidth * 0.3 && this.currentIndex > 0) {
-            this.currentIndex--;
-            this.updateTrack();
+            this.navigateTo(this.currentIndex - 1, 'back');
         }
     },
 
     updateTrack() {
-        this.resetZoom();
-        const track = document.getElementById('readerTrack');
-        if (!track) return;
-        track.style.transform = `translate3d(-${this.currentIndex * 100}vw, 0px, 0px)`;
-        
-        const counter = document.getElementById('pageCounter');
-        if (counter) counter.textContent = `${this.currentIndex + 1} / ${this.pages.length}`;
-        
-        if (window.Telegram?.WebApp?.HapticFeedback) {
-            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-        }
-
-        const commentsPanel = document.getElementById('commentsPanel');
-        if (commentsPanel?.classList.contains('open')) {
-            document.getElementById('commentsTitle').textContent = `Комментарии (стр. ${this.currentIndex + 1})`;
-            this.loadCommentsForCurrentPage?.();
-        }
-
-        // Загружаем текущую страницу (если ещё не загружена)
-        this._loadPageImage(this.currentIndex);
-        
-        // Предзагружаем следующие страницы
-        this._preloadPages(this.currentIndex + 1);
-        
-        // Также загружаем предыдущую страницу, если пользователь вернётся назад
-        if (this.currentIndex > 0) {
-            this._loadPageImage(this.currentIndex - 1);
-        }
+        // Используем безопасную навигацию
+        this.navigateTo(this.currentIndex, 'current');
     },
 
     initKeyboardControls() {
@@ -392,17 +619,15 @@ const reader = {
                 return;
             }
 
+            if (this._isNavigating) return;
+
             if (event.key === 'ArrowRight') {
                 if (this.currentIndex < this.pages.length - 1) {
-                    this.currentIndex++;
-                    this.resetZoom();
-                    this.updateTrack();
+                    this.navigateTo(this.currentIndex + 1, 'forward');
                 }
             } else if (event.key === 'ArrowLeft') {
                 if (this.currentIndex > 0) {
-                    this.currentIndex--;
-                    this.resetZoom();
-                    this.updateTrack();
+                    this.navigateTo(this.currentIndex - 1, 'back');
                 }
             }
         };
@@ -499,10 +724,21 @@ const reader = {
             clearTimeout(this._preloadTimer);
             this._preloadTimer = null;
         }
+        if (this._navigationTimeout) {
+            clearTimeout(this._navigationTimeout);
+            this._navigationTimeout = null;
+        }
         this.preloadedUrls.clear();
+        this._loadQueue = [];
+        this._isLoading = false;
+        this._isNavigating = false;
         
         const track = document.getElementById('readerTrack');
-        if (track) track.innerHTML = "";
+        if (track) {
+            track.innerHTML = "";
+            track.style.transform = 'none';
+            track.style.webkitTransform = 'none';
+        }
         
         const panel = document.getElementById('commentsPanel');
         if (panel) panel.classList.remove('open');
