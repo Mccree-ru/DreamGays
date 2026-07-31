@@ -579,7 +579,7 @@ const reader = {
             } else if (clickX < screenWidth * 0.3 && this.currentIndex > 0) {
                 this.navigateTo(this.currentIndex - 1, 'back');
             }
-        }, 250);
+        }, 100);
     },
 
     initKeyboardAndMouseControls() {
