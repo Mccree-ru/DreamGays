@@ -19,10 +19,18 @@ const reader = {
     _touchStarted: false,
     _touchMoved: false,
     _lastTouchTime: 0,
+    _lastDoubleTapTime: 0, // Защита от перелистывания при двойном тапе
     _isPinching: false,
     _isPanning: false,
+    
+    // Математика умного зума (по координатам пальцев)
     _initialPinchDist: 0,
     _initialScale: 1,
+    _initialX: 0,
+    _initialY: 0,
+    _pinchCenterX: 0,
+    _pinchCenterY: 0,
+
     _touchStartX: 0,
     _touchStartY: 0,
     _lastTouchX: 0,
@@ -51,11 +59,9 @@ const reader = {
         this._loadQueue = [];
         this._currentLoadPromise = null;
         
-        // Определяем iOS
         this._isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         
-        // Очистка состояния
         this.preloadedUrls = new Set();
         if (this._preloadTimer) clearTimeout(this._preloadTimer);
         if (this._navigationTimeout) clearTimeout(this._navigationTimeout);
@@ -63,7 +69,6 @@ const reader = {
         const track = document.getElementById('readerTrack');
         if (!track) return;
         
-        // Очищаем трек
         track.innerHTML = "";
         track.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
         track.style.webkitTransition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
@@ -142,10 +147,8 @@ const reader = {
             this._loadQueue.push(index);
             return;
         }
-
         const img = document.getElementById(`readerImg-${index}`);
         if (!img) return;
-
         const url = this.pages[index];
         if (!url) return;
 
@@ -155,7 +158,7 @@ const reader = {
         }
 
         this._isLoading = true;
-        this._currentLoadPromise = new Promise((resolve, reject) => {
+        this._currentLoadPromise = new Promise((resolve) => {
             const sk = document.getElementById(`skeleton-${index}`);
             if (sk) {
                 sk.style.display = 'flex';
@@ -168,10 +171,8 @@ const reader = {
             img.src = url;
             this.preloadedUrls.add(url);
             
-            // Восстановлен таймаут защиты от зависаний (оригинальный код)
             const timeoutId = setTimeout(() => {
                 if (img.dataset.loaded !== 'true') {
-                    console.warn(`Timeout loading page ${index}`);
                     this._isLoading = false;
                     if (sk) sk.innerHTML = '<div style="color:#ff9500;font-size:14px;text-align:center;">⏳ Загрузка...</div>';
                     setTimeout(() => { this._loadPageWithPriority(index); }, 1000);
@@ -208,7 +209,6 @@ const reader = {
             img.style.opacity = '1';
             img.dataset.loaded = 'true';
         }
-        
         if (sk) {
             sk.style.display = 'none';
             sk.style.opacity = '0';
@@ -259,7 +259,6 @@ const reader = {
                 }
                 return;
             }
-
             const img = document.getElementById(`readerImg-${index}`);
             if (img && img.dataset.loaded !== 'true' && index !== this.currentIndex) {
                 this._loadPageWithPriority(index);
@@ -267,11 +266,9 @@ const reader = {
             index++;
             this._preloadTimer = setTimeout(loadNext, 200);
         };
-
         loadNext();
     },
 
-    // Восстановлена безопасная навигация (с задержкой для iOS)
     navigateTo(index, direction) {
         if (this._isNavigating) return;
         if (index < 0 || index >= this.pages.length) return;
@@ -303,7 +300,6 @@ const reader = {
         this._performNavigation(index);
     },
 
-    // Восстановлено обновление панели комментариев при свайпе!
     _performNavigation(index) {
         if (this._isNavigating) return;
         
@@ -333,7 +329,6 @@ const reader = {
         this._preloadPages(index + 1);
         if (index > 0) this._loadPageWithPriority(index - 1);
 
-        // ВОССТАНОВЛЕННЫЙ БЛОК КОММЕНТАРИЕВ
         const commentsPanel = document.getElementById('commentsPanel');
         if (commentsPanel?.classList.contains('open')) {
             document.getElementById('commentsTitle').textContent = `Комментарии (стр. ${index + 1})`;
@@ -344,7 +339,6 @@ const reader = {
         this._navigationTimeout = setTimeout(() => { this._isNavigating = false; }, 400);
     },
 
-    // Новый движок Зума и Перетаскивания (с ограничениями)
     applyZoom(scale, x = 0, y = 0) {
         this.scale = Math.max(1, Math.min(scale, 4));
         
@@ -412,7 +406,13 @@ const reader = {
         if (touches.length === 2) {
             this._isPinching = true;
             this._isPanning = false;
+            
+            // Фиксируем исходные значения для умного зума (в точку пальцев)
             this._initialScale = this.scale;
+            this._initialX = this.currentX;
+            this._initialY = this.currentY;
+            this._pinchCenterX = (touches[0].clientX + touches[1].clientX) / 2;
+            this._pinchCenterY = (touches[0].clientY + touches[1].clientY) / 2;
             this._initialPinchDist = Math.hypot(
                 touches[0].clientX - touches[1].clientX,
                 touches[0].clientY - touches[1].clientY
@@ -445,7 +445,24 @@ const reader = {
             );
             if (this._initialPinchDist > 0) {
                 const newScale = this._initialScale * (currentDist / this._initialPinchDist);
-                this.applyZoom(newScale, this.currentX, this.currentY);
+                
+                // Рассчитываем смещение к центру между пальцами, учитывая панорамирование
+                const currentPinchX = (touches[0].clientX + touches[1].clientX) / 2;
+                const currentPinchY = (touches[0].clientY + touches[1].clientY) / 2;
+                
+                const rectX = this._pinchCenterX - window.innerWidth / 2;
+                const rectY = this._pinchCenterY - window.innerHeight / 2;
+                
+                const dx = rectX - this._initialX;
+                const dy = rectY - this._initialY;
+                
+                const panX = currentPinchX - this._pinchCenterX;
+                const panY = currentPinchY - this._pinchCenterY;
+                
+                const targetX = rectX - dx * (newScale / this._initialScale) + panX;
+                const targetY = rectY - dy * (newScale / this._initialScale) + panY;
+                
+                this.applyZoom(newScale, targetX, targetY);
             }
         } else if (touches.length === 1 && this.scale > 1 && this._isPanning) {
             e.preventDefault();
@@ -501,8 +518,22 @@ const reader = {
             const now = Date.now();
             if (now - this._lastTouchTime < 300) {
                 if (e.cancelable) e.preventDefault();
-                if (this.scale > 1) this.resetZoom();
-                else this.applyZoom(2, 0, 0);
+                
+                if (this.scale > 1) {
+                    this.resetZoom();
+                } else {
+                    // Умный зум в ту точку, куда мы дважды тапнули
+                    const touch = e.changedTouches[0];
+                    const rectX = touch.clientX - window.innerWidth / 2;
+                    const rectY = touch.clientY - window.innerHeight / 2;
+                    
+                    const targetX = -rectX;
+                    const targetY = -rectY;
+                    
+                    this.applyZoom(2, targetX, targetY);
+                }
+                
+                this._lastDoubleTapTime = now; // Ставим метку, чтобы заблокировать перелистывание
                 this._lastTouchTime = 0;
                 return;
             }
@@ -523,7 +554,11 @@ const reader = {
     _onClick(e) {
         if (this._isNavigating) return;
         
-        // ВОССТАНОВЛЕННАЯ ЛОГИКА ЗАКРЫТИЯ КОММЕНТОВ
+        // ЗАЩИТА: Блокируем клик, если только что был двойной тап!
+        if (this._lastDoubleTapTime && (Date.now() - this._lastDoubleTapTime < 500)) {
+            return; 
+        }
+        
         const panel = document.getElementById('commentsPanel');
         if (panel && panel.classList.contains('open')) {
             this.toggleComments(false);
@@ -542,10 +577,6 @@ const reader = {
         } else if (clickX < screenWidth * 0.3 && this.currentIndex > 0) {
             this.navigateTo(this.currentIndex - 1, 'back');
         }
-    },
-
-    updateTrack() {
-        this.navigateTo(this.currentIndex, 'current');
     },
 
     initKeyboardAndMouseControls() {
@@ -569,15 +600,25 @@ const reader = {
 
         window.addEventListener('keydown', this._keydownHandler);
 
-        // Интеграция мыши (колесико и перетаскивание) для ПК
         const track = document.getElementById('readerTrack');
         if (!track) return;
 
+        // Зум колесиком точно в место нахождения курсора
         track.addEventListener('wheel', (e) => {
             e.preventDefault();
             const newScale = this.scale + (e.deltaY > 0 ? -0.25 : 0.25);
-            if (newScale <= 1) this.resetZoom();
-            else this.applyZoom(newScale, this.currentX, this.currentY);
+            if (newScale <= 1) {
+                this.resetZoom();
+            } else {
+                const rectX = e.clientX - window.innerWidth / 2;
+                const rectY = e.clientY - window.innerHeight / 2;
+                const dx = rectX - this.currentX;
+                const dy = rectY - this.currentY;
+                const targetX = rectX - dx * (newScale / this.scale);
+                const targetY = rectY - dy * (newScale / this.scale);
+                
+                this.applyZoom(newScale, targetX, targetY);
+            }
         }, { passive: false });
 
         track.addEventListener('mousedown', (e) => {
@@ -601,10 +642,16 @@ const reader = {
 
         window.addEventListener('mouseup', () => { this._isMouseDown = false; });
         
+        // Двойной клик на ПК с умным зумом по координатам мыши
         track.addEventListener('dblclick', (e) => {
             if (e.target.closest('button')) return;
-            if (this.scale > 1) this.resetZoom();
-            else this.applyZoom(2, 0, 0);
+            if (this.scale > 1) {
+                this.resetZoom();
+            } else {
+                const rectX = e.clientX - window.innerWidth / 2;
+                const rectY = e.clientY - window.innerHeight / 2;
+                this.applyZoom(2, -rectX, -rectY);
+            }
         });
     },
 
