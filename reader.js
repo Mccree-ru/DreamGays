@@ -16,7 +16,7 @@ const reader = {
 
     // Переменные для тача (Zoom & Pan)
     _touchStarted: false,
-    _preventClick: false, // Блокировка клика после перетаскивания/зума
+    _preventClick: false,
     _isPinching: false,
     _isPanning: false,
     
@@ -36,6 +36,7 @@ const reader = {
     // Универсальные переменные для кликов и мыши
     _lastClickTime: 0,
     _clickTimeout: null,
+    _lastDoubleTapTime: 0,
     _isMouseDown: false,
     _mouseX: 0,
     _mouseY: 0,
@@ -275,11 +276,9 @@ const reader = {
                     sk.style.opacity = '1';
                     sk.style.visibility = 'visible';
                 }
-                // На iOS ждём загрузки перед перелистыванием
-                this._isLoading = false; // Сбрасываем флаг, чтобы пустить запрос вне очереди
+                this._isLoading = false;
                 this._loadPageWithPriority(index);
                 
-                // Проверяем каждые 100мс, загрузилась ли картинка
                 const checkLoad = setInterval(() => {
                     if (targetImg && targetImg.dataset.loaded === 'true') {
                         clearInterval(checkLoad);
@@ -289,7 +288,6 @@ const reader = {
                     }
                 }, 100);
                 
-                // Таймаут на крайний случай
                 setTimeout(() => clearInterval(checkLoad), 5000);
                 return;
             } else {
@@ -349,7 +347,6 @@ const reader = {
         } else {
             const screenW = window.innerWidth;
             const screenH = window.innerHeight;
-            // Ограничиваем панорамирование
             const maxX = (screenW * (this.scale - 1)) / 2;
             const maxY = (screenH * (this.scale - 1)) / 2;
             this.currentX = Math.max(-maxX, Math.min(x, maxX));
@@ -358,7 +355,6 @@ const reader = {
 
         const container = document.getElementById(`zoomContainer-${this.currentIndex}`);
         if (container) {
-            // Без анимации во время самого жеста
             container.style.transition = (this._isPinching || this._isPanning || this._isMouseDown) ? 'none' : 'transform 0.2s cubic-bezier(0.1, 0.57, 0.1, 1)';
             const transformStr = `translate3d(${this.currentX}px, ${this.currentY}px, 0px) scale(${this.scale})`;
             container.style.transform = transformStr;
@@ -409,28 +405,26 @@ const reader = {
             this._isPinching = true;
             this._isPanning = false;
             
-            // Запоминаем исходные параметры для точной математики зума
             this._initialScale = this.scale;
             this._initialX = this.currentX;
             this._initialY = this.currentY;
-            
             this._pinchCenterX = (touches[0].clientX + touches[1].clientX) / 2;
             this._pinchCenterY = (touches[0].clientY + touches[1].clientY) / 2;
-            
             this._initialPinchDist = Math.hypot(
                 touches[0].clientX - touches[1].clientX,
                 touches[0].clientY - touches[1].clientY
             );
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
         } else if (touches.length === 1) {
             this._isPinching = false;
+            // ИСПРАВЛЕНИЕ: Не включаем панорамирование (перетаскивание) мгновенно. Ждем движения.
+            this._isPanning = false; 
             this._touchStartX = touches[0].clientX;
             this._touchStartY = touches[0].clientY;
             this._lastTouchX = touches[0].clientX;
             this._lastTouchY = touches[0].clientY;
 
-            if (this.scale > 1) {
-                this._isPanning = true;
+            if (this.scale > 1 && e.cancelable) {
                 e.preventDefault();
             }
         }
@@ -441,8 +435,8 @@ const reader = {
         const touches = e.touches;
 
         if (touches.length === 2 && this._isPinching) {
-            e.preventDefault();
-            this._preventClick = true; // Блокируем клик после зума
+            if (e.cancelable) e.preventDefault();
+            this._preventClick = true; 
             
             const currentDist = Math.hypot(
                 touches[0].clientX - touches[1].clientX,
@@ -452,15 +446,12 @@ const reader = {
             if (this._initialPinchDist > 0) {
                 const newScale = this._initialScale * (currentDist / this._initialPinchDist);
                 
-                // Координаты центра пальцев сейчас
                 const currentPinchX = (touches[0].clientX + touches[1].clientX) / 2;
                 const currentPinchY = (touches[0].clientY + touches[1].clientY) / 2;
                 
-                // Координаты изначального места щипка относительно центра экрана
                 const rectX = this._pinchCenterX - window.innerWidth / 2;
                 const rectY = this._pinchCenterY - window.innerHeight / 2;
                 
-                // Расчет смещения, чтобы картинка прилипла к пальцам
                 const dx = rectX - this._initialX;
                 const dy = rectY - this._initialY;
                 const scaleRatio = newScale / this._initialScale;
@@ -473,18 +464,24 @@ const reader = {
                 
                 this.applyZoom(newScale, targetX, targetY);
             }
-        } else if (touches.length === 1 && this.scale > 1 && this._isPanning) {
-            e.preventDefault();
-            this._preventClick = true; // Блокируем клик после перемещения
-            
-            const deltaX = touches[0].clientX - this._lastTouchX;
-            const deltaY = touches[0].clientY - this._lastTouchY;
-            this._lastTouchX = touches[0].clientX;
-            this._lastTouchY = touches[0].clientY;
+        } else if (touches.length === 1 && this.scale > 1) {
+            // ИСПРАВЛЕНИЕ: Включаем Pan только если палец сдвинулся больше чем на 5 пикселей!
+            const moveDist = Math.hypot(touches[0].clientX - this._touchStartX, touches[0].clientY - this._touchStartY);
+            if (moveDist > 5) {
+                this._isPanning = true;
+                this._preventClick = true;
+            }
 
-            this.applyZoom(this.scale, this.currentX + deltaX, this.currentY + deltaY);
+            if (this._isPanning) {
+                if (e.cancelable) e.preventDefault();
+                const deltaX = touches[0].clientX - this._lastTouchX;
+                const deltaY = touches[0].clientY - this._lastTouchY;
+                this._lastTouchX = touches[0].clientX;
+                this._lastTouchY = touches[0].clientY;
+
+                this.applyZoom(this.scale, this.currentX + deltaX, this.currentY + deltaY);
+            }
         } else if (touches.length === 1 && !this._isPinching) {
-            // Если мы просто листаем, тоже проверяем, сдвинули ли палец далеко
             if (Math.hypot(touches[0].clientX - this._touchStartX, touches[0].clientY - this._touchStartY) > 10) {
                 this._preventClick = true;
             }
@@ -508,7 +505,31 @@ const reader = {
             return;
         }
 
-        // Логика свайпа (работает только если картинка не приближена)
+        // ОБРАБОТКА ТАПОВ И ДВОЙНОГО ТАПА
+        if (!this._preventClick && !this._isPinching) {
+            const now = Date.now();
+            if (now - this._lastTouchTime < 300) {
+                // Двойной тап распознан!
+                if (e.cancelable) e.preventDefault();
+                clearTimeout(this._clickTimeout); // Отменяем одиночный клик, чтобы страница не перелистнулась
+                
+                if (this.scale > 1) {
+                    this.resetZoom(); // Отдаляет обратно к 1x
+                } else {
+                    const touch = e.changedTouches[0];
+                    const rectX = touch.clientX - window.innerWidth / 2;
+                    const rectY = touch.clientY - window.innerHeight / 2;
+                    this.applyZoom(2, -rectX, -rectY); // Приближает в точку пальца
+                }
+                
+                this._lastDoubleTapTime = now;
+                this._lastTouchTime = 0;
+                return;
+            }
+            this._lastTouchTime = now;
+        }
+
+        // Логика свайпа для навигации
         if (this._preventClick && !this._isPinching && this.scale === 1) {
             const diffX = this._touchStartX - this._lastTouchX;
             const diffY = this._touchStartY - this._lastTouchY;
@@ -534,13 +555,11 @@ const reader = {
         track.addEventListener('click', this._handleClick);
     },
 
-    // ЕДИНЫЙ ЦЕНТР ОБРАБОТКИ ВСЕХ ТАПОВ И КЛИКОВ (Решает проблему двойного тапа)
     _onClick(e) {
         if (this._isNavigating) return;
-        if (e.target.closest('button')) return;
-        
-        // Если только что был свайп или зум — игнорируем клик
+        if (this._lastDoubleTapTime && (Date.now() - this._lastDoubleTapTime < 500)) return;
         if (this._preventClick) return;
+        if (e.target.closest('button')) return;
 
         const panel = document.getElementById('commentsPanel');
         if (panel && panel.classList.contains('open')) {
@@ -548,42 +567,19 @@ const reader = {
             return;
         }
 
-        const now = Date.now();
-        
-        // ОБРАБОТКА ДВОЙНОГО ТАПА / КЛИКА
-        if (now - this._lastClickTime < 300) {
-            clearTimeout(this._clickTimeout); // Отменяем одиночный клик (страница не перелистнется!)
-            this._lastClickTime = 0;
-            
-            if (this.scale > 1) {
-                this.resetZoom();
-            } else {
-                // Умный зум ровно в точку тапа
-                const rectX = e.clientX - window.innerWidth / 2;
-                const rectY = e.clientY - window.innerHeight / 2;
-                
-                // Чтобы точка под пальцем осталась под пальцем при увеличении в 2 раза
-                this.applyZoom(2, -rectX, -rectY); 
-            }
-            return;
-        }
-
-        this._lastClickTime = now;
-
-        // Если картинка уже зумирована, одиночный тап ничего не делает (чтобы случайно не перелистнуть при чтении)
-        if (this.scale > 1) return;
-
-        const screenWidth = window.innerWidth;
-        const clickX = e.clientX;
-
-        // ОБРАБОТКА ОДИНОЧНОГО ТАПА (с защитной задержкой 250мс)
+        clearTimeout(this._clickTimeout);
         this._clickTimeout = setTimeout(() => {
+            if (this.scale > 1) return;
+
+            const screenWidth = window.innerWidth;
+            const clickX = e.clientX;
+
             if (clickX > screenWidth * 0.7 && this.currentIndex < this.pages.length - 1) {
                 this.navigateTo(this.currentIndex + 1, 'forward');
             } else if (clickX < screenWidth * 0.3 && this.currentIndex > 0) {
                 this.navigateTo(this.currentIndex - 1, 'back');
             }
-        }, 150); 
+        }, 250);
     },
 
     initKeyboardAndMouseControls() {
@@ -610,7 +606,6 @@ const reader = {
         const track = document.getElementById('readerTrack');
         if (!track) return;
 
-        // Зум колесиком мыши тоже направлен точно на курсор
         track.addEventListener('wheel', (e) => {
             e.preventDefault();
             const newScale = this.scale + (e.deltaY > 0 ? -0.25 : 0.25);
@@ -636,7 +631,7 @@ const reader = {
                 this._isMouseDown = true;
                 this._mouseX = e.clientX;
                 this._mouseY = e.clientY;
-                e.preventDefault();
+                if (e.cancelable) e.preventDefault();
             }
         });
 
@@ -651,6 +646,18 @@ const reader = {
         });
 
         window.addEventListener('mouseup', () => { this._isMouseDown = false; });
+        
+        // Двойной клик на ПК
+        track.addEventListener('dblclick', (e) => {
+            if (e.target.closest('button')) return;
+            if (this.scale > 1) {
+                this.resetZoom();
+            } else {
+                const rectX = e.clientX - window.innerWidth / 2;
+                const rectY = e.clientY - window.innerHeight / 2;
+                this.applyZoom(2, -rectX, -rectY);
+            }
+        });
     },
 
     toggleComments(show) {
