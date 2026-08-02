@@ -12,7 +12,7 @@ const reader = {
     // Управление памятью и предзагрузкой
     preloadedUrls: new Set(),
     _preloadTimer: null,
-    _preloadCount: 2, // Ограничено для экономии памяти на слабых устройствах
+    _preloadCount: 2, // Ограничено для экономии памяти на iOS
 
     // Переменные для тача (Zoom & Pan)
     _touchStarted: false,
@@ -33,7 +33,7 @@ const reader = {
     _lastTouchX: 0,
     _lastTouchY: 0,
     
-    // Универсальные переменные для кликов и мыши
+    // Универсальные переменные
     _clickTimeout: null,
     _isMouseDown: false,
     _mouseX: 0,
@@ -88,7 +88,7 @@ const reader = {
             slide.style.justifyContent = 'center';
             slide.style.overflow = 'hidden';
             
-            // Удалена моргающая CSS анимация скелетона (GPU Optimization)
+            // Статичный скелетон без мерцания
             slide.innerHTML = `
                 <div class="zoom-container" id="zoomContainer-${index}" 
                      style="position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%;touch-action:none;transform-origin:center center;">
@@ -141,7 +141,6 @@ const reader = {
         if (counter) counter.textContent = `${this.currentIndex + 1} / ${this.pages.length}`;
     },
 
-    // ОПТИМИЗАЦИЯ ПАМЯТИ: Выгрузка невидимых страниц (Fix iOS Crashes)
     _cleanupMemory() {
         const keepMin = this.currentIndex - 1;
         const keepMax = this.currentIndex + 2;
@@ -152,7 +151,7 @@ const reader = {
 
             if (i < keepMin || i > keepMax) {
                 if (img.hasAttribute('src')) {
-                    img.removeAttribute('src'); // Освобождаем память GPU
+                    img.removeAttribute('src'); // Выгружаем из ОЗУ
                     img.dataset.loaded = 'false';
                     img.style.opacity = '0';
                     this.preloadedUrls.delete(this.pages[i]);
@@ -197,7 +196,6 @@ const reader = {
         
         this.preloadedUrls.add(url);
         
-        // ФОНОВАЯ ЗАГРУЗКА без частичной отрисовки
         const virtualImg = new Image();
         
         const timeoutId = setTimeout(() => {
@@ -345,7 +343,6 @@ const reader = {
             window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
         }
 
-        // Очищаем старые страницы из памяти
         this._cleanupMemory();
 
         const currentImg = document.getElementById(`readerImg-${index}`);
@@ -531,7 +528,6 @@ const reader = {
             return;
         }
 
-        // Логика свайпа для навигации
         if (this._preventClick && !this._isPinching && this.scale === 1) {
             const diffX = this._touchStartX - this._lastTouchX;
             const diffY = this._touchStartY - this._lastTouchY;
@@ -586,7 +582,6 @@ const reader = {
     initKeyboardAndMouseControls() {
         if (this._keydownHandler) window.removeEventListener('keydown', this._keydownHandler);
 
-        // ИСПРАВЛЕНИЕ: Добавлен перехват клавиатуры со стрелками и кнопками A/D
         this._keydownHandler = (e) => {
             const readerScreen = document.getElementById('readerScreen');
             if (!readerScreen || !readerScreen.classList.contains('active')) return;
@@ -594,10 +589,10 @@ const reader = {
             if (this._isNavigating) return;
 
             if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-                e.preventDefault(); // Запрещаем скролл страницы
+                e.preventDefault();
                 if (this.currentIndex < this.pages.length - 1) this.navigateTo(this.currentIndex + 1, 'forward');
             } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-                e.preventDefault(); // Запрещаем скролл страницы
+                e.preventDefault();
                 if (this.currentIndex > 0) this.navigateTo(this.currentIndex - 1, 'back');
             } else if (e.key === 'Escape') {
                 e.preventDefault();
@@ -611,13 +606,24 @@ const reader = {
         const track = document.getElementById('readerTrack');
         if (!track) return;
 
-        // Разделение зума щипком на трекпаде (MacOS) и скролла
         track.addEventListener('wheel', (e) => {
             e.preventDefault();
             
-            if (e.ctrlKey || e.metaKey) {
-                const zoomDelta = -e.deltaY * 0.01; 
-                const newScale = this.scale * (1 + zoomDelta);
+            // Отделяем горизонтальный скролл тачпадом от вертикального вращения колесика
+            const isTrackpadSwipe = !e.ctrlKey && !e.metaKey && (Math.abs(e.deltaX) > Math.abs(e.deltaY));
+
+            if (!isTrackpadSwipe) {
+                // Если картинка приближена, и мы делаем слабый вертикальный скролл без Ctrl (попытка панорамирования вверх-вниз на тачпаде)
+                const isTrackpadVerticalPan = !e.ctrlKey && !e.metaKey && Math.abs(e.deltaY) < 40 && this.scale > 1;
+
+                if (isTrackpadVerticalPan) {
+                    this.applyZoom(this.scale, this.currentX, this.currentY - e.deltaY);
+                    return;
+                }
+
+                // ЗУМ КОЛЕСИКОМ ИЛИ ЩИПКОМ
+                const step = (e.ctrlKey || e.metaKey) ? (-e.deltaY * 0.01) : (e.deltaY > 0 ? -0.2 : 0.2);
+                let newScale = (e.ctrlKey || e.metaKey) ? this.scale * (1 + step) : this.scale + step;
                 
                 if (newScale <= 1.05) {
                     this.resetZoom();
@@ -634,8 +640,9 @@ const reader = {
                     this.applyZoom(newScale, targetX, targetY);
                 }
             } else {
+                // ГОРИЗОНТАЛЬНЫЙ СВАЙП ПО ТАЧПАДУ
                 if (this.scale > 1) {
-                    this.applyZoom(this.scale, this.currentX - e.deltaX, this.currentY - e.deltaY);
+                    this.applyZoom(this.scale, this.currentX - e.deltaX, this.currentY);
                 } else {
                     if (!this._isNavigating) {
                         this._wheelAccumulatorX += e.deltaX;
