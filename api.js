@@ -16,12 +16,13 @@ const api = {
     async fetchCatalog({ genre = null, author = '', sortByPopular = false, page = 0, limit = 9 } = {}) {
         let query = _supabase
             .from('manga')
-            .select(`
+			.select(`
                 *, 
                 likes_count:manga_likes_count, 
-                comments_count:manga_comments_count
+                comments_count:manga_comments_count,
+                is_paid,
+                price
             `);
-
         // Фильтрация по жанрам
         if (genre) {
             query = query.contains('tags', [genre]);
@@ -57,8 +58,10 @@ const api = {
             cover: m.cover || "",
             tags: Array.isArray(m.tags) ? m.tags : [],
             pages: Array.isArray(m.pages) ? m.pages : JSON.parse(m.pages || '[]'),
-            likes: m.likes_count || 0,
-            comments_count: m.comments_count || 0
+			likes: m.likes_count || 0,
+            comments_count: m.comments_count || 0,
+            is_paid: m.is_paid || false,
+            price: m.price || 0
         }));
     },
     async getUserLikesList(userId) {
@@ -98,6 +101,19 @@ const api = {
             .order('created_at', { ascending: true });
         if (error) throw error;
         return data || [];
+    },
+	
+	async fetchUserPurchases(userId) {
+        if (!userId) return [];
+        const { data, error } = await _supabase
+            .from('purchases')
+            .select('manga_id')
+            .eq('user_id', Number(userId));
+        if (error) {
+            console.error("Ошибка загрузки покупок:", error);
+            return [];
+        }
+        return data ? data.map(item => String(item.manga_id)) : [];
     },
 	
 	async fetchAllMangaComments(mangaId) {
