@@ -122,23 +122,29 @@ const api = {
         return data || [];
     },
 
-    async addComment(mangaId, pageIndex, userId, userName, text) {
-        const insertData = {
-            manga_id: String(mangaId),
-            user_id: Number(userId),
-            user_name: userName || "Читатель",
-            text: String(text),
-            created_at: new Date().toISOString()
-        };
-        
-        if (pageIndex !== null) {
-            insertData.page_index = parseInt(pageIndex);
-        }
+	async addComment(mangaId, pageIndex, userId, userName, text) {
+			const insertData = {
+				manga_id: String(mangaId),
+				user_id: Number(userId),
+				user_name: userName || "Читатель",
+				text: String(text),
+				created_at: new Date().toISOString()
+			};
+			
+			if (pageIndex !== null) {
+				insertData.page_index = parseInt(pageIndex);
+			}
 
-        const { error } = await _supabase.from('comments').insert([insertData]);
-        if (error) throw error;
-        return true;
-    },
+			// ИСПРАВЛЕНО: добавляем .select().single() для возврата объекта
+			const { data, error } = await _supabase
+				.from('comments')
+				.insert([insertData])
+				.select()
+				.single();
+				
+			if (error) throw error;
+			return data; // Возвращаем добавленный коммент, чтобы он тут же появился на экране
+		},
 
     async deleteComment(commentId, userId) {
         const { error } = await _supabase
