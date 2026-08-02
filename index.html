@@ -746,6 +746,49 @@
             margin-bottom: 8px; 
             position: relative; 
         }
+		
+		.comments-tabs-container {
+            display: flex;
+            gap: 8px;
+            margin: 25px 0 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        .comment-tab {
+            flex: 1;
+            background: transparent;
+            color: var(--hint-color);
+            border: 1px solid var(--hint-color);
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .comment-tab:active {
+            transform: scale(0.95);
+        }
+
+        .comment-tab.active {
+            background: var(--button-color);
+            color: var(--button-text);
+            border-color: var(--button-color);
+        }
+
+        .comment-page-badge {
+            background: #333;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-left: 6px;
+            vertical-align: middle;
+            font-weight: bold;
+        }
 
         .comment-top-line { 
             display: flex; 
@@ -1316,9 +1359,19 @@
                     <button id="readBtn" class="btn" style="flex:2;">Читать</button>
                 </div>
 
-                <div class="comments-section-title">Обсуждение тайтла</div>
+                <div class="comments-tabs-container">
+                    <button id="tabMainComments" class="comment-tab active" onclick="app.switchCommentTab('main')">Обсуждение тайтла</button>
+                    <button id="tabPagesComments" class="comment-tab" onclick="app.switchCommentTab('pages')">Комменты страниц</button>
+                </div>
+
+                <!-- Контейнер для общих комментариев -->
                 <div id="mainCommentsScroll" class="comments-scroll"></div>
-                <div class="comment-input-block">
+                
+                <!-- Контейнер для комментариев со страниц (скрыт по умолчанию) -->
+                <div id="pagesCommentsScroll" class="comments-scroll" style="display: none;"></div>
+
+                <!-- Поле ввода (скрывается, если выбрана вкладка страниц) -->
+                <div class="comment-input-block" id="mainCommentInputBlock">
                     <input type="text" id="mainCommentInputField" class="comment-input" placeholder="Написать комментарий..." autocomplete="off">
                     <button class="btn" style="width:auto; margin:0; padding:10px 15px;" onclick="app.sendMainComment()">Отправить</button>
                 </div>
