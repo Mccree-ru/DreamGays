@@ -12,6 +12,7 @@ const app = {
     // Переменные фильтрации
     selectedGenreTab: null,
     selectedAuthor: "",
+	userPurchasedIds: [],
     sortPopularActive: false,
 
     // Переменные пагинации
@@ -50,7 +51,10 @@ const app = {
         }
 
         try {
-            this.userLikedIds = await api.getUserLikesList(this.userId);
+			this.userLikedIds = await api.getUserLikesList(this.userId);
+            // Загружаем покупки
+            this.userPurchasedIds = await api.fetchUserPurchases(this.userId);
+            this.subscribeToPurchases(); // Включаем реалтайм
             await this.loadCatalog();
         } catch(e) {
             console.error("Ошибка инициализации данных:", e);
@@ -126,6 +130,30 @@ const app = {
         }
     },
     
+	subscribeToPurchases() {
+        if (!window.supabase) return;
+        window.supabase
+            .channel('public:purchases')
+            .on('postgres_changes', { 
+                event: 'INSERT', 
+                schema: 'public', 
+                table: 'purchases',
+                filter: `user_id=eq.${this.userId}`
+            }, payload => {
+                const newMangaId = String(payload.new.manga_id);
+                if (!this.userPurchasedIds.includes(newMangaId)) {
+                    this.userPurchasedIds.push(newMangaId);
+                    // Если пользователь сейчас смотрит превью этой манги - разблокируем кнопку!
+                    if (this.currentManga && String(this.currentManga.id) === newMangaId) {
+                        this.updateReadButtonUI();
+                    }
+                    // Обновляем бейджи в каталоге
+                    this.renderCatalogGrid(this.allManga);
+                }
+            })
+            .subscribe();
+    },
+	
     async submitMangaJson() {
         const jsonField = document.getElementById('jsonAdminInput');
         const rawValue = jsonField.value.trim();
@@ -280,7 +308,7 @@ const app = {
         }
     },
 
-    renderCatalogGrid(mangaArray, appendMode = false) {
+renderCatalogGrid(mangaArray, appendMode = false) {
         const grid = document.getElementById('catalogGrid');
         if (!grid) return;
         
@@ -322,6 +350,12 @@ const app = {
             }).join('') : '';
 
             const isLiked = this.userLikedIds.includes(String(manga.id));
+            const isPurchased = this.userPurchasedIds.includes(String(manga.id));
+            
+            const lockBadgeHtml = (manga.is_paid && !isPurchased) 
+                ? `<div style="position:absolute; top:10px; left:10px; background:rgba(255, 59, 48, 0.9); padding:4px 10px; border-radius:8px; color:#fff; font-weight:bold; font-size:12px; z-index:10; backdrop-filter:blur(4px); box-shadow: 0 4px 8px rgba(0,0,0,0.5);">🔒 ${manga.price} 🎫</div>` 
+                : '';
+                
             const heartBadgeHtml = isLiked ? `<div class="card-like-badge"><span>READ</span></div>` : '';
             const pagesCount = (manga.pages && Array.isArray(manga.pages)) ? manga.pages.length : 0;
             const likesCount = manga.likes || manga.likes_count || 0;
@@ -330,6 +364,7 @@ const app = {
             card.innerHTML = `
                 <div class="card-cover-wrap">
                     <div class="skeleton-blink" style="position:absolute; inset:0;"></div>
+                    ${lockBadgeHtml}
                     ${heartBadgeHtml}
                     <div class="card-pages-badge">📖 ${pagesCount} стр.</div>
                     <div class="card-right-stats">
@@ -377,7 +412,7 @@ const app = {
             contextMenuManager.init();
         }
     },
-    
+	
     buildAuthorSelect() {
         const select = document.getElementById('authorSelect');
         if (!select) return;
@@ -475,6 +510,7 @@ const app = {
         document.getElementById('previewLikes').textContent = `❤️ ${finalLikes}`;
         document.getElementById('previewComments').textContent = `💬 ${manga.comments_count || 0}`;
 
+		this.updateReadButtonUI();
         this.showScreen('previewScreen');
         
         // СБРАСЫВАЕМ ВКЛАДКУ КОММЕНТАРИЕВ НА ГЛАВНУЮ
@@ -511,6 +547,30 @@ const app = {
 
         // Отрисовываем главные комментарии превью из свежего кэша в памяти
         this.loadMainComments();
+    },
+	
+	updateReadButtonUI() {
+        const readBtnContainer = document.getElementById('readBtnContainer');
+        if (!readBtnContainer || !this.currentManga) return;
+        
+        const isPurchased = this.userPurchasedIds.includes(String(this.currentManga.id));
+        
+        if (this.currentManga.is_paid && !isPurchased) {
+            // Кнопка покупки
+            const botUsername = "DreamContent_Bot"; // Твой бот
+            const buyLink = `https://t.me/${botUsername}?start=buy_${this.currentManga.id}_${this.currentManga.price}`;
+            
+            readBtnContainer.innerHTML = `
+                <button class="btn" style="flex:2; background: #ff3b30;" onclick="tg.openTelegramLink('${buyLink}')">
+                    🔒 Купить за ${this.currentManga.price} 🎫
+                </button>
+            `;
+        } else {
+            // Обычная кнопка чтения
+            readBtnContainer.innerHTML = `
+                <button class="btn" style="flex:2;" onclick="app.startReadingManga()">Читать</button>
+            `;
+        }
     },
     
     async toggleLike() {
