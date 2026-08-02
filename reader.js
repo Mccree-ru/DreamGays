@@ -588,13 +588,14 @@ const reader = {
             if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
             if (this._isNavigating) return;
 
-            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+            // ИСПРАВЛЕНИЕ: Используем e.code для A/D вместо e.key
+            if (e.key === 'ArrowRight' || e.code === 'KeyD') {
                 e.preventDefault();
                 if (this.currentIndex < this.pages.length - 1) this.navigateTo(this.currentIndex + 1, 'forward');
-            } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+            } else if (e.key === 'ArrowLeft' || e.code === 'KeyA') {
                 e.preventDefault();
                 if (this.currentIndex > 0) this.navigateTo(this.currentIndex - 1, 'back');
-            } else if (e.key === 'Escape') {
+            } else if (e.key === 'Escape' || e.code === 'Escape') {
                 e.preventDefault();
                 if (this.scale > 1) this.resetZoom();
                 else window.app?.closeMangaReader();
@@ -609,11 +610,9 @@ const reader = {
         track.addEventListener('wheel', (e) => {
             e.preventDefault();
             
-            // Отделяем горизонтальный скролл тачпадом от вертикального вращения колесика
             const isTrackpadSwipe = !e.ctrlKey && !e.metaKey && (Math.abs(e.deltaX) > Math.abs(e.deltaY));
 
             if (!isTrackpadSwipe) {
-                // Если картинка приближена, и мы делаем слабый вертикальный скролл без Ctrl (попытка панорамирования вверх-вниз на тачпаде)
                 const isTrackpadVerticalPan = !e.ctrlKey && !e.metaKey && Math.abs(e.deltaY) < 40 && this.scale > 1;
 
                 if (isTrackpadVerticalPan) {
@@ -621,7 +620,6 @@ const reader = {
                     return;
                 }
 
-                // ЗУМ КОЛЕСИКОМ ИЛИ ЩИПКОМ
                 const step = (e.ctrlKey || e.metaKey) ? (-e.deltaY * 0.01) : (e.deltaY > 0 ? -0.2 : 0.2);
                 let newScale = (e.ctrlKey || e.metaKey) ? this.scale * (1 + step) : this.scale + step;
                 
@@ -640,7 +638,6 @@ const reader = {
                     this.applyZoom(newScale, targetX, targetY);
                 }
             } else {
-                // ГОРИЗОНТАЛЬНЫЙ СВАЙП ПО ТАЧПАДУ
                 if (this.scale > 1) {
                     this.applyZoom(this.scale, this.currentX - e.deltaX, this.currentY);
                 } else {
