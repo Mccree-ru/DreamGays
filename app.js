@@ -7,7 +7,7 @@ const app = {
     userLikedIds: [], 
     currentManga: null,
     isCurrentLiked: false,
-	currentCommentsTab: 'main', // 'main' или 'pages'
+    currentCommentsTab: 'main', // 'main' или 'pages'
     
     // Переменные фильтрации
     selectedGenreTab: null,
@@ -28,8 +28,16 @@ const app = {
         if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
             tg.ready();
             try { tg.expand(); } catch(e){}
-            this.userId = Number(tg.initDataUnsafe.user.id);
-            this.userName = tg.initDataUnsafe.user.first_name || "Читатель";
+            
+            const tUser = tg.initDataUnsafe.user;
+            this.userId = Number(tUser.id);
+            
+            // ИСПРАВЛЕНИЕ: Берем только Имя и Фамилию для сохранения приватности
+            if (tUser.first_name) {
+                this.userName = tUser.first_name + (tUser.last_name ? ' ' + tUser.last_name : '');
+            } else {
+                this.userName = "Читатель";
+            }
         }
 
         const adminBtn = document.getElementById('adminBtn');
@@ -184,7 +192,6 @@ const app = {
 
         try {
             if (grid) {
-                // ОПТИМИЗАЦИЯ: Меньше скелетонов для быстрого старта
                 let placeholders = "";
                 for (let i = 0; i < 4; i++) {
                     placeholders += `
@@ -214,7 +221,6 @@ const app = {
                 this.buildAuthorSelect();
             }
             
-            // ОПТИМИЗАЦИЯ: Используем requestAnimationFrame для плавного рендера
             requestAnimationFrame(() => {
                 if (grid) grid.innerHTML = "";
                 this.renderCatalogGrid(this.allManga);
@@ -237,7 +243,6 @@ const app = {
         const grid = document.getElementById('catalogGrid');
         if (!grid) return;
 
-        // ОПТИМИЗАЦИЯ: Простой индикатор загрузки
         const scrollLoader = document.createElement('div');
         scrollLoader.id = 'scrollLoader';
         scrollLoader.style.cssText = 'grid-column:1/-1; text-align:center; padding:10px; color:var(--hint-color); font-size:13px; opacity:0.6;';
@@ -291,7 +296,6 @@ const app = {
             }
         }
 
-        // ОПТИМИЗАЦИЯ: Используем DocumentFragment для массового добавления
         const fragment = document.createDocumentFragment();
 
         mangaArray.forEach(manga => {
@@ -339,7 +343,6 @@ const app = {
                 </div>
             `;
 
-            // ОПТИМИЗАЦИЯ: Отложенная загрузка изображений с IntersectionObserver
             const img = document.createElement('img');
             img.className = 'card-cover';
             img.loading = 'lazy';
@@ -472,11 +475,11 @@ const app = {
         document.getElementById('previewLikes').textContent = `❤️ ${finalLikes}`;
         document.getElementById('previewComments').textContent = `💬 ${manga.comments_count || 0}`;
 
-		this.showScreen('previewScreen');
+        this.showScreen('previewScreen');
         
         // СБРАСЫВАЕМ ВКЛАДКУ КОММЕНТАРИЕВ НА ГЛАВНУЮ
         this.switchCommentTab('main');
-		
+        
         // Инициализируем чистые структуры кэша внутри объекта тайтла
         this.currentManga.cachedComments = [];
         this.currentManga.cachedPagesComments = {};
@@ -621,7 +624,7 @@ const app = {
         });
     },
 
-	switchCommentTab(tabName) {
+    switchCommentTab(tabName) {
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         this.currentCommentsTab = tabName;
         
@@ -632,18 +635,18 @@ const app = {
         const inputBlock = document.getElementById('mainCommentInputBlock');
         
         if (tabName === 'main') {
-            btnMain.classList.add('active');
-            btnPages.classList.remove('active');
-            scrollMain.style.display = 'block';
-            scrollPages.style.display = 'none';
-            inputBlock.style.display = 'flex'; // Возвращаем поле ввода
+            if(btnMain) btnMain.classList.add('active');
+            if(btnPages) btnPages.classList.remove('active');
+            if(scrollMain) scrollMain.style.display = 'block';
+            if(scrollPages) scrollPages.style.display = 'none';
+            if(inputBlock) inputBlock.style.display = 'flex'; 
             this.loadMainComments();
         } else {
-            btnPages.classList.add('active');
-            btnMain.classList.remove('active');
-            scrollMain.style.display = 'none';
-            scrollPages.style.display = 'block';
-            inputBlock.style.display = 'none'; // Скрываем поле ввода (оставляем только чтение)
+            if(btnPages) btnPages.classList.add('active');
+            if(btnMain) btnMain.classList.remove('active');
+            if(scrollMain) scrollMain.style.display = 'none';
+            if(scrollPages) scrollPages.style.display = 'block';
+            if(inputBlock) inputBlock.style.display = 'none'; 
             this.loadPagesCommentsPreview();
         }
     },
@@ -655,14 +658,12 @@ const app = {
         const pagesComments = this.currentManga.cachedPagesComments || {};
         let allPageComments = [];
         
-        // Собираем все комменты страниц в один плоский массив
         Object.keys(pagesComments).forEach(pageIndex => {
             pagesComments[pageIndex].forEach(c => {
                 allPageComments.push(c);
             });
         });
 
-        // Сортируем: самые новые комментарии сверху
         allPageComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         if (allPageComments.length === 0) {
@@ -675,10 +676,8 @@ const app = {
             const item = document.createElement('div');
             item.className = 'comment-item';
             const timeString = this.formatCommentTime(c.created_at);
-            const pageNumber = parseInt(c.page_index) + 1; // +1 для отображения пользователю (Стр. 1 вместо Стр. 0)
+            const pageNumber = parseInt(c.page_index) + 1; 
 
-            // Кнопка удаления здесь не нужна, так как мы хотим только чтение из превью. 
-            // Удалять можно внутри самой читалки.
             item.innerHTML = `
                 <div class="comment-top-line">
                     <div>
@@ -692,7 +691,6 @@ const app = {
             container.appendChild(item);
         });
     },
-	
 
     async sendMainComment() {
         const input = document.getElementById('mainCommentInputField');
@@ -703,6 +701,7 @@ const app = {
         try {
             if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             
+            // ИСПРАВЛЕНИЕ: Ждем реальный ответ с добавленным комментом от БД
             const serverComment = await api.addComment(this.currentManga.id, null, this.userId, this.userName, text);
             input.value = "";
             
@@ -712,16 +711,8 @@ const app = {
                 this.currentManga.comments_count = 1;
             }
 
-            if (serverComment && serverComment.id) {
+            if (serverComment) {
                 this.currentManga.cachedComments.unshift(serverComment);
-            } else {
-                this.currentManga.cachedComments.unshift({
-                    id: 'temp_' + Date.now(),
-                    user_id: this.userId,
-                    user_name: this.userName,
-                    text: text,
-                    created_at: new Date().toISOString()
-                });
             }
 
             document.getElementById('previewComments').textContent = `💬 ${this.currentManga.comments_count}`;
@@ -747,21 +738,58 @@ const app = {
         }
     },
 
+    // НОВЫЙ МЕТОД: Беззвучная загрузка комментов для актуализации вкладок
+    async refreshCommentsSilently() {
+        if (!this.currentManga) return;
+        try {
+            const allComments = await api.fetchAllMangaComments(this.currentManga.id);
+            this.currentManga.cachedComments = [];
+            this.currentManga.cachedPagesComments = {};
+            
+            let totalComments = 0;
+            (allComments || []).forEach(comment => {
+                totalComments++;
+                if (comment.page_index === null || comment.page_index === undefined) {
+                    this.currentManga.cachedComments.push(comment);
+                } else {
+                    const pageKey = Number(comment.page_index);
+                    if (!this.currentManga.cachedPagesComments[pageKey]) {
+                        this.currentManga.cachedPagesComments[pageKey] = [];
+                    }
+                    this.currentManga.cachedPagesComments[pageKey].push(comment);
+                }
+            });
+            
+            this.currentManga.comments_count = totalComments;
+            const previewCommentsEl = document.getElementById('previewComments');
+            if (previewCommentsEl) {
+                previewCommentsEl.textContent = `💬 ${totalComments}`;
+            }
+
+            if (this.currentCommentsTab === 'main') {
+                this.loadMainComments();
+            } else {
+                if(typeof this.loadPagesCommentsPreview === 'function') this.loadPagesCommentsPreview();
+            }
+        } catch (e) {
+            console.error("Ошибка фонового обновления комментов:", e);
+        }
+    },
+
     closeMangaReader() {
-        // Закрываем комментарии
         if (typeof reader !== 'undefined' && reader.toggleComments) {
             reader.toggleComments(false);
         }
         
-        // Очищаем ресурсы читалки
         if (typeof reader !== 'undefined' && reader.destroy) {
             reader.destroy();
         }
         
-        // Показываем превью
         this.showScreen('previewScreen');
         
-        // Сбрасываем состояние кнопки "Назад" в Telegram
+        // ИСПРАВЛЕНИЕ: Фоновое обновление комментариев (если пользователь оставил их во время чтения)
+        this.refreshCommentsSilently();
+        
         if (tg.BackButton) {
             tg.BackButton.show();
             setTimeout(() => {
@@ -773,13 +801,11 @@ const app = {
     },
 
     showScreen(screenId) {
-        // Скрываем все экраны
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         
         const readerScreen = document.getElementById('readerScreen');
         const readerHeader = document.getElementById('readerHeader');
         
-        // ОПТИМИЗАЦИЯ: Управление читалкой
         if (screenId !== 'readerScreen') {
             if (readerScreen) {
                 readerScreen.classList.remove('active');
@@ -804,7 +830,6 @@ const app = {
         const targetScreen = document.getElementById(screenId);
         if (targetScreen) targetScreen.classList.add('active');
         
-        // Управление кнопкой "Назад" в Telegram
         if (tg.BackButton) {
             if (screenId === 'mainScreen') {
                 tg.BackButton.hide();
