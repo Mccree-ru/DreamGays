@@ -100,6 +100,16 @@ const api = {
         return data || [];
     },
 	
+	async fetchAllMangaComments(mangaId) {
+			const { data, error } = await _supabase
+				.from('comments')
+				.select('*')
+				.eq('manga_id', String(mangaId))
+				.order('created_at', { ascending: false }); // Сортируем: самые новые сверху
+			if (error) throw error;
+			return data || [];
+		},
+	
 
     async fetchMainComments(mangaId) {
         const { data, error } = await _supabase
