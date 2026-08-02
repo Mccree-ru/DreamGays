@@ -7,6 +7,7 @@ const app = {
     userLikedIds: [], 
     currentManga: null,
     isCurrentLiked: false,
+	currentCommentsTab: 'main', // 'main' или 'pages'
     
     // Переменные фильтрации
     selectedGenreTab: null,
@@ -471,8 +472,11 @@ const app = {
         document.getElementById('previewLikes').textContent = `❤️ ${finalLikes}`;
         document.getElementById('previewComments').textContent = `💬 ${manga.comments_count || 0}`;
 
-        this.showScreen('previewScreen');
-
+		this.showScreen('previewScreen');
+        
+        // СБРАСЫВАЕМ ВКЛАДКУ КОММЕНТАРИЕВ НА ГЛАВНУЮ
+        this.switchCommentTab('main');
+		
         // Инициализируем чистые структуры кэша внутри объекта тайтла
         this.currentManga.cachedComments = [];
         this.currentManga.cachedPagesComments = {};
@@ -616,6 +620,79 @@ const app = {
             container.appendChild(item);
         });
     },
+
+	switchCommentTab(tabName) {
+        if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        this.currentCommentsTab = tabName;
+        
+        const btnMain = document.getElementById('tabMainComments');
+        const btnPages = document.getElementById('tabPagesComments');
+        const scrollMain = document.getElementById('mainCommentsScroll');
+        const scrollPages = document.getElementById('pagesCommentsScroll');
+        const inputBlock = document.getElementById('mainCommentInputBlock');
+        
+        if (tabName === 'main') {
+            btnMain.classList.add('active');
+            btnPages.classList.remove('active');
+            scrollMain.style.display = 'block';
+            scrollPages.style.display = 'none';
+            inputBlock.style.display = 'flex'; // Возвращаем поле ввода
+            this.loadMainComments();
+        } else {
+            btnPages.classList.add('active');
+            btnMain.classList.remove('active');
+            scrollMain.style.display = 'none';
+            scrollPages.style.display = 'block';
+            inputBlock.style.display = 'none'; // Скрываем поле ввода (оставляем только чтение)
+            this.loadPagesCommentsPreview();
+        }
+    },
+
+    loadPagesCommentsPreview() {
+        const container = document.getElementById('pagesCommentsScroll');
+        if (!container) return;
+
+        const pagesComments = this.currentManga.cachedPagesComments || {};
+        let allPageComments = [];
+        
+        // Собираем все комменты страниц в один плоский массив
+        Object.keys(pagesComments).forEach(pageIndex => {
+            pagesComments[pageIndex].forEach(c => {
+                allPageComments.push(c);
+            });
+        });
+
+        // Сортируем: самые новые комментарии сверху
+        allPageComments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        if (allPageComments.length === 0) {
+            container.innerHTML = "<p style='color:#777; font-size:13px; text-align:center; margin-top: 15px;'>Читатели еще не оставляли комментариев на страницах этого тайтла.</p>";
+            return;
+        }
+
+        container.innerHTML = "";
+        allPageComments.forEach(c => {
+            const item = document.createElement('div');
+            item.className = 'comment-item';
+            const timeString = this.formatCommentTime(c.created_at);
+            const pageNumber = parseInt(c.page_index) + 1; // +1 для отображения пользователю (Стр. 1 вместо Стр. 0)
+
+            // Кнопка удаления здесь не нужна, так как мы хотим только чтение из превью. 
+            // Удалять можно внутри самой читалки.
+            item.innerHTML = `
+                <div class="comment-top-line">
+                    <div>
+                        <span class="comment-user">${c.user_name}</span>
+                        <span class="comment-page-badge">Стр. ${pageNumber}</span>
+                    </div>
+                    <span class="comment-time">${timeString}</span>
+                </div>
+                <p class="comment-text">${c.text}</p>
+            `;
+            container.appendChild(item);
+        });
+    },
+	
 
     async sendMainComment() {
         const input = document.getElementById('mainCommentInputField');
