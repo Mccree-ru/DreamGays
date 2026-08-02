@@ -9,10 +9,10 @@ const reader = {
     currentX: 0,
     currentY: 0,
     
-    // Управление предзагрузкой
+    // Управление памятью и предзагрузкой
     preloadedUrls: new Set(),
     _preloadTimer: null,
-    _preloadCount: 3,
+    _preloadCount: 2, // Ограничено для экономии памяти на слабых устройствах
 
     // Переменные для тача (Zoom & Pan)
     _touchStarted: false,
@@ -34,12 +34,12 @@ const reader = {
     _lastTouchY: 0,
     
     // Универсальные переменные для кликов и мыши
-    _lastClickTime: 0,
     _clickTimeout: null,
-    _lastDoubleTapTime: 0,
     _isMouseDown: false,
     _mouseX: 0,
     _mouseY: 0,
+    _wheelAccumulatorX: 0,
+    _wheelTimeout: null,
     
     // Флаги навигации
     _isNavigating: false,
@@ -78,6 +78,7 @@ const reader = {
             slide.className = 'reader-slide';
             slide.dataset.index = index;
             slide.dataset.loaded = 'false';
+            
             slide.style.position = 'relative';
             slide.style.width = '100vw';
             slide.style.height = '100vh';
@@ -87,17 +88,16 @@ const reader = {
             slide.style.justifyContent = 'center';
             slide.style.overflow = 'hidden';
             
+            // Удалена моргающая CSS анимация скелетона (GPU Optimization)
             slide.innerHTML = `
                 <div class="zoom-container" id="zoomContainer-${index}" 
                      style="position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%;touch-action:none;transform-origin:center center;">
-                    <div class="reader-skeleton" id="skeleton-${index}" 
-                         style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;border-radius:8px;background-color:#121212;display:flex;align-items:center;justify-content:center;z-index:2;">
-                        <div class="reader-skeleton-inner skeleton-blink" 
-                             style="width:100%;height:100%;border-radius:8px;"></div>
+                    <div class="reader-skeleton" id="skeleton-${index}">
+                        <div class="reader-skeleton-inner" style="background-color: #1a1a1a;"></div>
                     </div>
                     <img class="reader-img" id="readerImg-${index}" 
                          draggable="false" 
-                         style="opacity:0;transition:opacity 0.3s ease;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;pointer-events:none;-webkit-user-select:none;user-select:none;"
+                         style="opacity:0;transition:opacity 0.2s ease;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;pointer-events:none;-webkit-user-select:none;user-select:none;"
                          data-index="${index}"
                          data-loaded="false">
                 </div>
@@ -141,17 +141,46 @@ const reader = {
         if (counter) counter.textContent = `${this.currentIndex + 1} / ${this.pages.length}`;
     },
 
+    // ОПТИМИЗАЦИЯ ПАМЯТИ: Выгрузка невидимых страниц (Fix iOS Crashes)
+    _cleanupMemory() {
+        const keepMin = this.currentIndex - 1;
+        const keepMax = this.currentIndex + 2;
+
+        for (let i = 0; i < this.pages.length; i++) {
+            const img = document.getElementById(`readerImg-${i}`);
+            if (!img) continue;
+
+            if (i < keepMin || i > keepMax) {
+                if (img.hasAttribute('src')) {
+                    img.removeAttribute('src'); // Освобождаем память GPU
+                    img.dataset.loaded = 'false';
+                    img.style.opacity = '0';
+                    this.preloadedUrls.delete(this.pages[i]);
+
+                    const sk = document.getElementById(`skeleton-${i}`);
+                    if (sk) {
+                        sk.style.display = 'flex';
+                        sk.style.opacity = '1';
+                        sk.style.visibility = 'visible';
+                        sk.innerHTML = '<div class="reader-skeleton-inner" style="background-color: #1a1a1a;"></div>';
+                    }
+                }
+            }
+        }
+    },
+
     _loadPageWithPriority(index) {
         if (this._isLoading) {
-            this._loadQueue.push(index);
+            if (!this._loadQueue.includes(index)) this._loadQueue.push(index);
             return;
         }
-        const img = document.getElementById(`readerImg-${index}`);
-        if (!img) return;
+        
+        const domImg = document.getElementById(`readerImg-${index}`);
+        if (!domImg) return;
         const url = this.pages[index];
         if (!url) return;
 
-        if (this.preloadedUrls.has(url) && img.dataset.loaded === 'true') {
+        if (this.preloadedUrls.has(url) && domImg.dataset.loaded === 'true') {
             this._showLoadedImage(index);
             return;
         }
@@ -163,37 +192,42 @@ const reader = {
             sk.style.display = 'flex';
             sk.style.opacity = '1';
             sk.style.visibility = 'visible';
+            sk.innerHTML = '<div style="color:#777;font-size:14px;text-align:center;">Загрузка...</div>';
         }
         
-        img.onload = null;
-        img.onerror = null;
-        img.src = url;
         this.preloadedUrls.add(url);
         
+        // ФОНОВАЯ ЗАГРУЗКА без частичной отрисовки
+        const virtualImg = new Image();
+        
         const timeoutId = setTimeout(() => {
-            if (img.dataset.loaded !== 'true') {
+            if (domImg.dataset.loaded !== 'true') {
                 this._isLoading = false;
-                if (sk) sk.innerHTML = '<div style="color:#ff9500;font-size:14px;text-align:center;">⏳ Загрузка...</div>';
-                setTimeout(() => { this._loadPageWithPriority(index); }, 1000);
+                if (sk) sk.innerHTML = '<div style="color:#ff9500;font-size:14px;text-align:center;">⏳ Долгая загрузка...</div>';
+                setTimeout(() => { this._loadPageWithPriority(index); }, 1500);
             }
         }, 8000);
 
-        img.onload = () => {
+        virtualImg.onload = () => {
             clearTimeout(timeoutId);
-            img.dataset.loaded = 'true';
+            domImg.src = url;
+            domImg.dataset.loaded = 'true';
+            
             this._showLoadedImage(index);
             this._isLoading = false;
             this._processQueue();
         };
         
-        img.onerror = () => {
+        virtualImg.onerror = () => {
             clearTimeout(timeoutId);
             this.preloadedUrls.delete(url);
             this._isLoading = false;
-            if (sk) sk.innerHTML = '<div style="color:#ff3b30;font-size:14px;">⚠️ Ошибка загрузки</div>';
+            if (sk) sk.innerHTML = '<div style="color:#ff3b30;font-size:14px;">⚠️ Ошибка</div>';
             setTimeout(() => { this._loadPageWithPriority(index); }, 2000);
             this._processQueue();
         };
+
+        virtualImg.src = url;
     },
 
     _showLoadedImage(index) {
@@ -215,13 +249,10 @@ const reader = {
             if (track) {
                 const transform = track.style.transform;
                 track.style.transition = 'none';
-                track.style.webkitTransition = 'none';
                 requestAnimationFrame(() => {
                     track.style.transform = transform;
-                    track.style.webkitTransform = transform;
                     requestAnimationFrame(() => {
                         track.style.transition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
-                        track.style.webkitTransition = 'transform 0.3s cubic-bezier(0.25, 1, 0.5, 1)';
                     });
                 });
             }
@@ -243,19 +274,13 @@ const reader = {
 
         let index = startIndex;
         const loadNext = () => {
-            if (index >= startIndex + count) {
-                const nextStart = startIndex + this._preloadCount;
-                if (nextStart < this.pages.length) {
-                    this._preloadTimer = setTimeout(() => { this._preloadPages(nextStart); }, 500);
-                }
-                return;
-            }
+            if (index >= startIndex + count) return;
             const img = document.getElementById(`readerImg-${index}`);
             if (img && img.dataset.loaded !== 'true' && index !== this.currentIndex) {
                 this._loadPageWithPriority(index);
             }
             index++;
-            this._preloadTimer = setTimeout(loadNext, 200);
+            this._preloadTimer = setTimeout(loadNext, 300);
         };
         loadNext();
     },
@@ -319,6 +344,9 @@ const reader = {
         if (window.Telegram?.WebApp?.HapticFeedback) {
             window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
         }
+
+        // Очищаем старые страницы из памяти
+        this._cleanupMemory();
 
         const currentImg = document.getElementById(`readerImg-${index}`);
         if (currentImg && currentImg.dataset.loaded !== 'true') {
@@ -417,7 +445,6 @@ const reader = {
             if (e.cancelable) e.preventDefault();
         } else if (touches.length === 1) {
             this._isPinching = false;
-            // ИСПРАВЛЕНИЕ: Не включаем панорамирование (перетаскивание) мгновенно. Ждем движения.
             this._isPanning = false; 
             this._touchStartX = touches[0].clientX;
             this._touchStartY = touches[0].clientY;
@@ -465,7 +492,6 @@ const reader = {
                 this.applyZoom(newScale, targetX, targetY);
             }
         } else if (touches.length === 1 && this.scale > 1) {
-            // ИСПРАВЛЕНИЕ: Включаем Pan только если палец сдвинулся больше чем на 5 пикселей!
             const moveDist = Math.hypot(touches[0].clientX - this._touchStartX, touches[0].clientY - this._touchStartY);
             if (moveDist > 5) {
                 this._isPanning = true;
@@ -505,30 +531,6 @@ const reader = {
             return;
         }
 
-        // ОБРАБОТКА ТАПОВ И ДВОЙНОГО ТАПА
-        if (!this._preventClick && !this._isPinching) {
-            const now = Date.now();
-            if (now - this._lastTouchTime < 300) {
-                // Двойной тап распознан!
-                if (e.cancelable) e.preventDefault();
-                clearTimeout(this._clickTimeout); // Отменяем одиночный клик, чтобы страница не перелистнулась
-                
-                if (this.scale > 1) {
-                    this.resetZoom(); // Отдаляет обратно к 1x
-                } else {
-                    const touch = e.changedTouches[0];
-                    const rectX = touch.clientX - window.innerWidth / 2;
-                    const rectY = touch.clientY - window.innerHeight / 2;
-                    this.applyZoom(2, -rectX, -rectY); // Приближает в точку пальца
-                }
-                
-                this._lastDoubleTapTime = now;
-                this._lastTouchTime = 0;
-                return;
-            }
-            this._lastTouchTime = now;
-        }
-
         // Логика свайпа для навигации
         if (this._preventClick && !this._isPinching && this.scale === 1) {
             const diffX = this._touchStartX - this._lastTouchX;
@@ -557,7 +559,6 @@ const reader = {
 
     _onClick(e) {
         if (this._isNavigating) return;
-        if (this._lastDoubleTapTime && (Date.now() - this._lastDoubleTapTime < 500)) return;
         if (this._preventClick) return;
         if (e.target.closest('button')) return;
 
@@ -585,17 +586,21 @@ const reader = {
     initKeyboardAndMouseControls() {
         if (this._keydownHandler) window.removeEventListener('keydown', this._keydownHandler);
 
-        this._keydownHandler = (event) => {
+        // ИСПРАВЛЕНИЕ: Добавлен перехват клавиатуры со стрелками и кнопками A/D
+        this._keydownHandler = (e) => {
             const readerScreen = document.getElementById('readerScreen');
             if (!readerScreen || !readerScreen.classList.contains('active')) return;
             if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
             if (this._isNavigating) return;
 
-            if (event.key === 'ArrowRight') {
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                e.preventDefault(); // Запрещаем скролл страницы
                 if (this.currentIndex < this.pages.length - 1) this.navigateTo(this.currentIndex + 1, 'forward');
-            } else if (event.key === 'ArrowLeft') {
+            } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                e.preventDefault(); // Запрещаем скролл страницы
                 if (this.currentIndex > 0) this.navigateTo(this.currentIndex - 1, 'back');
-            } else if (event.key === 'Escape') {
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
                 if (this.scale > 1) this.resetZoom();
                 else window.app?.closeMangaReader();
             }
@@ -606,23 +611,47 @@ const reader = {
         const track = document.getElementById('readerTrack');
         if (!track) return;
 
+        // Разделение зума щипком на трекпаде (MacOS) и скролла
         track.addEventListener('wheel', (e) => {
             e.preventDefault();
-            const newScale = this.scale + (e.deltaY > 0 ? -0.25 : 0.25);
             
-            if (newScale <= 1) {
-                this.resetZoom();
+            if (e.ctrlKey || e.metaKey) {
+                const zoomDelta = -e.deltaY * 0.01; 
+                const newScale = this.scale * (1 + zoomDelta);
+                
+                if (newScale <= 1.05) {
+                    this.resetZoom();
+                } else {
+                    const rectX = e.clientX - window.innerWidth / 2;
+                    const rectY = e.clientY - window.innerHeight / 2;
+                    const dx = rectX - this.currentX;
+                    const dy = rectY - this.currentY;
+                    const scaleRatio = newScale / this.scale;
+                    
+                    const targetX = rectX - dx * scaleRatio;
+                    const targetY = rectY - dy * scaleRatio;
+                    
+                    this.applyZoom(newScale, targetX, targetY);
+                }
             } else {
-                const rectX = e.clientX - window.innerWidth / 2;
-                const rectY = e.clientY - window.innerHeight / 2;
-                const dx = rectX - this.currentX;
-                const dy = rectY - this.currentY;
-                const scaleRatio = newScale / this.scale;
-                
-                const targetX = rectX - dx * scaleRatio;
-                const targetY = rectY - dy * scaleRatio;
-                
-                this.applyZoom(newScale, targetX, targetY);
+                if (this.scale > 1) {
+                    this.applyZoom(this.scale, this.currentX - e.deltaX, this.currentY - e.deltaY);
+                } else {
+                    if (!this._isNavigating) {
+                        this._wheelAccumulatorX += e.deltaX;
+                        
+                        if (this._wheelAccumulatorX > 50 && this.currentIndex < this.pages.length - 1) {
+                            this.navigateTo(this.currentIndex + 1, 'forward');
+                            this._wheelAccumulatorX = 0;
+                        } else if (this._wheelAccumulatorX < -50 && this.currentIndex > 0) {
+                            this.navigateTo(this.currentIndex - 1, 'back');
+                            this._wheelAccumulatorX = 0;
+                        }
+                        
+                        clearTimeout(this._wheelTimeout);
+                        this._wheelTimeout = setTimeout(() => { this._wheelAccumulatorX = 0; }, 150);
+                    }
+                }
             }
         }, { passive: false });
 
@@ -646,18 +675,6 @@ const reader = {
         });
 
         window.addEventListener('mouseup', () => { this._isMouseDown = false; });
-        
-        // Двойной клик на ПК
-        track.addEventListener('dblclick', (e) => {
-            if (e.target.closest('button')) return;
-            if (this.scale > 1) {
-                this.resetZoom();
-            } else {
-                const rectX = e.clientX - window.innerWidth / 2;
-                const rectY = e.clientY - window.innerHeight / 2;
-                this.applyZoom(2, -rectX, -rectY);
-            }
-        });
     },
 
     toggleComments(show) {
@@ -745,6 +762,10 @@ const reader = {
         if (this._preloadTimer) clearTimeout(this._preloadTimer);
         if (this._navigationTimeout) clearTimeout(this._navigationTimeout);
         if (this._clickTimeout) clearTimeout(this._clickTimeout);
+        if (this._wheelTimeout) clearTimeout(this._wheelTimeout);
+        
+        if (this._keydownHandler) window.removeEventListener('keydown', this._keydownHandler);
+        
         this.preloadedUrls.clear();
         this._loadQueue = [];
         this._isLoading = false;
