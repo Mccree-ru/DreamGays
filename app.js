@@ -847,4 +847,5 @@ const app = {
     }
 };
 
+window.app = app; 
 window.onload = () => app.init();
