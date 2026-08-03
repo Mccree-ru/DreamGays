@@ -1096,29 +1096,6 @@
             min-width: 0;
         }
 
-        /* Админка */
-		.admin-textarea {
-			width: 100%; 
-			height: 60vh; 
-			background-color: #1a1a1a; 
-			color: #fff;
-			border: 1px solid #444; 
-			border-radius: 8px; 
-			padding: 12px; 
-			font-family: monospace;
-			font-size: 16px; /* ИСПРАВЛЕНО: строго 16px */
-			resize: none; 
-			box-sizing: border-box; 
-			margin-top: 15px;
-			-webkit-user-select: text; 
-			user-select: text;
-			outline: none;
-		}
-
-        .admin-textarea:focus {
-            border-color: var(--link-color);
-        }
-
         /* Контекстное меню */
         .custom-context-menu {
             position: fixed;
@@ -1334,7 +1311,6 @@
             <div class="header-buttons">
                 <button class="top-nav-btn dreamgays-btn" onclick="tg.openLink('https://t.me/+fXeAudGbRDAwZTli')">DreamGays</button>
                 <button class="top-nav-btn coffee-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ На coffee</button>
-                <button id="adminBtn" class="top-nav-btn admin-btn" style="display: none;" onclick="app.showScreen('adminScreen')">⚙️ Админка</button>
             </div>
             <div class="genre-tabs">
                 <button id="tab-all" class="genre-tab active" onclick="app.switchGenreTab(null)">Все</button>
@@ -1351,22 +1327,6 @@
                 </div>
             </div>
             <div class="catalog-grid" id="catalogGrid">Загрузка релизов...</div>
-        </div>
-    </div>
-
-    <!-- АДМИН-ПАНЕЛЬ -->
-    <div id="adminScreen" class="screen">
-        <div class="main-container">
-            <div class="preview-nav-row">
-                <button class="btn-half" style="background:#333; color:#fff;" onclick="app.showScreen('mainScreen')">← В каталог</button>
-                <button class="btn-half" style="background:#555; color:#fff;" onclick="document.getElementById('jsonAdminInput').value=''">Очистить</button>
-            </div>
-            <h3 style="margin: 10px 0 5px 0;">Добавление новой манги (JSON)</h3>
-            <p style="color: var(--hint-color); font-size: 13px; margin: 0;">Вставьте готовый JSON-объект релиза со всеми страницами в поле ниже:</p>
-            
-            <textarea id="jsonAdminInput" class="admin-textarea" placeholder='{ "id": "идентификатор", "title": "Название", ... }'></textarea>
-            
-            <button class="btn" style="background-color: #673ab7; color: #fff; margin-top: 15px; padding: 15px;" onclick="app.submitMangaJson()">🚀 Опубликовать релиз в базу</button>
         </div>
     </div>
 
