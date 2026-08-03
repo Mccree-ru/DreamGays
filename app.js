@@ -330,11 +330,21 @@ renderCatalogGrid(mangaArray, appendMode = false) {
             const card = document.createElement('div');
             card.setAttribute('data-manga-id', manga.id);
             
+            const isLiked = this.userLikedIds.includes(String(manga.id));
+            const isPurchased = this.userPurchasedIds.includes(String(manga.id));
+            
+            // Формируем классы карточки
             let genreClass = '';
             const hasBara = manga.tags && manga.tags.some(t => t.toLowerCase() === 'bara');
             const hasFurry = manga.tags && manga.tags.some(t => t.toLowerCase() === 'furry');
-            if (hasBara) genreClass = ' manga-bara';
-            else if (hasFurry) genreClass = ' manga-furry';
+            if (hasBara) genreClass += ' manga-bara';
+            else if (hasFurry) genreClass += ' manga-furry';
+            
+            // Если манга платная и не куплена — добавляем золотую рамку
+            if (manga.is_paid && !isPurchased) {
+                genreClass += ' is-premium';
+            }
+            
             card.className = 'manga-card' + genreClass;
             
             const authorTagsHtml = manga.author !== "Не указан" ? manga.author.split(',').map(a => {
@@ -349,12 +359,9 @@ renderCatalogGrid(mangaArray, appendMode = false) {
                 return `<span class="tag-author ${activeClass}" onclick="event.stopPropagation(); ${clickAction}">${authorName}</span>`;
             }).join('') : '';
 
-            const isLiked = this.userLikedIds.includes(String(manga.id));
-            const isPurchased = this.userPurchasedIds.includes(String(manga.id));
-            
+            // Элитный бейдж (без градиента на всю картинку)
             const lockBadgeHtml = (manga.is_paid && !isPurchased) 
-                ? `<div class="card-premium-gradient"></div>
-                   <div class="card-premium-badge">🔒 ${manga.price} 🎫</div>` 
+                ? `<div class="card-premium-badge">Premium: ${manga.price} 🎫</div>` 
                 : '';
                 
             const heartBadgeHtml = isLiked ? `<div class="card-like-badge"><span>READ</span></div>` : '';
