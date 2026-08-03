@@ -353,7 +353,8 @@ renderCatalogGrid(mangaArray, appendMode = false) {
             const isPurchased = this.userPurchasedIds.includes(String(manga.id));
             
             const lockBadgeHtml = (manga.is_paid && !isPurchased) 
-                ? `<div style="position:absolute; top:10px; left:10px; background:rgba(255, 59, 48, 0.9); padding:4px 10px; border-radius:8px; color:#fff; font-weight:bold; font-size:12px; z-index:10; backdrop-filter:blur(4px); box-shadow: 0 4px 8px rgba(0,0,0,0.5);">🔒 ${manga.price} 🎫</div>` 
+                ? `<div class="card-premium-gradient"></div>
+                   <div class="card-premium-badge">🔒 ${manga.price} 🎫</div>` 
                 : '';
                 
             const heartBadgeHtml = isLiked ? `<div class="card-like-badge"><span>READ</span></div>` : '';
