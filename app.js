@@ -40,16 +40,7 @@ const app = {
                 this.userName = "Читатель";
             }
         }
-
-        const adminBtn = document.getElementById('adminBtn');
-        if (adminBtn) {
-            if (this.userId === 1878167621) {
-                adminBtn.style.display = "block";
-            } else {
-                adminBtn.style.display = "none"; 
-            }
-        }
-
+		
         try {
 			this.userLikedIds = await api.getUserLikesList(this.userId);
             // Загружаем покупки
@@ -154,61 +145,6 @@ const app = {
             .subscribe();
     },
 	
-    async submitMangaJson() {
-        const jsonField = document.getElementById('jsonAdminInput');
-        const rawValue = jsonField.value.trim();
-
-        if (!rawValue) {
-            alert('Поле ввода пустое!');
-            return;
-        }
-
-        const supabaseClient = window.supabaseClient || window.supabase;
-
-        if (!supabaseClient || typeof supabaseClient.from !== 'function') {
-            alert('Ошибка инициализации: Не найден рабочий клиент Supabase. Проверьте настройки подключения в api.js!');
-            return;
-        }
-
-        try {
-            const parsedData = JSON.parse(rawValue);
-
-            if (!parsedData.id || !parsedData.title) {
-                alert('Ошибка: У объекта JSON обязательно должны быть заполнены поля "id" и "title"!');
-                return;
-            }
-
-            const cleanMangaData = {
-                id: String(parsedData.id).trim(),
-                title: String(parsedData.title).trim(),
-                author: parsedData.author ? String(parsedData.author).trim() : null,
-                cover: parsedData.cover ? String(parsedData.cover).trim() : null,
-                tags: Array.isArray(parsedData.tags) ? parsedData.tags : null,
-                pages: Array.isArray(parsedData.pages) ? parsedData.pages : null
-            };
-
-            const { data, error } = await supabaseClient
-                .from('manga') 
-                .insert([cleanMangaData]);
-
-            if (error) {
-                console.error('Ошибка базы данных Supabase:', error);
-                alert('Не удалось сохранить в БД: ' + error.message);
-            } else {
-                alert('🎉 Релиз «' + cleanMangaData.title + '» успешно добавлен в базу!');
-                jsonField.value = ''; 
-                this.showScreen('mainScreen'); 
-                
-                if (typeof this.loadCatalog === 'function') {
-                    await this.loadCatalog();
-                }
-            }
-        } catch (parseError) {
-            console.error('Ошибка синтаксиса JSON или выполнения:', parseError);
-            alert('Ошибка при обработке релиза:\n' + parseError.message);
-        }
-    },
-    
     async loadCatalog() {
         if (this.isLoading) return;
         this.isLoading = true;
