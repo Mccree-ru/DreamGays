@@ -564,23 +564,83 @@ renderCatalogGrid(mangaArray, appendMode = false) {
         const isPurchased = this.userPurchasedIds.includes(String(this.currentManga.id));
         
         if (this.currentManga.is_paid && !isPurchased) {
-            // Кнопка покупки
-            const botUsername = "DreamContent_Bot"; // Твой бот
+            const botUsername = "DreamContent_Bot";
             const buyLink = `https://t.me/${botUsername}?start=buy_${this.currentManga.id}_${this.currentManga.price}`;
             
             readBtnContainer.innerHTML = `
-                <button class="btn" style="flex:2; background: #ff3b30;" onclick="tg.openTelegramLink('${buyLink}')">
+                <button class="btn" style="flex:2; background: #ff3b30;" onclick="app.initiatePurchase('${buyLink}')">
                     🔒 Купить за ${this.currentManga.price} 🎫
                 </button>
             `;
         } else {
-            // Обычная кнопка чтения
             readBtnContainer.innerHTML = `
                 <button class="btn" style="flex:2;" onclick="app.startReadingManga()">Читать</button>
             `;
         }
     },
     
+    initiatePurchase(url) {
+        // 1. Открываем бота
+        tg.openTelegramLink(url);
+        
+        // 2. Меняем кнопку визуально
+        const readBtnContainer = document.getElementById('readBtnContainer');
+        if (readBtnContainer) {
+            readBtnContainer.innerHTML = `
+                <button class="btn" style="flex:2; background: #ff9500;" onclick="app.checkRecentPurchases(true)">
+                    🔄 Проверить оплату
+                </button>
+            `;
+        }
+        
+        // 3. Запускаем тихий фоновый поллинг. Он спросит базу 3 раза с интервалом в 3 секунды.
+        // Запрос идет только к таблице покупок (очень легкий, не нагрузит Supabase).
+        let attempts = 0;
+        const poll = setInterval(async () => {
+            attempts++;
+            // Если уже куплено или превышено количество попыток — останавливаем таймер
+            if (attempts > 3 || (this.currentManga && this.userPurchasedIds.includes(String(this.currentManga.id)))) {
+                clearInterval(poll);
+                return;
+            }
+            await this.checkRecentPurchases(false);
+        }, 3000);
+    },
+
+    // Легкая синхронизация покупок
+    async checkRecentPurchases(showNotification = false) {
+        try {
+            // Запрашиваем только легкий массив ID покупок пользователя
+            const updatedPurchases = await api.fetchUserPurchases(this.userId);
+            
+            let hasNew = false;
+            updatedPurchases.forEach(id => {
+                if (!this.userPurchasedIds.includes(id)) {
+                    this.userPurchasedIds.push(id);
+                    hasNew = true;
+                }
+            });
+
+            // Если появилась новая покупка
+            if (hasNew) {
+                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                this.updateReadButtonUI(); 
+                this.renderCatalogGrid(this.allManga); // Обновляем замочки на главном экране
+                
+                // Если юзер кликнул вручную — сразу открываем мангу
+                if (showNotification && this.currentManga && this.userPurchasedIds.includes(String(this.currentManga.id))) {
+                    this.startReadingManga();
+                }
+            } else {
+                if (showNotification) {
+                    alert("⚠️ Оплата еще не прошла. Завершите транзакцию в боте и подождите пару секунд.");
+                }
+            }
+        } catch (e) {
+            console.error("Ошибка проверки покупок", e);
+        }
+    },
+	
     async toggleLike() {
         if (!this.currentManga) return;
         const mangaId = String(this.currentManga.id);
@@ -629,9 +689,21 @@ renderCatalogGrid(mangaArray, appendMode = false) {
         }
     },
 
-    startReadingManga() {
+	startReadingManga() {
         if (!this.currentManga) return;
         
+        // --- ЗАЩИТА ОТ ИЗМЕНЕНИЯ HTML ---
+        const isPurchased = this.userPurchasedIds.includes(String(this.currentManga.id));
+        if (this.currentManga.is_paid && !isPurchased) {
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+            
+            // Если юзер реально купил мангу, но веб-апп не успел обновиться — проверяем базу.
+            // Если он просто подменил HTML, ничего не произойдет, и бот выдаст ошибку.
+            this.checkRecentPurchases(true);
+            return;
+        }
+        // --------------------------------
+
         if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
         if (typeof reader !== 'undefined' && typeof reader.renderPages === 'function') {
