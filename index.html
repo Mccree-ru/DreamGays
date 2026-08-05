@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>McCree Ru Translations</title>
+    <style>
+        :root {
+            /* OLED-Dark палитра */
+            --bg-color: #0A0A0C;
+            --surface-color: #141417;
+            --surface-glass: rgba(20, 20, 23, 0.75);
+            --text-primary: #FFFFFF;
+            --text-secondary: #8E8E93;
+            --accent-color: #0A84FF;
+            --accent-glow: rgba(10, 132, 255, 0.3);
+            --danger-color: #FF453A;
+            --success-color: #32D74B;
+            --warning-color: #FF9F0A;
+            
+            --border-color: rgba(255, 255, 255, 0.08);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-area-top: env(safe-area-inset-top, 0px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body { background-color: var(--bg-color) !important; }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; 
+            background-image: radial-gradient(circle at top right, rgba(20, 20, 30, 1) 0%, var(--bg-color) 100%) !important;
+            color: var(--text-primary) !important; 
+            overflow: hidden; height: 100vh; width: 100vw; position: fixed;
+            user-select: none; -webkit-user-select: none;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            overflow-y: auto; overflow-x: hidden;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: translateY(10px) scale(0.98);
+            padding-bottom: var(--safe-area-bottom);
+            -webkit-overflow-scrolling: touch;
+            /* ОПТИМИЗАЦИЯ СКРОЛЛА: Подготовка GPU */
+            will-change: opacity, transform;
+            overscroll-behavior-y: none;
+        }
+
+        .screen.active { 
+            opacity: 1; pointer-events: auto; z-index: 10;
+            /* ОПТИМИЗАЦИЯ СКРОЛЛА: Аппаратное ускорение активного экрана */
+            transform: translateY(0) scale(1) translateZ(0); 
+        }
+
+        .main-container { padding: max(16px, var(--safe-area-top)) 16px calc(24px + var(--safe-area-bottom)); max-width: 1200px; margin: 0 auto; }
+
+        /* Шапка с кнопками */
+        .header-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
+        .top-btn {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 12px; border-radius: 14px; font-size: 14px; font-weight: 600;
+            border: none; cursor: pointer; transition: transform 0.15s ease, filter 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .top-btn:active { transform: scale(0.95); }
+        .top-btn.tg-btn { background: linear-gradient(135deg, #2AABEE, #229ED9); color: white; }
+        .top-btn.coffee-btn { background: linear-gradient(135deg, #FF9F0A, #FF453A); color: white; }
+
+        /* Панель фильтров */
+        .filter-panel { margin-bottom: 20px; background: var(--surface-color); padding: 6px; border-radius: 16px; border: var(--glass-border); display: flex; gap: 8px; flex-wrap: wrap; }
+        .author-select { 
+            flex: 1; background: transparent; color: var(--text-primary); border: none; 
+            padding: 10px 12px; font-size: 15px; font-weight: 500; outline: none; -webkit-appearance: none; min-width: 140px;
+        }
+        .filter-action-btn { 
+            background: rgba(255,255,255,0.06); color: var(--text-primary); border: none; 
+            padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; 
+            transition: all 0.2s ease; display: flex; align-items: center; gap: 6px;
+        }
+        .filter-action-btn.active { background: var(--accent-color); color: white; box-shadow: 0 0 15px var(--accent-glow); }
+        .filter-action-btn.reset-btn { background: rgba(255, 69, 58, 0.15); color: var(--danger-color); display: none; }
+        .filter-action-btn:active { transform: scale(0.94); }
+
+        /* Умная сетка (Auto-fill) */
+        .catalog-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
+            gap: 16px; 
+        }
+        @media (max-width: 360px) { .catalog-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+
+        /* Карточка манги (Premium UI + ОПТИМИЗАЦИЯ GPU) */
+        .manga-card { 
+            background: var(--surface-color); border-radius: 16px; overflow: hidden; 
+            display: flex; flex-direction: column; cursor: pointer; position: relative; 
+            border: var(--glass-border); box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+            transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+            
+            /* ОПТИМИЗАЦИЯ РЕНДЕРИНГА: Защищает сетку от лагов при появлении картинок */
+            contain: content; 
+            /* Выносим карточки на отдельный слой видеокарты */
+            transform: translateZ(0); 
+            will-change: transform;
+        }
+        .manga-card:active { transform: scale(0.95) translateZ(0); }
+        .manga-card.is-premium { border: 1px solid rgba(255, 215, 0, 0.6) !important; box-shadow: 0 6px 20px rgba(255, 215, 0, 0.15) !important; }
+        .manga-card.manga-bara { background-color: rgba(23, 33, 115, 0.2); border: 1px solid rgba(94, 111, 255, 0.25); }
+        .manga-card.manga-furry { background-color: rgba(162, 10, 10, 0.2); border: 1px solid rgba(255, 69, 58, 0.25); }
+
+        .card-cover-wrap { position: relative; width: 100%; aspect-ratio: 3/4.2; background: #1A1A1D; overflow: hidden; }
+        .card-cover { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            object-fit: cover; opacity: 0; transition: opacity 0.4s ease; pointer-events: none;
+            /* ОПТИМИЗАЦИЯ: Подсказка браузеру, что будет меняться только прозрачность */
+            will-change: opacity;
+        }
+        .card-cover.loaded { opacity: 1; }
+        
+        .glass-badge {
+            background: rgba(10, 10, 12, 0.65); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            color: #fff; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); z-index: 2;
+        }
+        .badge-premium { position: absolute; top: 8px; left: 8px; color: #FFD700; border-color: rgba(255,215,0,0.3); }
+        .badge-pages { position: absolute; bottom: 8px; left: 8px; display: flex; align-items: center; gap: 4px; }
+        .badge-likes { position: absolute; top: 8px; right: 8px; background: rgba(255, 69, 58, 0.2); border-color: rgba(255, 69, 58, 0.3); color: #FF453A; }
+        
+        .card-right-stats { position: absolute; bottom: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 2; }
+        .badge-stat { position: relative; display: flex; align-items: center; justify-content: center; gap: 4px; }
+
+        .card-info { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
+        .card-title { font-size: 14px; font-weight: 700; margin: 0; line-height: 1.3; min-height: 36px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: rgba(255,255,255,0.95); }
+        
+        .card-tags { display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
+        .tags-row { display: flex; flex-wrap: wrap; gap: 4px; }
+        
+        .pill-tag { 
+            font-size: 10px; padding: 4px 8px; border-radius: 8px; font-weight: 600; 
+            cursor: pointer; transition: all 0.2s; border: 1px solid transparent; letter-spacing: 0.2px;
+        }
+        .pill-tag:active { transform: scale(0.9); }
+        .tag-author { background: rgba(255, 159, 10, 0.15); color: #FF9F0A; border-color: rgba(255, 159, 10, 0.2); }
+        .tag-author.active { background: #FF9F0A; color: #fff; }
+        .tag-bara { background: rgba(94, 111, 255, 0.15); color: #7B8AFF; border-color: rgba(94, 111, 255, 0.2); }
+        .tag-bara.active { background: #5C6FFF; color: #fff; }
+        .tag-furry { background: rgba(255, 69, 58, 0.15); color: #FF453A; border-color: rgba(255, 69, 58, 0.2); }
+        .tag-furry.active { background: #FF3B30; color: #fff; }
+
+        /* Экран Превью */
+        .preview-header { 
+            position: absolute; 
+            top: 0; left: 0; width: 100vw; height: 65vh; z-index: 0;
+            background-size: cover; 
+            background-position: center 15%; 
+            opacity: 0.85; 
+            filter: blur(5px) brightness(0.35) saturate(120%); 
+            transform: scale(1.05) translateZ(0); 
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 45%, rgba(0,0,0,0) 100%);
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 45%, rgba(0,0,0,0) 100%);
+            pointer-events: none;
+        }
+        .preview-content { 
+            position: relative; z-index: 2; 
+            padding: calc(max(20px, var(--safe-area-top)) + 75px) 20px 100px; 
+            display: flex; flex-direction: column; align-items: center; 
+        }
+        
+        .preview-nav { 
+            position: fixed; top: 0; left: 0; width: 100%; 
+            padding: max(12px, var(--safe-area-top)) 20px 12px; z-index: 10; 
+            display: flex; justify-content: space-between; align-items: center; 
+            background: var(--surface-glass); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
+            border-bottom: var(--glass-border); 
+        }
+        .nav-left, .nav-right { width: 80px; display: flex; }
+        .nav-right { justify-content: flex-end; }
+        .nav-center { flex: 1; text-align: center; font-weight: 700; font-size: 16px; color: var(--text-primary); }
+        
+        .back-nav-btn { 
+            background: transparent; border: none; color: var(--accent-color); 
+            font-size: 16px; font-weight: 600; cursor: pointer; 
+            display: flex; align-items: center; gap: 2px;
+            padding: 8px 12px; margin-left: -12px;
+            transition: opacity 0.2s;
+        }
+        .back-nav-btn:active { opacity: 0.5; }
+        .back-nav-btn svg { width: 22px; height: 22px; fill: currentColor; margin-top: -1px; }
+
+        .btn-icon { background: rgba(255,255,255,0.1); border: none; width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; cursor: pointer; transition: transform 0.2s; }
+        .btn-icon:active { transform: scale(0.9); }
+
+        .preview-cover-large { width: 160px; aspect-ratio: 3/4.2; border-radius: 16px; object-fit: cover; box-shadow: 0 15px 35px rgba(0,0,0,0.6); border: var(--glass-border); margin-bottom: 20px; }
+        
+        .preview-title-large { font-size: 24px; font-weight: 800; text-align: center; margin-bottom: 6px; line-height: 1.2; }
+        .preview-title-sub { font-size: 14px; font-weight: 500; text-align: center; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+        .preview-stats-row { display: flex; gap: 15px; margin-bottom: 24px; }
+        .stat-item { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 12px; }
+
+        .action-buttons-row { display: flex; gap: 12px; width: 100%; max-width: 400px; margin-bottom: 30px; }
+        .btn-main { flex: 2; background: var(--accent-color); color: #fff; font-size: 16px; font-weight: 700; border: none; padding: 14px; border-radius: 14px; cursor: pointer; transition: transform 0.2s, background 0.2s; box-shadow: 0 8px 20px var(--accent-glow); }
+        .btn-main:active { transform: scale(0.96); }
+        .btn-secondary { flex: 1; background: rgba(255,255,255,0.08); color: #fff; font-size: 16px; font-weight: 700; border: none; padding: 14px; border-radius: 14px; cursor: pointer; transition: transform 0.2s; }
+        .btn-secondary:active { transform: scale(0.96); }
+        .btn-secondary.active { background: rgba(255, 69, 58, 0.15); color: var(--danger-color); }
+
+        /* Скролл "Еще от автора" */
+        .horizontal-scroll {
+            display: flex; gap: 12px; overflow-x: auto; 
+            padding-bottom: 16px; padding-top: 8px; 
+            margin-top: -8px; 
+            scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; 
+            cursor: grab; 
+            will-change: transform;
+        }
+        .horizontal-scroll:active { cursor: grabbing; }
+        .horizontal-scroll::-webkit-scrollbar { display: none; }
+        .mini-card-wrapper { flex: 0 0 110px; scroll-snap-align: start; }
+        .mini-card-wrapper .manga-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+
+        /* Комментарии */
+        .comments-section { width: 100%; max-width: 500px; background: var(--surface-color); border-radius: 20px; border: var(--glass-border); padding: 16px; }
+        .comments-tabs { display: flex; gap: 8px; margin-bottom: 16px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 12px; }
+        .c-tab { flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 600; border-radius: 10px; color: var(--text-secondary); cursor: pointer; transition: 0.2s; }
+        .c-tab.active { background: rgba(255,255,255,0.1); color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        
+        .comments-list { max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch; }
+        .comment-item { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 14px; position: relative; }
+        .comment-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
+        .c-name { font-weight: 700; color: var(--accent-color); }
+        .c-time { color: var(--text-secondary); }
+        .c-text { font-size: 14px; line-height: 1.4; color: rgba(255,255,255,0.9); }
+        
+        .comment-input-box { display: flex; gap: 8px; margin-top: 16px; }
+        .c-input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 16px; border-radius: 14px; font-size: 15px; outline: none; transition: 0.2s; }
+        .c-input:focus { border-color: var(--accent-color); background: rgba(255,255,255,0.08); }
+        .c-btn { background: var(--accent-color); border: none; color: white; border-radius: 14px; padding: 0 20px; font-weight: 600; cursor: pointer; transition: transform 0.2s; }
+        .c-btn:active { transform: scale(0.9); }
+
+        /* Читалка */
+        .reader-screen { 
+            background: black; z-index: 9999; 
+            overflow: hidden !important; 
+            touch-action: none; 
+        }
+        .reader-header { 
+            position: fixed; top: 0; left: 0; width: 100%; 
+            height: max(60px, calc(40px + var(--safe-area-top))); 
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); 
+            z-index: 100; display: flex; justify-content: space-between; align-items: flex-end; 
+            padding: 10px 20px; transition: opacity 0.3s; pointer-events: none; 
+        }
+        .reader-header > * { pointer-events: auto; }
+        
+        .page-counter { 
+            position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+            color: rgba(255,255,255,0.9); font-weight: 700; font-size: 15px; 
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); padding: 6px 12px; 
+            border-radius: 12px; border: var(--glass-border); 
+        }
+        
+        .reader-donate-btn { background: linear-gradient(135deg, #FF9F0A, #FF453A); color: white; border: none; padding: 8px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; pointer-events: auto; box-shadow: 0 4px 15px rgba(255, 159, 10, 0.3); transition: transform 0.2s; }
+        .reader-donate-btn:active { transform: scale(0.95); }
+
+        .reader-track { display: flex; height: 100%; width: 100%; touch-action: none; will-change: transform; }
+        .reader-slide { width: 100vw; height: 100vh; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .reader-img { max-width: 100%; max-height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+        
+        .fab-comments { 
+            position: fixed; 
+            bottom: max(24px, calc(10px + var(--safe-area-bottom))); 
+            right: 24px; 
+            height: 48px; 
+            padding: 0 20px; /* Делает кнопку вытянутой по горизонтали */
+            border-radius: 24px; /* Закругленные края капсулы */
+            background: var(--surface-glass); 
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
+            border: var(--glass-border); 
+            color: white; 
+            font-size: 15px; 
+            font-weight: 600; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 8px; /* Расстояние между иконкой и текстом */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+            cursor: pointer; 
+            z-index: 100; 
+            transition: transform 0.2s, background 0.2s; 
+            pointer-events: auto; 
+        }
+        .fab-comments:active { 
+            transform: scale(0.95); 
+            background: rgba(255,255,255,0.1); 
+        }
+        .fab-comments svg { 
+            width: 18px; 
+            height: 18px; 
+        }
+
+        .page-comments-panel {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 70vh;
+            background: var(--surface-glass); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            z-index: 200; border-top: var(--glass-border); border-radius: 24px 24px 0 0;
+            display: flex; flex-direction: column; padding-bottom: var(--safe-area-bottom);
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            
+            transform: translateY(100%); opacity: 0; visibility: hidden; pointer-events: none;
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s, visibility 0.3s;
+        }
+        .page-comments-panel.open { transform: translateY(0); opacity: 1; visibility: visible; pointer-events: auto; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+        /* Кастомный скроллбар для ПК */
+        @media (pointer: fine) {
+            ::-webkit-scrollbar { width: 6px; }
+            ::-webkit-scrollbar-track { background: transparent; }
+            ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+            ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+            
+            .manga-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.15); }
+            .manga-card.manga-bara:hover { border-color: rgba(94, 111, 255, 0.5); }
+            .manga-card.manga-furry:hover { border-color: rgba(255, 69, 58, 0.5); }
+            .manga-card.is-premium:hover { border-color: rgba(255, 215, 0, 0.9) !important; box-shadow: 0 12px 30px rgba(255, 215, 0, 0.3) !important; }
+
+            .mini-card-wrapper .manga-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.5); }
+        }
+    </style>
+</head>
+<body>
+    <!-- ГЛАВНЫЙ ЭКРАН -->
+    <div id="mainScreen" class="screen active">
+        <div class="main-container">
+            <div class="header-buttons">
+                <button class="top-btn tg-btn" onclick="tg.openLink('https://t.me/+fXeAudGbRDAwZTli')">DreamGays</button>
+                <button class="top-btn coffee-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ Поддержать</button>
+            </div>
+            
+			<div class="filter-panel" style="justify-content: center;">
+                <button id="sortBtn" class="filter-action-btn" onclick="app.toggleSortPopular()">🔥 Популярные релизы</button>
+                <button id="resetBtn" class="filter-action-btn reset-btn" onclick="app.resetFilters()">✕ Сбросить</button>
+            </div>
+            
+            <div class="catalog-grid" id="catalogGrid"></div>
+        </div>
+    </div>
+
+    <!-- ЭКРАН ПРЕВЬЮ -->
+    <div id="previewScreen" class="screen">
+        <div class="preview-nav">
+            <div class="nav-left">
+                <button class="back-nav-btn" onclick="app.showScreen('mainScreen')">
+                    <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                    Назад
+                </button>
+            </div>
+            <div class="nav-center">Релиз</div>
+            <div class="nav-right"></div>
+        </div>
+        
+        <div id="previewBg" class="preview-header"></div>
+        
+        <div class="preview-content">
+            <img id="previewCover" class="preview-cover-large" src="">
+            
+            <!-- ОБНОВЛЕННЫЕ ЗАГОЛОВКИ -->
+            <h1 id="previewTitle" class="preview-title-large">Загрузка...</h1>
+            <h2 id="previewSubTitle" class="preview-title-sub" style="display:none;"></h2>
+            
+            <div class="card-tags" id="previewTags" style="margin-bottom: 16px; flex-direction: row; flex-wrap: wrap; justify-content: center;"></div>
+            
+            <div class="preview-stats-row">
+                <div class="stat-item" id="previewLikes">❤️ 0</div>
+                <div class="stat-item" id="previewComments">💬 0</div>
+                <div class="stat-item" id="previewPages">📖 0</div>
+            </div>
+
+            <div class="action-buttons-row">
+                <button id="likeBtn" class="btn-secondary">🤍</button>
+                <button id="readBtn" class="btn-main">Читать</button>
+            </div>
+
+            <!-- СЕКЦИЯ: ЕЩЕ ОТ АВТОРА -->
+            <div id="moreByAuthorSection" style="display: none; width: 100%; max-width: 500px; margin-bottom: 24px;">
+                <h3 style="font-size: 16px; margin-bottom: 12px; font-weight: 700;">Ещё от автора</h3>
+                <div id="moreByAuthorScroll" class="horizontal-scroll"></div>
+            </div>
+
+            <!-- Секция комментариев -->
+            <div class="comments-section">
+                <div class="comments-tabs">
+                    <div id="tabMain" class="c-tab active" onclick="app.switchCommentTab('main')">Обсуждение</div>
+                    <div id="tabPages" class="c-tab" onclick="app.switchCommentTab('pages')">На страницах</div>
+                </div>
+                
+                <div id="commentsScroll" class="comments-list"></div>
+                
+                <div class="comment-input-box" id="mainCommentInputBlock">
+                    <input type="text" id="mainCommentInputField" class="c-input" placeholder="Ваш комментарий..." autocomplete="off">
+                    <button class="c-btn" onclick="app.sendMainComment()">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ЧИТАЛКА -->
+    <div id="readerScreen" class="screen reader-screen">
+        <div id="readerHeader" class="reader-header">
+            <button class="btn-icon" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);" onclick="app.closeMangaReader(); if(document.activeElement) document.activeElement.blur();">✕</button>
+            <div class="page-counter" id="pageCounter">0 / 0</div>
+            <button class="reader-donate-btn" onclick="tg.openLink('https://yoomoney.ru/to/4100117500602780')">☕ Поддержать</button>
+        </div>
+        
+        <div id="readerTrack" class="reader-track"></div>
+        
+        <button class="fab-comments" onclick="reader.toggleComments(true)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            Комментарии
+        </button>
+        
+        <div id="commentsPanel" class="page-comments-panel">
+            <div class="panel-header">
+                <span id="commentsTitle" style="font-weight:700; font-size:16px;">Комментарии</span>
+                <button class="btn-icon" style="width:30px; height:30px; background:rgba(255,255,255,0.1); font-size: 14px;" onclick="reader.toggleComments(false); document.getElementById('pageCommentInputField').blur();">✕</button>
+            </div>
+            <div id="pageCommentsScroll" class="comments-list" style="flex-grow: 1; padding: 16px;"></div>
+            <div class="comment-input-box" style="padding: 16px; border-top: 1px solid rgba(255,255,255,0.05); margin: 0;">
+                <input type="text" id="pageCommentInputField" class="c-input" placeholder="Комментарий к странице..." autocomplete="off">
+                <button class="c-btn" onclick="reader.sendPageComment()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- КОНТЕКСТНОЕ МЕНЮ (ПК/LongPress) -->
+    <div id="customContextMenu" style="display:none; position:fixed; z-index:99999; background: rgba(20,20,23,0.9); backdrop-filter:blur(15px); border:var(--glass-border); border-radius:14px; padding:6px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+        <button id="contextCopyLinkBtn" style="background:transparent; border:none; color:white; padding:12px 16px; font-size:15px; font-weight:500; cursor:pointer; width:100%; text-align:left; border-radius:8px;">🔗 Скопировать ссылку</button>
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        tg = window.Telegram.WebApp; tg.ready();
+        document.addEventListener('contextmenu', e => { if (!e.target.closest('.manga-card')) e.preventDefault(); }, { capture: true });
+        document.addEventListener('touchstart', e => { if (e.target.tagName === 'IMG') e.target.style.webkitTouchCallout = 'none'; }, { passive: true });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="api.js"></script>
+    <script src="reader.js"></script>
+    <script src="contextMenu.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const appScript = document.createElement('script');
+            appScript.src = "app.js";
+            document.body.appendChild(appScript);
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').catch(function(err) {
+                    console.error('Ошибка регистрации ServiceWorker:', err);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
