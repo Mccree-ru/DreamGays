@@ -227,7 +227,7 @@ const reader = {
         virtualImg.src = url;
     },
 
-    _showLoadedImage(index) {
+	_showLoadedImage(index) {
         const img = document.getElementById(`readerImg-${index}`);
         const sk = document.getElementById(`skeleton-${index}`);
         
@@ -241,7 +241,8 @@ const reader = {
         const slide = img?.closest('.reader-slide');
         if (slide) slide.dataset.loaded = 'true';
         
-        if (index === this.currentIndex && this._isIOS) {
+        // ДОБАВЛЕНО: !this._isNavigating, чтобы не ломать анимацию слайда в полете
+        if (index === this.currentIndex && this._isIOS && !this._isNavigating) {
             const track = document.getElementById('readerTrack');
             if (track) {
                 const transform = track.style.transform;
@@ -255,7 +256,7 @@ const reader = {
             }
         }
     },
-
+	
     _processQueue() {
         if (this._loadQueue.length > 0 && !this._isLoading) {
             const nextIndex = this._loadQueue.shift();
@@ -565,7 +566,7 @@ const reader = {
         track.addEventListener('click', this._handleClick);
     },
 
-    _onClick(e) {
+	_onClick(e) {
         if (this._isNavigating) return;
         if (this._preventClick) return;
         if (e.target.closest('button')) return;
@@ -576,20 +577,18 @@ const reader = {
             return;
         }
 
-        clearTimeout(this._clickTimeout);
-        this._clickTimeout = setTimeout(() => {
-            if (this.scale > 1) return;
+        // Убрали clearTimeout и setTimeout на 100мс
+        if (this.scale > 1) return;
 
-            const screenWidth = window.innerWidth;
-            const clickX = e.clientX;
+        const screenWidth = window.innerWidth;
+        const clickX = e.clientX;
 
-            // ИСПРАВЛЕНИЕ: Разрешаем кликать вперед за пределы страниц (вызовет автовыход)
-            if (clickX > screenWidth * 0.7) {
-                this.navigateTo(this.currentIndex + 1, 'forward');
-            } else if (clickX < screenWidth * 0.3 && this.currentIndex > 0) {
-                this.navigateTo(this.currentIndex - 1, 'back');
-            }
-        }, 100);
+        // Разрешаем кликать вперед за пределы страниц (вызовет автовыход)
+        if (clickX > screenWidth * 0.7) {
+            this.navigateTo(this.currentIndex + 1, 'forward');
+        } else if (clickX < screenWidth * 0.3 && this.currentIndex > 0) {
+            this.navigateTo(this.currentIndex - 1, 'back');
+        }
     },
 
     initKeyboardAndMouseControls() {
